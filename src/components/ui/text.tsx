@@ -1,45 +1,28 @@
-import React from 'react';
-import type { TextProps, TextStyle } from 'react-native';
-import { I18nManager, StyleSheet, Text as NNText } from 'react-native';
-import { twMerge } from 'tailwind-merge';
+import * as Slot from '@rn-primitives/slot';
+import type { SlottableTextProps, TextRef } from '@rn-primitives/types';
+import * as React from 'react';
+import { Text as RNText } from 'react-native';
+import { cn } from '@/lib/utils';
 
-import type { TxKeyPath } from '@/lib/i18n';
-import { translate } from '@/lib/i18n';
+const TextClassContext = React.createContext<string | undefined>(undefined);
 
-interface Props extends TextProps {
-  className?: string;
-  tx?: TxKeyPath;
-}
+const Text = React.forwardRef<TextRef, SlottableTextProps>(
+  ({ className, asChild = false, ...props }, ref) => {
+    const textClass = React.useContext(TextClassContext);
+    const Component = asChild ? Slot.Text : RNText;
+    return (
+      <Component
+        className={cn(
+          'text-base text-foreground web:select-text',
+          textClass,
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Text.displayName = 'Text';
 
-export const Text = ({
-  className = '',
-  style,
-  tx,
-  children,
-  ...props
-}: Props) => {
-  const textStyle = React.useMemo(
-    () =>
-      twMerge(
-        'text-base text-black  dark:text-white  font-inter font-normal',
-        className
-      ),
-    [className]
-  );
-
-  const nStyle = React.useMemo(
-    () =>
-      StyleSheet.flatten([
-        {
-          writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
-        },
-        style,
-      ]) as TextStyle,
-    [style]
-  );
-  return (
-    <NNText className={textStyle} style={nStyle} {...props}>
-      {tx ? translate(tx) : children}
-    </NNText>
-  );
-};
+export { Text, TextClassContext };
