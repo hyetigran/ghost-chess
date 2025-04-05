@@ -8,7 +8,7 @@ import { useAuth } from '@/lib';
 export default function Login() {
   const router = useRouter();
   const signIn = useAuth.use.signIn();
-
+  console.log('login');
   const onSubmit: LoginFormProps['onSubmit'] = (data) => {
     console.log(data);
     signIn({ access: 'access-token', refresh: 'refresh-token' });

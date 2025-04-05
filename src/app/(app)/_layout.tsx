@@ -3,6 +3,8 @@ import { Link, Redirect, SplashScreen, Tabs } from 'expo-router';
 import React, { useCallback, useEffect } from 'react';
 
 import { useAuth, useIsFirstTime } from '@/lib';
+import { Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 export default function TabLayout() {
   const status = useAuth.use.status();
@@ -11,6 +13,7 @@ export default function TabLayout() {
     await SplashScreen.hideAsync();
   }, []);
   useEffect(() => {
+    console.log('status', status);
     if (status !== 'idle') {
       setTimeout(() => {
         hideSplash();
@@ -34,23 +37,6 @@ export default function TabLayout() {
           tabBarButtonTestID: 'feed-tab',
         }}
       />
-
-      <Tabs.Screen
-        name="style"
-        options={{
-          title: 'Style',
-          headerShown: false,
-          tabBarButtonTestID: 'style-tab',
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          headerShown: false,
-          tabBarButtonTestID: 'settings-tab',
-        }}
-      />
     </Tabs>
   );
 }
@@ -58,9 +44,9 @@ export default function TabLayout() {
 const CreateNewPostLink = () => {
   return (
     <Link href="/feed/add-post" asChild>
-      {/* <Pressable>
+      <Pressable>
         <Text className="px-3 text-primary-300">Create</Text>
-      </Pressable> */}
+      </Pressable>
     </Link>
   );
 };

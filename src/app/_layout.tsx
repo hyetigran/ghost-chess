@@ -53,7 +53,7 @@ const useIsomorphicLayoutEffect =
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
-
+  console.log('RootLayout');
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
       return;
@@ -75,7 +75,6 @@ export default function RootLayout() {
     <Providers>
       <Stack>
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </Providers>

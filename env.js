@@ -37,8 +37,8 @@ require('dotenv').config({
 const BUNDLE_ID = 'app.ghostchess.game'; // ios bundle id
 const PACKAGE = 'app.ghostchess.game'; // android package name
 const NAME = 'ghost-chess'; // app name
-const EXPO_ACCOUNT_OWNER = 'expo-owner'; // expo account owner
-const EAS_PROJECT_ID = 'c3e1075b-6fe7-4686-aa49-35b46a229044'; // eas project id
+const EXPO_ACCOUNT_OWNER = 'hyetigran'; // expo account owner
+const EAS_PROJECT_ID = 'ac59969e-4868-464e-be42-be5edcc56fc3'; // eas project id
 const SCHEME = 'ghost-chess'; // app scheme
 
 /**

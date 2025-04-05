@@ -23,3 +23,5 @@ expo-env.d.ts
 PRD.md
 .env.production
 .env.staging
+/android
+/ios
