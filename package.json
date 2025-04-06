@@ -1,6 +1,6 @@
 {
   "name": "ghost-chess",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
     "dev": "expo start -c",
@@ -10,15 +10,24 @@
     "ios": "expo start -c --ios",
     "web": "expo start -c --web",
     "clean": "rm -rf .expo node_modules",
-    "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
+    "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css",
+    "prepare": "husky",
+    "type-check": "tsc  --noemit"
   },
   "dependencies": {
     "@rn-primitives/avatar": "~1.1.0",
+    "@rn-primitives/dialog": "^1.1.0",
     "@rn-primitives/portal": "~1.1.0",
     "@rn-primitives/progress": "~1.1.0",
+    "@rn-primitives/select": "^1.1.0",
     "@rn-primitives/slot": "~1.1.0",
+    "@rn-primitives/switch": "^1.1.0",
+    "@rn-primitives/tabs": "^1.1.0",
     "@rn-primitives/tooltip": "~1.1.0",
     "@rn-primitives/types": "~1.1.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "@tanstack/react-query": "^5.71.10",
+    "chess.js": "^1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "expo": "^52.0.44",
@@ -45,11 +54,27 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@dev-plugins/react-query": "^0.2.0",
+    "@expo/config": "^10.0.11",
     "@types/react": "~18.3.12",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.7",
     "husky": "^9.1.7",
+    "prettier": "^3.5.3",
     "typescript": "^5.3.3"
   },
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyetigran/ghost-chess.git"
+  },
+  "packageManager": "pnpm@9.12.3",
+  "osMetadata": {
+    "initVersion": "7.0.5"
+  },
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
