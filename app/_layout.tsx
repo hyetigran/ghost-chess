@@ -56,12 +56,45 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
       <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: isDarkColorScheme
+              ? NAV_THEME.dark.card
+              : NAV_THEME.light.card,
+          },
+          headerTintColor: isDarkColorScheme
+            ? NAV_THEME.dark.text
+            : NAV_THEME.light.text,
+          headerRight: () => <ThemeToggle />,
+        }}
+      >
         <Stack.Screen
           name='index'
           options={{
-            title: 'Starter Base',
-            headerRight: () => <ThemeToggle />,
+            title: 'Ghost Chess',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='new-game'
+          options={{
+            title: 'New Game',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='join-game'
+          options={{
+            title: 'Join Game',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
+          name='(game)/[id]'
+          options={{
+            title: 'Game',
+            headerShown: true,
           }}
         />
       </Stack>
