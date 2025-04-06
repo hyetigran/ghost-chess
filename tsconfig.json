@@ -4,14 +4,15 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["*"]
+      "~/*": ["*"],
+      "@env": ["./lib/env.js"]
     },
     "esModuleInterop": true,
     "checkJs": true,
     "moduleResolution": "bundler"
   },
   "exclude": [
-    "node_modules",
+    "node_modules/",
     "babel.config.js",
     "metro.config.js",
     "docs",
