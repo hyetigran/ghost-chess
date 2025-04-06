@@ -13,7 +13,6 @@
     "postinstall": "npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css"
   },
   "dependencies": {
-    "@react-navigation/native": "^7.0.0",
     "@rn-primitives/avatar": "~1.1.0",
     "@rn-primitives/portal": "~1.1.0",
     "@rn-primitives/progress": "~1.1.0",
@@ -22,7 +21,7 @@
     "@rn-primitives/types": "~1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "expo": "^52.0.25",
+    "expo": "^52.0.44",
     "expo-linking": "~7.0.4",
     "expo-navigation-bar": "~4.0.7",
     "expo-router": "~4.0.16",
@@ -49,5 +48,23 @@
     "@types/react": "~18.3.12",
     "typescript": "^5.3.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "@rn-primitives/avatar",
+          "@rn-primitives/portal",
+          "@rn-primitives/progress",
+          "@rn-primitives/slot",
+          "@rn-primitives/tooltip",
+          "@rn-primitives/types",
+          "class-variance-authority",
+          "tailwindcss",
+          "tailwindcss-animate",
+          "lucide-react-native"
+        ]
+      }
+    }
+  }
 }

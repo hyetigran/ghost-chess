@@ -17,13 +17,25 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.ghost-chess.game",
+      "NSLocalNetworkUsageDescription": "This app needs access to the local network to connect to the development server.",
+      "NSBonjourServices": [
+        "_expo._tcp"
+      ],
+      "UIBackgroundModes": [
+        "remote-notification"
+      ],
+      "jsEngine": "hermes",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "jsEngine": "hermes",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -34,7 +46,8 @@
       "expo-router"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "tsconfigPaths": true
     }
   }
 }
