@@ -1,14 +1,14 @@
 import { Chess } from 'chess.js';
-import { supabase } from '~/src/api/supabase/client';
+import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
-import { gameSchema, moveSchema } from '~/src/types/database';
+import { gameSchema, moveSchema } from '~/types/database';
 import type {
   Game,
   GameSettings,
   Move,
   GameState,
   GameResult,
-} from '~/src/types/database';
+} from '~/types/database';
 
 /**
  * Create a new game

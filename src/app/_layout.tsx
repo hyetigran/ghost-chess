@@ -19,12 +19,12 @@ import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import { supabase } from '~/src/api/supabase/client';
+import { supabase } from '~/api/supabase/client';
 import { ThemeToggle } from '~/components/ThemeToggle';
 import { setAndroidNavigationBar } from '~/lib/style/android-navigation-bar';
 import { NAV_THEME } from '~/lib/style/constants';
 import { useColorScheme } from '~/lib/style/useColorScheme';
-import { AuthProvider } from '~/src/context/auth-context';
+import { AuthProvider } from '~/context/auth-context';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,

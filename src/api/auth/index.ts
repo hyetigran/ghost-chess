@@ -1,4 +1,4 @@
-import { supabase } from '~/src/api/supabase/client';
+import { supabase } from '~/api/supabase/client';
 
 /**
  * Sign in anonymously
