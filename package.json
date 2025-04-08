@@ -17,6 +17,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
     "@gorhom/bottom-sheet": "^5.1.2",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "@rn-primitives/avatar": "~1.1.0",
     "@rn-primitives/dialog": "^1.1.0",
     "@rn-primitives/label": "^1.1.0",

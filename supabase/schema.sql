@@ -53,10 +53,18 @@ CREATE INDEX idx_games_black_player ON public.games(black_player_id);
 CREATE INDEX idx_games_status ON public.games(status);
 CREATE INDEX idx_games_created_at ON public.games(created_at);
 
+-- Create composite indexes for games table
+CREATE INDEX idx_games_white_player_status ON public.games(white_player_id, status);
+CREATE INDEX idx_games_black_player_status ON public.games(black_player_id, status);
+CREATE INDEX idx_games_status_created_at ON public.games(status, created_at);
+
 -- Create indexes for moves table
 CREATE INDEX idx_moves_game ON public.moves(game_id);
 CREATE INDEX idx_moves_player ON public.moves(player_id);
 CREATE INDEX idx_moves_created_at ON public.moves(created_at);
+
+-- Create composite indexes for moves table
+CREATE INDEX idx_moves_game_move_number ON public.moves(game_id, move_number);
 
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;

@@ -1,5 +1,7 @@
 import '~/global.css';
 
+import { useReactQueryDevTools } from '@dev-plugins/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
   DarkTheme,
   DefaultTheme,
@@ -7,14 +9,22 @@ import {
   ThemeProvider,
 } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform, StyleSheet } from 'react-native';
+import FlashMessage from 'react-native-flash-message';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
+
+import { supabase } from '~/api/supabase/client';
 import { ThemeToggle } from '~/components/ThemeToggle';
-import { setAndroidNavigationBar } from '~/lib/android-navigation-bar';
-import { NAV_THEME } from '~/lib/constants';
-import { useColorScheme } from '~/lib/useColorScheme';
+import { setAndroidNavigationBar } from '~/lib/style/android-navigation-bar';
+import { NAV_THEME } from '~/lib/style/constants';
+import { useColorScheme } from '~/lib/style/useColorScheme';
+import { AuthProvider } from '~/context/auth-context';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -25,10 +35,33 @@ const DARK_THEME: Theme = {
   colors: NAV_THEME.dark,
 };
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
+
+export const unstable_settings = {
+  initialRouteName: '(app)',
+};
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+// Set the animation options. This is optional.
+SplashScreen.setOptions({
+  duration: 500,
+  fade: true,
+});
+
+// Add this to your app's entry point
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
+});
+
+const useIsomorphicLayoutEffect =
+  Platform.OS === 'web' && typeof window === 'undefined'
+    ? React.useEffect
+    : React.useLayoutEffect;
 
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
@@ -54,8 +87,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-      <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+    <Providers>
       <Stack
         screenOptions={{
           headerStyle: {
@@ -98,12 +130,48 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-      <PortalHost />
-    </ThemeProvider>
+    </Providers>
   );
 }
 
-const useIsomorphicLayoutEffect =
-  Platform.OS === 'web' && typeof window === 'undefined'
-    ? React.useEffect
-    : React.useLayoutEffect;
+export const queryClient = new QueryClient();
+
+export function APIProvider({ children }: { children: React.ReactNode }) {
+  useReactQueryDevTools(queryClient);
+  return (
+    // Provide the client to your App
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
+
+function Providers({ children }: { children: React.ReactNode }) {
+  const { isDarkColorScheme } = useColorScheme();
+
+  return (
+    <GestureHandlerRootView
+      style={styles.container}
+      className={isDarkColorScheme ? `dark` : undefined}
+    >
+      <KeyboardProvider>
+        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+          <AuthProvider>
+            <APIProvider>
+              <BottomSheetModalProvider>
+                <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+                {children}
+                <FlashMessage position='top' />
+                <PortalHost />
+              </BottomSheetModalProvider>
+            </APIProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
