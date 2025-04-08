@@ -4,8 +4,8 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["*"],
-      "@env": ["./lib/env.js"]
+      "~/*": ["./src/*"],
+      "@env": ["./src/lib/env.js"]
     },
     "esModuleInterop": true,
     "checkJs": true,

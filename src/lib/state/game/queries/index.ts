@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getGame, getGameMoves } from '~/api/server/game';
+import { getGame, getGameMoves } from '~/src/api/server/game';
 
 export const gameQueries = {
   gameById: (gameId: string) =>

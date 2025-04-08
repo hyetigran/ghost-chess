@@ -18,7 +18,7 @@ Every time you choose to apply a rule(s), explicitly state the rule(s) in the ou
 - Structure repository files as follows:
 
 ```
-/
+src
   ├── api   ## API related code, mainly using axios and react query
   ├── app   ## the main entry point for expo router(file-based routing), when you can find screens and navigation setup
   ├── components  ## shared components

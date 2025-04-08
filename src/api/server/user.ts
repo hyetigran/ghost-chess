@@ -1,4 +1,4 @@
-import { supabase } from '~/api/supabase/client';
+import { supabase } from '~/src/api/supabase/client';
 import { z } from 'zod';
 import type {
   User,
@@ -6,14 +6,14 @@ import type {
   GameHistoryResponse,
   LeaderboardResponse,
   OpponentResponse,
-} from '~/types/database';
+} from '~/src/types/database';
 import {
   userSchema,
   activeGameSchema,
   gameHistorySchema,
   leaderboardUserSchema,
   opponentSchema,
-} from '~/types/database';
+} from '~/src/types/database';
 
 /**
  * Get user profile

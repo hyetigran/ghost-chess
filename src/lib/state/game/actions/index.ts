@@ -1,8 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
-import { createGame, endGame, makeMove } from '~/api/server/game';
-import { useAuth } from '~/context/auth-context';
-import { Game, GameResult, GameSettings, GameState } from '~/types/database';
+import { createGame, endGame, makeMove } from '~/src/api/server/game';
+import { useAuth } from '~/src/context/auth-context';
+import {
+  Game,
+  GameResult,
+  GameSettings,
+  GameState,
+} from '~/src/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
