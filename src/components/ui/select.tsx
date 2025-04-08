@@ -28,11 +28,13 @@ const SelectTrigger = React.forwardRef<
     )}
     {...props}
   >
-    <>{children}</>
+    {typeof children === 'function'
+      ? children({ pressed: false, hovered: false })
+      : children}
     <ChevronDown
       size={16}
       aria-hidden={true}
-      className='text-foreground opacity-50'
+      className='opacity-50 text-foreground'
     />
   </SelectPrimitive.Trigger>
 ));

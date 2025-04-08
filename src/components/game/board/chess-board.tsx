@@ -2,19 +2,19 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { Chess, Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
-import type { PlayerColor } from '~/types/game';
+import type { Game } from '~/types/database';
 
 type Props = {
   fen: string;
   onMove: (from: string, to: string) => void;
-  orientation: PlayerColor;
+  orientation: 'white' | 'black';
 };
 
 export function ChessBoard({ fen, onMove, orientation }: Props) {
   const [selectedSquare, setSelectedSquare] = React.useState<Square | null>(
     null,
   );
-  const chess = new Chess(fen);
+  const chess = React.useMemo(() => new Chess(fen), [fen]);
 
   const handleSquarePress = (square: Square) => {
     if (!selectedSquare) {

@@ -3,17 +3,32 @@ import * as React from 'react';
 import { View } from 'react-native';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
-import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { GameControls } from '~/components/game/controls/game-controls';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
-import { formatTime } from '~/lib/chess/utils';
-import { useGame, useGameSubscription, useGameTimer } from '~/lib/hooks';
+import { formatTime } from '~/lib/utils/time';
+import { useMakeMove, useEndGame } from '~/lib/state/game/actions';
+import { gameQueries } from '~/lib/state/game/queries';
+import { useQuery } from '@tanstack/react-query';
+import { useGameTimer } from '~/lib/hooks/use-game-timer';
+import { useAuth } from '~/context/auth-context';
+import { Chess } from 'chess.js';
+
+// Create a single chess instance for move validation
+const chess = new Chess();
 
 export default function GameScreen() {
   const { id: gameId } = useLocalSearchParams<{ id: string }>();
-  const { game, makeMove, abandonGame, isLoading, error } = useGame(gameId);
-  useGameSubscription(gameId);
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  const {
+    data: game,
+    isLoading,
+    error,
+  } = useQuery(gameQueries.gameById(gameId));
+  const makeMove = useMakeMove({ gameId });
+  const endGame = useEndGame({ gameId });
   useGameTimer(gameId);
 
   const [showGameOver, setShowGameOver] = React.useState(false);
@@ -50,16 +65,22 @@ export default function GameScreen() {
     );
   }
 
+  const isWhitePlayer = game.white_player_id === userId;
+  const isBlackPlayer = game.black_player_id === userId;
+  const isYourTurn =
+    (isWhitePlayer && game.current_turn === 'white') ||
+    (isBlackPlayer && game.current_turn === 'black');
+
   return (
     <View className='flex-1 bg-background'>
       <View className='flex-1 p-4'>
         {/* Player info and timer for black */}
         <View className='flex-row items-center justify-between mb-4'>
           <Text className='text-lg font-semibold'>
-            {game.players.black.username}
+            {game.black_player_id === userId ? 'You' : 'Opponent'}
           </Text>
           <Text className='font-mono text-lg'>
-            {formatTime(game.timeRemaining.black)}
+            {formatTime(game.black_time_remaining)}
           </Text>
         </View>
 
@@ -67,49 +88,49 @@ export default function GameScreen() {
         <ChessBoard
           fen={game.fen}
           onMove={(from, to) => {
+            if (!userId) return;
+
+            const gameState = {
+              chess,
+              lastMoveTime: Date.now(),
+              white_time_remaining: game.white_time_remaining,
+              black_time_remaining: game.black_time_remaining,
+            };
+
             makeMove.mutate({
               from,
               to,
-              piece: game.fen
-                .split(' ')[0]
-                .charAt((8 - parseInt(to[1])) * 8 + (to.charCodeAt(0) - 97)),
-              san: '', // Will be set by the server
-              timestamp: Date.now(),
+              gameState,
             });
           }}
-          orientation={game.players.white.id === 'local' ? 'white' : 'black'}
+          orientation={isWhitePlayer ? 'white' : 'black'}
         />
 
         {/* Player info and timer for white */}
         <View className='flex-row items-center justify-between mt-4'>
           <Text className='text-lg font-semibold'>
-            {game.players.white.username}
+            {game.white_player_id === userId ? 'You' : 'Opponent'}
           </Text>
           <Text className='font-mono text-lg'>
-            {formatTime(game.timeRemaining.white)}
+            {formatTime(game.white_time_remaining)}
           </Text>
         </View>
-
-        {/* Captured pieces */}
-        <CapturedPieces
-          whitePieces={game.capturedPieces.white}
-          blackPieces={game.capturedPieces.black}
-        />
 
         {/* Game controls */}
         <GameControls
           onResign={() => {
-            abandonGame.mutate(
-              game.players.white.id === 'local' ? 'white' : 'black',
-            );
+            if (!userId) return;
+            endGame.mutate({
+              result: 'abandoned',
+              winnerId: isWhitePlayer
+                ? game.black_player_id
+                : game.white_player_id,
+            });
           }}
           onDraw={() => {
             // Implement draw offer
           }}
-          isYourTurn={
-            game.currentTurn ===
-            (game.players.white.id === 'local' ? 'white' : 'black')
-          }
+          isYourTurn={isYourTurn}
         />
       </View>
 

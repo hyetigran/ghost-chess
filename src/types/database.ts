@@ -21,13 +21,18 @@ export const userSchema = z.object({
   updated_at: z.string().datetime(),
 });
 
+export const gameResultSchema = z
+  .enum(['checkmate', 'stalemate', 'draw', 'abandoned'])
+  .nullable();
+
 export const gameSchema = z.object({
   id: z.string().uuid(),
   white_player_id: z.string().uuid(),
   black_player_id: z.string().uuid(),
   settings: gameSettingsSchema,
-  status: z.enum(['active', 'completed', 'abandoned']),
-  result: z.enum(['checkmate', 'stalemate', 'draw', 'abandoned']).nullable(),
+  status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
+  result: gameResultSchema,
+  winner_id: z.string().uuid().nullable(),
   current_turn: z.enum(['white', 'black']),
   fen: z.string(),
   pgn: z.string().nullable(),
@@ -118,7 +123,7 @@ export type GameState = {
   black_time_remaining: number;
 };
 
-export type GameResult = 'checkmate' | 'stalemate' | 'draw' | 'abandoned';
+export type GameResult = z.infer<typeof gameResultSchema>;
 
 // Schema exports
 export const activeGameSchema = gameSchema.pick({

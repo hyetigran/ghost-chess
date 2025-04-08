@@ -2,10 +2,10 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
-import type { GameResult } from '~/types/game';
+import { GameResult } from '~/types/database';
 
 type Props = {
-  result: GameResult | undefined;
+  result: GameResult;
   onRematch: () => void;
   onNewGame: () => void;
 };
@@ -13,10 +13,10 @@ type Props = {
 export function GameOverModal({ result, onRematch, onNewGame }: Props) {
   const getResultText = () => {
     switch (result) {
-      case 'white-wins':
-        return 'White wins!';
-      case 'black-wins':
-        return 'Black wins!';
+      case 'checkmate':
+        return 'Checkmate!';
+      case 'stalemate':
+        return 'Stalemate!';
       case 'draw':
         return 'Game drawn!';
       case 'abandoned':
@@ -28,7 +28,7 @@ export function GameOverModal({ result, onRematch, onNewGame }: Props) {
 
   return (
     <View className='p-6'>
-      <Text className='text-2xl font-bold text-center mb-4'>
+      <Text className='mb-4 text-2xl font-bold text-center'>
         {getResultText()}
       </Text>
       <View className='flex-row gap-2'>

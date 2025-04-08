@@ -20,13 +20,14 @@ CREATE TABLE public.games (
     white_player_id uuid references public.users not null,
     black_player_id uuid references public.users not null,
     settings jsonb not null,
-    status text check (status in ('active', 'completed', 'abandoned')) not null,
+    status text check (status in ('waiting', 'active', 'completed', 'abandoned')) not null,
     result text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', null)),
     current_turn text check (current_turn in ('white', 'black')) not null,
     fen text not null,
     pgn text not null,
     white_time_remaining integer not null,
     black_time_remaining integer not null,
+    winner_id UUID REFERENCES users(id) default null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -148,9 +149,11 @@ BEGIN
                 IF NEW.current_turn = 'white' THEN
                     white_score := 0;
                     black_score := 1;
+                    NEW.winner_id := NEW.black_player_id;
                 ELSE
                     white_score := 1;
                     black_score := 0;
+                    NEW.winner_id := NEW.white_player_id;
                 END IF;
             WHEN 'stalemate' THEN
                 white_score := 0.5;
@@ -162,9 +165,11 @@ BEGIN
                 IF NEW.current_turn = 'white' THEN
                     white_score := 0;
                     black_score := 1;
+                    NEW.winner_id := NEW.black_player_id;
                 ELSE
                     white_score := 1;
                     black_score := 0;
+                    NEW.winner_id := NEW.white_player_id;
                 END IF;
             ELSE
                 RETURN NEW;
@@ -174,12 +179,12 @@ BEGIN
         SET
             wins = CASE
                 WHEN id = NEW.white_player_id AND white_score = 1 THEN wins + 1
-                WHEN id = NEW.black_player_id AND black_score = 1 THEN losses + 1
+                WHEN id = NEW.black_player_id AND black_score = 1 THEN wins + 1
                 ELSE wins
             END,
             losses = CASE
                 WHEN id = NEW.white_player_id AND white_score = 0 THEN losses + 1
-                WHEN id = NEW.black_player_id AND black_score = 0 THEN wins + 1
+                WHEN id = NEW.black_player_id AND black_score = 0 THEN losses + 1
                 ELSE losses
             END,
             draws = CASE
