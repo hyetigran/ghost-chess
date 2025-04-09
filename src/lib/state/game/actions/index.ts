@@ -89,17 +89,11 @@ export const useCreateGame = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const userId = session?.user.id;
-
+  console.log('here', userId);
   return useMutation({
-    mutationFn: ({
-      opponentId,
-      settings,
-    }: {
-      opponentId: string;
-      settings: GameSettings;
-    }) => {
+    mutationFn: ({ settings }: { settings: GameSettings }) => {
       if (!userId) throw new Error('User not authenticated');
-      return createGame(userId, opponentId, settings);
+      return createGame(userId, settings);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game'] });

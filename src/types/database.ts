@@ -27,8 +27,8 @@ export const gameResultSchema = z
 
 export const gameSchema = z.object({
   id: z.string().uuid(),
-  white_player_id: z.string().uuid(),
-  black_player_id: z.string().uuid(),
+  white_player_id: z.string().uuid().nullable(),
+  black_player_id: z.string().uuid().nullable(),
   settings: gameSettingsSchema,
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
   result: gameResultSchema,

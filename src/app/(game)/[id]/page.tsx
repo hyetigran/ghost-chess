@@ -123,8 +123,8 @@ export default function GameScreen() {
             endGame.mutate({
               result: 'abandoned',
               winnerId: isWhitePlayer
-                ? game.black_player_id
-                : game.white_player_id,
+                ? game.black_player_id!
+                : game.white_player_id!,
             });
           }}
           onDraw={() => {

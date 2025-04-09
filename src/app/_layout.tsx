@@ -1,4 +1,4 @@
-import '~/global.css';
+import '../../global.css';
 
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';

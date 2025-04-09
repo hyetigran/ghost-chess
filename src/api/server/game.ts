@@ -14,12 +14,16 @@ import type {
  * Create a new game
  */
 export async function createGame(
-  whitePlayerId: string,
-  blackPlayerId: string,
+  userId: string,
   settings: GameSettings,
 ): Promise<Game> {
   const chess = new Chess();
   const initialFen = chess.fen();
+
+  // Randomly assign players to white and black
+  const isUserWhite = Math.random() < 0.5;
+  const whitePlayerId = isUserWhite ? userId : null;
+  const blackPlayerId = isUserWhite ? null : userId;
 
   const { data, error } = await supabase
     .from('games')
@@ -27,11 +31,11 @@ export async function createGame(
       white_player_id: whitePlayerId,
       black_player_id: blackPlayerId,
       settings,
-      status: 'active',
+      status: 'waiting',
       current_turn: 'white',
       fen: initialFen,
-      white_time_remaining: settings.timeControl * 60,
-      black_time_remaining: settings.timeControl * 60,
+      white_time_remaining: settings.timeControl,
+      black_time_remaining: settings.timeControl,
     })
     .select()
     .single();
