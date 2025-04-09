@@ -4,11 +4,22 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "*"
-      ]
-    }
+      "~/*": ["./src/*"],
+      "@env": ["./src/lib/env.js"]
+    },
+    "esModuleInterop": true,
+    "checkJs": true,
+    "moduleResolution": "bundler"
   },
+  "exclude": [
+    "node_modules/",
+    "babel.config.js",
+    "metro.config.js",
+    "docs",
+    "cli",
+    "android",
+    "ios"
+  ],
   "include": [
     "**/*.ts",
     "**/*.tsx",
