@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Game } from '~/types/database';
+import { PlayerView } from '~/types/database';
 
 export function useGameTimer(gameId: string) {
   const queryClient = useQueryClient();
@@ -8,7 +8,7 @@ export function useGameTimer(gameId: string) {
 
   useEffect(() => {
     const updateGameTime = () => {
-      const game = queryClient.getQueryData<Game>(['game', gameId]);
+      const game = queryClient.getQueryData<PlayerView>(['game', gameId]);
       if (!game || game.status !== 'active') return;
 
       const now = Date.now();
@@ -18,7 +18,7 @@ export function useGameTimer(gameId: string) {
       const elapsedSeconds = Math.floor((now - lastUpdate) / 1000);
 
       if (game.current_turn === 'white') {
-        queryClient.setQueryData<Game>(['game', gameId], {
+        queryClient.setQueryData<PlayerView>(['game', gameId], {
           ...game,
           white_time_remaining: Math.max(
             0,
@@ -26,7 +26,7 @@ export function useGameTimer(gameId: string) {
           ),
         });
       } else {
-        queryClient.setQueryData<Game>(['game', gameId], {
+        queryClient.setQueryData<PlayerView>(['game', gameId], {
           ...game,
           black_time_remaining: Math.max(
             0,

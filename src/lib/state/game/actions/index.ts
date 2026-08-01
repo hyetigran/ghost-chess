@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
 import { createGame, endGame, makeMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
-import { Game, GameResult, GameSettings, GameState } from '~/types/database';
+import { GameSettings, GameState, PlayerView } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -29,28 +29,38 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       await queryClient.cancelQueries({ queryKey: ['game', gameId] });
 
       // Snapshot the previous value
-      const previousGame = queryClient.getQueryData<Game>(['game', gameId]);
+      const previousGame = queryClient.getQueryData<PlayerView>([
+        'game',
+        gameId,
+      ]);
 
-      // Optimistically update to the new value
+      // Optimistically update to the new value. Built from the mover's own
+      // redacted_fen (never the true games.fen — this client never reads
+      // that while a game is active, per #12), which is exactly what the
+      // mover is legitimately allowed to construct: their own move against
+      // their own known pieces.
       if (previousGame) {
-        const chess = new Chess(previousGame.fen);
-        chess.move({
-          from: newMove.from,
-          to: newMove.to,
-          promotion: newMove.promotion,
-        });
+        try {
+          const chess = new Chess(previousGame.redacted_fen);
+          chess.move({
+            from: newMove.from,
+            to: newMove.to,
+            promotion: newMove.promotion,
+          });
 
-        const updatedGame: Game = {
-          ...previousGame,
-          fen: chess.fen(),
-          pgn: chess.pgn(),
-          current_turn:
-            previousGame.current_turn === 'white' ? 'black' : 'white',
-          white_time_remaining: newMove.gameState.white_time_remaining,
-          black_time_remaining: newMove.gameState.black_time_remaining,
-        };
-
-        queryClient.setQueryData(['game', gameId], updatedGame);
+          queryClient.setQueryData(['game', gameId], {
+            ...previousGame,
+            redacted_fen: chess.fen(),
+            current_turn:
+              previousGame.current_turn === 'white' ? 'black' : 'white',
+            white_time_remaining: newMove.gameState.white_time_remaining,
+            black_time_remaining: newMove.gameState.black_time_remaining,
+          } satisfies PlayerView);
+        } catch {
+          // chess.js throws on an illegal move (e.g. one targeting a
+          // hidden opponent piece, which this client can't know about) —
+          // nothing to optimistically apply, just let the server respond.
+        }
       }
 
       return { previousGame };
@@ -72,13 +82,7 @@ export const useEndGame = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      result,
-      winnerId,
-    }: {
-      result: GameResult;
-      winnerId?: string;
-    }) => endGame(gameId, result, winnerId),
+    mutationFn: () => endGame(gameId),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['game', gameId] });
     },

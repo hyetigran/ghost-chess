@@ -6,6 +6,13 @@
 create table "public"."player_views" (
     "game_id" uuid not null references public.games(id) on delete cascade,
     "player_id" uuid not null references public.users(id) on delete cascade,
+    -- Not secret (CONTEXT.md's Visibility entry is about piece positions,
+    -- not opponent identity) — carried here so clients never need to read
+    -- public.games directly to know who they're playing, matching #12's
+    -- goal of player_views being the only table the client reads for an
+    -- in-progress game.
+    "white_player_id" uuid references public.users(id) on delete set null,
+    "black_player_id" uuid references public.users(id) on delete set null,
     "redacted_fen" text not null,
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),

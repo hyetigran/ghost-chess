@@ -1,13 +1,13 @@
 import { Chess } from 'chess.js';
 import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
-import { gameSchema, moveSchema } from '~/types/database';
+import { gameSchema, moveSchema, playerViewSchema } from '~/types/database';
 import type {
   Game,
   GameSettings,
   Move,
   GameState,
-  GameResult,
+  PlayerView,
 } from '~/types/database';
 
 /**
@@ -81,40 +81,39 @@ export async function makeMove(
     throw new Error('Invalid move');
   }
 
-  const { data, error } = await supabase
-    .from('moves')
-    .insert({
-      game_id: gameId,
-      player_id: playerId,
-      move_number: gameState.chess.history().length,
-      move_text: move.san,
-      fen: gameState.chess.fen(),
-      captured_piece: move.captured,
-    })
-    .select()
-    .single();
+  // Moves are always inserted, and games always updated, while the game is
+  // 'active' — and games'/moves' SELECT RLS denies active-game rows (#12).
+  // Since Postgres requires a row to pass the table's SELECT policy before
+  // UPDATE can even see it (and moves' INSERT policy needs to read games to
+  // check participancy), neither a direct .insert() nor a direct .update()
+  // can reach these rows anymore. submit_own_move is a security-definer RPC
+  // that does both writes atomically after checking participancy itself.
+  //
+  // gameState.chess.move() above already advanced the internal turn, so
+  // chess.turn() here is the side to move *next* — the elapsed time is
+  // charged to the opposite side, the one who actually just moved. The
+  // next current_turn itself is derived server-side from the game's own
+  // stored turn, not accepted as a parameter here — see submit_own_move's
+  // doc comment for why (a client could otherwise keep the turn pinned to
+  // itself and bypass the RPC's turn-ownership check on every subsequent
+  // call).
+  const moverWasWhite = gameState.chess.turn() === 'b';
+  const elapsedSeconds = (Date.now() - gameState.lastMoveTime) / 1000;
+  const { data, error } = await supabase.rpc('submit_own_move', {
+    p_game_id: gameId,
+    p_move_number: gameState.chess.history().length,
+    p_move_text: move.san,
+    p_fen: gameState.chess.fen(),
+    p_captured_piece: move.captured ?? null,
+    p_white_time_remaining: moverWasWhite
+      ? gameState.white_time_remaining - elapsedSeconds
+      : gameState.white_time_remaining,
+    p_black_time_remaining: moverWasWhite
+      ? gameState.black_time_remaining
+      : gameState.black_time_remaining - elapsedSeconds,
+  });
 
   if (error) throw error;
-
-  // Update game state in database
-  await supabase
-    .from('games')
-    .update({
-      fen: gameState.chess.fen(),
-      current_turn: gameState.chess.turn() === 'w' ? 'white' : 'black',
-      white_time_remaining:
-        gameState.chess.turn() === 'w'
-          ? gameState.white_time_remaining -
-            (Date.now() - gameState.lastMoveTime) / 1000
-          : gameState.white_time_remaining,
-      black_time_remaining:
-        gameState.chess.turn() === 'b'
-          ? gameState.black_time_remaining -
-            (Date.now() - gameState.lastMoveTime) / 1000
-          : gameState.black_time_remaining,
-    })
-    .eq('id', gameId);
-
   return moveSchema.parse(data);
 }
 
@@ -133,38 +132,39 @@ export async function getGameMoves(gameId: string): Promise<Move[]> {
 }
 
 /**
- * End game
+ * Resign a game. Result and winner are decided server-side (always
+ * 'abandoned', always the other participant) — see end_own_game's doc
+ * comment for why nothing about the outcome is accepted from the client.
  */
-export async function endGame(
-  gameId: string,
-  result: GameResult,
-  winnerId?: string,
-): Promise<Game> {
-  const { data, error } = await supabase
-    .from('games')
-    .update({
-      status: 'completed',
-      result,
-      winner_id: winnerId,
-    })
-    .eq('id', gameId)
-    .select()
-    .single();
+export async function endGame(gameId: string): Promise<Game> {
+  // Resignation always targets a currently-'active' game — same RLS
+  // conflict as makeMove above, so this goes through the equivalent
+  // security-definer RPC rather than a direct .update() (#12).
+  const { data, error } = await supabase.rpc('end_own_game', {
+    p_game_id: gameId,
+  });
 
   if (error) throw error;
   return gameSchema.parse(data);
 }
 
 /**
- * Get game by ID
+ * Get the caller's redacted view of a game (ADR-0001, #12). This is the
+ * only way a client reads game state while a game is active — `games`
+ * RLS denies direct SELECT for active games specifically (see
+ * 05_rls.sql), so a raw `games` query here would just return nothing for
+ * the one status that actually has secrets to protect. `player_views`
+ * carries everything the UI needs (own/redacted board, clocks, check,
+ * captures, and — since #12 — both player IDs) without ever exposing the
+ * true position while the game is still being played.
  */
-export async function getGame(gameId: string): Promise<Game> {
+export async function getGame(gameId: string): Promise<PlayerView> {
   const { data, error } = await supabase
-    .from('games')
+    .from('player_views')
     .select('*')
-    .eq('id', gameId)
+    .eq('game_id', gameId)
     .single();
 
   if (error) throw error;
-  return gameSchema.parse(data);
+  return playerViewSchema.parse(data);
 }

@@ -214,6 +214,165 @@ begin
 end;
 $$ language plpgsql immutable set search_path = '';
 
+-- Lets the moves INSERT policy check game participancy without needing
+-- direct SELECT access to games. A raw `exists (select 1 from games
+-- where ...)` inside another table's RLS policy is still subject to
+-- games' own RLS — which denies 'active' rows to participants entirely
+-- (#12) — so that check would always fail for exactly the status moves
+-- are normally inserted under. Security definer lets it read games
+-- regardless of the caller's RLS, but it only ever returns a boolean,
+-- never row data, so it doesn't reopen the leak that restriction exists
+-- to close.
+--
+-- Deliberately takes no user-id parameter and always checks auth.uid():
+-- EXECUTE on this function must stay grantable to `authenticated` (RLS
+-- policy expressions are evaluated as the calling role, and calling a
+-- function from within a policy still requires that role to hold EXECUTE
+-- on it — revoking it, as an earlier version of this comment/migration
+-- suggested, breaks the moves INSERT policy outright). Since EXECUTE
+-- can't be restricted, the function itself is restricted instead: a
+-- direct call can only ever answer "am I a participant", never probe
+-- membership for an arbitrary other user.
+create or replace function public.is_game_participant(p_game_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+    select exists (
+        select 1 from public.games
+        where id = p_game_id
+        and (white_player_id = auth.uid() or black_player_id = auth.uid())
+    );
+$$;
+
+-- Persists a client-already-validated move: inserts the moves row and
+-- updates games' live state (fen/turn/clocks) in the same transaction.
+-- This is *not* server-side move legality validation — the client (via
+-- chess.js) is still the only thing checking the move is legal, exactly
+-- as before #12; real server-side validation is #13's job, on a separate
+-- branch. This exists purely because #12's tightened SELECT RLS on games
+-- means a participant's own direct UPDATE against an *active* game can no
+-- longer even locate the row: Postgres requires a row to pass the table's
+-- SELECT policy before UPDATE can see it (independent of the UPDATE
+-- policy's own USING clause), and games' SELECT policy now denies
+-- 'active' rows to everyone but this security-definer path. A useful side
+-- effect: the moves-insert and games-update below, previously two
+-- separate non-transactional client calls, are now atomic.
+--
+-- Bypassing RLS this way makes this function the only remaining gate on
+-- active-game writes, so — short of real move legality, still #13's job —
+-- it checks what's cheap and unambiguous: the game must actually be
+-- active, and it must actually be this caller's turn. Clock values are
+-- clamped to a non-negative integer rather than trusted as-is. The next
+-- current_turn is derived from the row read above, not accepted as a
+-- parameter — a client could otherwise keep passing its own color back
+-- and pass the turn-ownership check on every subsequent call.
+create or replace function public.submit_own_move(
+    p_game_id uuid,
+    p_move_number int,
+    p_move_text text,
+    p_fen text,
+    p_captured_piece text,
+    p_white_time_remaining numeric,
+    p_black_time_remaining numeric
+)
+returns public.moves
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_game public.games;
+    v_move public.moves;
+    v_next_turn text;
+begin
+    select * into v_game from public.games where id = p_game_id;
+
+    if v_game is null then
+        raise exception 'game not found';
+    end if;
+
+    if v_game.status <> 'active' then
+        raise exception 'game is not active';
+    end if;
+
+    if v_game.current_turn = 'white' and v_game.white_player_id <> auth.uid() then
+        raise exception 'not your turn';
+    end if;
+
+    if v_game.current_turn = 'black' and v_game.black_player_id <> auth.uid() then
+        raise exception 'not your turn';
+    end if;
+
+    v_next_turn := case when v_game.current_turn = 'white' then 'black' else 'white' end;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
+    returning * into v_move;
+
+    update public.games
+    set fen = p_fen,
+        current_turn = v_next_turn,
+        white_time_remaining = greatest(0, floor(p_white_time_remaining))::integer,
+        black_time_remaining = greatest(0, floor(p_black_time_remaining))::integer
+    where id = p_game_id;
+
+    return v_move;
+end;
+$$;
+
+-- Ends a game a participant is resigning. Same reasoning as
+-- submit_own_move: games' SELECT RLS denies 'active' rows, so a direct
+-- client UPDATE transitioning status away from 'active' can no longer
+-- locate the row either. This implements resignation specifically, not
+-- arbitrary game completion: result and winner_id are derived server-side
+-- (always 'abandoned', always the *other* participant), never accepted as
+-- parameters — a resigning client naming its own result/winner could
+-- otherwise forge a 'checkmate'/'stalemate'/'draw' outcome (or hand
+-- itself the win), which the ELO trigger would then process as real. A
+-- real checkmate/stalemate/draw completion needs actual server-validated
+-- game-end detection, which belongs with #13's move validation, not here.
+create or replace function public.end_own_game(p_game_id uuid)
+returns public.games
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_game public.games;
+    v_winner_id uuid;
+begin
+    select * into v_game from public.games where id = p_game_id;
+
+    if v_game is null then
+        raise exception 'game not found';
+    end if;
+
+    if v_game.status <> 'active' then
+        raise exception 'game is not active';
+    end if;
+
+    if v_game.white_player_id = auth.uid() then
+        v_winner_id := v_game.black_player_id;
+    elsif v_game.black_player_id = auth.uid() then
+        v_winner_id := v_game.white_player_id;
+    else
+        raise exception 'not a participant in this game';
+    end if;
+
+    update public.games
+    set status = 'completed',
+        result = 'abandoned',
+        winner_id = v_winner_id
+    where id = p_game_id
+    returning * into v_game;
+
+    return v_game;
+end;
+$$;
+
 -- Keeps player_views in sync with games in the same transaction as every
 -- move (docs/adr/0002). While a game is active (or waiting for an opponent),
 -- each player's row holds a FEN redacted to their own pieces; once a game
@@ -265,16 +424,20 @@ begin
 
     if new.white_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.white_player_id, white_fen, new.current_turn, new.status, new.result,
+            new.id, new.white_player_id, new.white_player_id, new.black_player_id,
+            white_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
@@ -289,16 +452,20 @@ begin
 
     if new.black_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.black_player_id, black_fen, new.current_turn, new.status, new.result,
+            new.id, new.black_player_id, new.white_player_id, new.black_player_id,
+            black_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
