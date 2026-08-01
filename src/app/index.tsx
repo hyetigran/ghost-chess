@@ -47,6 +47,11 @@ export default function HomeScreen() {
               </Button>
             </Link>
           </View>
+          <Link href='/local-game' asChild>
+            <Button variant='secondary'>
+              <Text>Local Play</Text>
+            </Button>
+          </Link>
           <Link href='/settings' asChild>
             <Button variant='ghost'>
               <Text>Settings</Text>

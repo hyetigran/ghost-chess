@@ -124,6 +124,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name='local-game'
+          options={{
+            title: 'Local Play',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name='(game)/[id]'
           options={{
             title: 'Game',
