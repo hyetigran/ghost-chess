@@ -6,6 +6,8 @@ import { type Square } from 'chess.js';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { GameControls } from '~/components/game/controls/game-controls';
+import { MoveConfirmationToggle } from '~/components/game/controls/move-confirmation-toggle';
+import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-move-dialog';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
 import { formatTime } from '~/lib/utils/time';
@@ -15,7 +17,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
 import { useCaptureFlash } from '~/lib/hooks/use-capture-flash';
+import { useMoveConfirmation } from '~/lib/hooks/use-move-confirmation';
 import { useAuth } from '~/context/auth-context';
+import { useSettings } from '~/context/settings-context';
 
 export default function GameScreen() {
   const { id: gameId } = useLocalSearchParams<{ id: string }>();
@@ -34,6 +38,16 @@ export default function GameScreen() {
   const { flashSquare, reportOwnMove } = useCaptureFlash(
     game,
     game?.white_player_id === userId ? 'white' : 'black',
+  );
+  const { moveConfirmationEnabled, setMoveConfirmationEnabled } =
+    useSettings();
+  const { pendingMove, attemptMove, confirm, cancel } = useMoveConfirmation(
+    moveConfirmationEnabled,
+    (move) => {
+      if (!userId) return;
+      reportOwnMove(move.to as Square);
+      makeMove.mutate(move);
+    },
   );
 
   const [showGameOver, setShowGameOver] = React.useState(false);
@@ -97,18 +111,15 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
-            // Whether this move is a capture isn't knowable here — the
-            // target square's occupant is exactly as hidden from the
-            // mover as everything else about the opponent's pieces.
-            // useCaptureFlash finds out reactively once the server's
-            // response confirms it (src/lib/hooks/use-capture-flash.ts).
-            reportOwnMove(to as Square);
-
             // ChessBoard doesn't have a promotion-piece picker yet (a
             // separate UI feature) — default to auto-queen, the standard
             // convention when no picker is available, rather than let
             // every promotion attempt fail as an unexplained illegal move.
-            makeMove.mutate({ from, to, promotion: 'q' });
+            // Routed through attemptMove rather than makeMove directly so
+            // the optional confirm-before-send step (#22) can intercept it;
+            // reportOwnMove/makeMove only run once the move is actually
+            // submitted (see the useMoveConfirmation callback above).
+            attemptMove({ from, to, promotion: 'q' });
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
           flashSquare={flashSquare}
@@ -144,7 +155,21 @@ export default function GameScreen() {
           }}
           isYourTurn={isYourTurn}
         />
+
+        <MoveConfirmationToggle
+          enabled={moveConfirmationEnabled}
+          onToggle={setMoveConfirmationEnabled}
+        />
       </View>
+
+      {/* Move confirmation prompt (#22) */}
+      <Dialog open={!!pendingMove} onOpenChange={(open) => !open && cancel()}>
+        <ConfirmMoveDialog
+          pendingMove={pendingMove}
+          onConfirm={confirm}
+          onCancel={cancel}
+        />
+      </Dialog>
 
       {/* Game over modal */}
       <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
