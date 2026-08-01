@@ -112,6 +112,7 @@ export default function GameScreen() {
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
           flashSquare={flashSquare}
+          interactive={game.status === 'active'}
         />
 
         {/* Captured pieces */}
@@ -148,7 +149,10 @@ export default function GameScreen() {
       {/* Game over modal */}
       <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
         <GameOverModal
+          gameId={gameId}
           result={game.result}
+          winnerId={game.winner_id}
+          viewerId={userId}
           onRematch={() => {
             // Implement rematch
           }}

@@ -23,6 +23,14 @@ type Props = {
   orientation: Orientation;
   /** Briefly highlighted on a capture (src/lib/hooks/use-capture-flash.ts, #18). */
   flashSquare?: Square | null;
+  /**
+   * False once a game is no longer active (#19) — `redactedFen` stops
+   * being redacted at that point (ADR-0003) and this same board becomes
+   * the post-game final-position view, so taps must stop being treated
+   * as move attempts rather than just relying on the server to reject
+   * them.
+   */
+  interactive?: boolean;
 };
 
 export function ChessBoard({
@@ -30,6 +38,7 @@ export function ChessBoard({
   onMove,
   orientation,
   flashSquare,
+  interactive = true,
 }: Props): React.JSX.Element {
   const chess = React.useMemo(
     () => chessFromRedactedFen(redactedFen),
@@ -39,7 +48,16 @@ export function ChessBoard({
     useSquareSelection(chess, orientation, onMove);
 
   return (
-    <View className='w-full aspect-square'>
+    <View
+      className={`w-full aspect-square ${interactive ? '' : 'opacity-70'}`}
+    >
+      {!interactive && (
+        <View className='absolute inset-x-0 z-10 items-center -top-7'>
+          <Text className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
+            Final position
+          </Text>
+        </View>
+      )}
       <View className='flex-row flex-wrap flex-1'>
         {Array.from({ length: 8 }).map((_, displayRank) =>
           Array.from({ length: 8 }).map((_, displayFile) => {
@@ -58,7 +76,7 @@ export function ChessBoard({
                 } ${isSelected ? 'bg-blue-500' : ''} ${
                   isLegalTarget ? 'bg-green-400' : ''
                 } ${isFlashing ? 'bg-red-400' : ''}`}
-                onTouchEnd={() => handleSquarePress(square)}
+                onTouchEnd={() => interactive && handleSquarePress(square)}
               >
                 {piece && (
                   <Text className='text-4xl text-center'>
