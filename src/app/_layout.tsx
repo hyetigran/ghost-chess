@@ -145,6 +145,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name='profile'
+          options={{
+            title: 'Profile',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name='how-to-play'
           options={{
             title: 'How to Play',

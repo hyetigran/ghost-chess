@@ -53,6 +53,11 @@ export default function HomeScreen() {
             </Button>
           </Link>
           <View className='flex-row justify-center gap-4'>
+            <Link href='/profile' asChild>
+              <Button variant='ghost'>
+                <Text>Profile</Text>
+              </Button>
+            </Link>
             <Link href='/settings' asChild>
               <Button variant='ghost'>
                 <Text>Settings</Text>

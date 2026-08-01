@@ -1,7 +1,18 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getActiveGames, getGameHistory, getUserStats } from '~/api/server/user';
+import {
+  getActiveGames,
+  getGameHistory,
+  getUserProfile,
+  getUserStats,
+} from '~/api/server/user';
 
 export const userQueries = {
+  profile: (userId: string) =>
+    queryOptions({
+      queryKey: ['user', 'profile', userId],
+      queryFn: () => getUserProfile(userId),
+      enabled: !!userId,
+    }),
   stats: (userId: string) =>
     queryOptions({
       queryKey: ['user', 'stats', userId],
