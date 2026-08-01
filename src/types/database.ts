@@ -1,9 +1,13 @@
 import { z } from 'zod';
 
 // Base schemas
+//
+// timeControlHours is the per-move deadline (docs/adr/0006): a fresh
+// window of exactly this many hours opens the instant it becomes a
+// player's turn, not a cumulative game clock. There is no increment —
+// that's a classical-clock concept with nothing to attach to here.
 export const gameSettingsSchema = z.object({
-  timeControl: z.number().int().positive(), // in minutes
-  timeIncrement: z.number().int().nonnegative(), // in seconds
+  timeControlHours: z.union([z.literal(1), z.literal(12), z.literal(24)]),
   isPrivate: z.boolean(),
   allowTakebacks: z.boolean(),
 });
@@ -20,8 +24,13 @@ export const userSchema = z.object({
   updated_at: z.string().datetime(),
 });
 
+// 'timeout' is a forfeit on a lapsed per-move deadline (docs/adr/0006);
+// 'abandoned' is resignation. Deliberately distinct rather than reused —
+// see CONTEXT.md's Forfeit entry for why conflating them was a real bug
+// (the ELO trigger inferred the loser from whose turn it was for both,
+// which is only correct for a timeout).
 export const gameResultSchema = z
-  .enum(['checkmate', 'stalemate', 'draw', 'abandoned'])
+  .enum(['checkmate', 'stalemate', 'draw', 'abandoned', 'timeout'])
   .nullable();
 
 export const gameSchema = z.object({
@@ -36,8 +45,6 @@ export const gameSchema = z.object({
   fen: z.string(),
   pgn: z.string().nullable(),
   is_check: z.boolean(),
-  white_time_remaining: z.number().int().nonnegative(),
-  black_time_remaining: z.number().int().nonnegative(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });
@@ -65,8 +72,12 @@ export const playerViewSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
   result: gameResultSchema,
-  white_time_remaining: z.number().int().nonnegative(),
-  black_time_remaining: z.number().int().nonnegative(),
+  // Denormalized from games.settings.timeControlHours (not secret — a
+  // game's time control is visible to both players by definition) so the
+  // client can compute the current deadline (src/lib/game/deadline.ts)
+  // from this plus updated_at/current_turn, without ever reading
+  // public.games directly.
+  time_control_hours: z.union([z.literal(1), z.literal(12), z.literal(24)]),
   is_check: z.boolean(),
   captured_by_white: z.array(z.string()),
   captured_by_black: z.array(z.string()),
@@ -115,8 +126,7 @@ export type ActiveGame = Pick<
   | 'black_player_id'
   | 'status'
   | 'current_turn'
-  | 'white_time_remaining'
-  | 'black_time_remaining'
+  | 'time_control_hours'
   | 'updated_at'
 >;
 
@@ -153,8 +163,7 @@ export const activeGameSchema = playerViewSchema.pick({
   black_player_id: true,
   status: true,
   current_turn: true,
-  white_time_remaining: true,
-  black_time_remaining: true,
+  time_control_hours: true,
   updated_at: true,
 });
 

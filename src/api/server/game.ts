@@ -28,8 +28,6 @@ export async function createGame(
       status: 'waiting',
       current_turn: 'white',
       fen: initialFen,
-      white_time_remaining: settings.timeControl,
-      black_time_remaining: settings.timeControl,
     })
     .select()
     .single();

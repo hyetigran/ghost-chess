@@ -1,16 +1,21 @@
+-- No white_time_remaining/black_time_remaining columns: per-move deadlines
+-- (docs/adr/0006) don't have a continuously-depleting clock to persist per
+-- side — there's exactly one relevant deadline at any moment (whoever's
+-- turn it currently is), and it's fully derived from updated_at (already
+-- set to now() on every accepted move/creation) plus
+-- settings.timeControlHours. See src/lib/game/deadline.ts and
+-- forfeit_lapsed_games() (06_functions.sql).
 create table "public"."games" (
     "id" uuid not null default gen_random_uuid(),
     "white_player_id" uuid references public.users default null,
     "black_player_id" uuid references public.users default null,
     "settings" jsonb not null,
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
-    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', null)),
+    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', 'timeout', null)),
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "fen" text not null,
     "pgn" text not null,
     "is_check" boolean not null default false,
-    "white_time_remaining" integer not null,
-    "black_time_remaining" integer not null,
     "winner_id" uuid references public.users(id) default null,
     "created_at" timestamp with time zone not null default timezone('utc'::text, now()),
     "updated_at" timestamp with time zone not null default timezone('utc'::text, now()),

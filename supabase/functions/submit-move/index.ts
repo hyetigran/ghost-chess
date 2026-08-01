@@ -50,10 +50,26 @@ type GameRow = {
   status: 'waiting' | 'active' | 'completed' | 'abandoned';
   white_player_id: string | null;
   black_player_id: string | null;
+  // Doubles as "when did the current player's turn start" (docs/adr/0006)
+  // — set to now() on every accepted move, so the per-move deadline is
+  // this plus the game's time control window.
   updated_at: string;
-  white_time_remaining: number;
-  black_time_remaining: number;
+  settings: { timeControlHours: 1 | 12 | 24 };
 };
+
+// Mirrors src/lib/game/deadline.ts's isDeadlineLapsed — same
+// dual-implementation reasoning as decide-move.ts/redact_fen (this
+// function runs in an isolated Deno runtime and can't cleanly import
+// across that boundary).
+function isDeadlineLapsed(
+  turnStartedAt: string,
+  timeControlHours: 1 | 12 | 24,
+  now: number,
+): boolean {
+  const deadline =
+    new Date(turnStartedAt).getTime() + timeControlHours * 60 * 60 * 1000;
+  return now >= deadline;
+}
 
 // A Fetch Response body is single-use, and Deno's production runtime
 // reuses the same module-scope isolate across requests (unlike the local
@@ -163,7 +179,7 @@ Deno.serve(async (req: Request) => {
   const { data: game } = await adminClient
     .from('games')
     .select(
-      'id, fen, current_turn, status, white_player_id, black_player_id, updated_at, white_time_remaining, black_time_remaining',
+      'id, fen, current_turn, status, white_player_id, black_player_id, updated_at, settings',
     )
     .eq('id', body.gameId)
     .maybeSingle<GameRow>();
@@ -230,30 +246,30 @@ Deno.serve(async (req: Request) => {
     moveResult = null;
   }
 
+  // A lapsed deadline makes any move attempt too late, folded into the
+  // same uniform `legal` boolean as every other rejection reason
+  // (ADR-0007) rather than checked separately — see decide-move.ts's
+  // matching comment. This doesn't itself end the game; that's
+  // forfeit_lapsed_games' job (a scheduled job, since a client can't be
+  // relied on to be open to trigger it, docs/adr/0006) — this just closes
+  // the window between a deadline lapsing and that job's next tick, so a
+  // move can never sneak through in it.
   const legal =
     game !== null &&
     game !== undefined &&
     game.status === 'active' &&
     callerColor !== null &&
     callerColor === game.current_turn &&
+    !isDeadlineLapsed(
+      game.updated_at,
+      game.settings.timeControlHours,
+      Date.now(),
+    ) &&
     moveResult !== null;
 
   if (!legal || !callerColor || !game) {
     return illegalMoveResponse();
   }
-
-  const elapsedSeconds = Math.max(
-    0,
-    (Date.now() - new Date(game.updated_at).getTime()) / 1000,
-  );
-  const whiteTimeRemaining =
-    callerColor === 'white'
-      ? Math.max(0, Math.round(game.white_time_remaining - elapsedSeconds))
-      : game.white_time_remaining;
-  const blackTimeRemaining =
-    callerColor === 'black'
-      ? Math.max(0, Math.round(game.black_time_remaining - elapsedSeconds))
-      : game.black_time_remaining;
 
   let status: GameRow['status'] = 'active';
   let result: 'checkmate' | 'stalemate' | 'draw' | null = null;
@@ -289,8 +305,6 @@ Deno.serve(async (req: Request) => {
     p_status: status,
     p_result: result,
     p_winner_id: winnerId,
-    p_white_time_remaining: whiteTimeRemaining,
-    p_black_time_remaining: blackTimeRemaining,
   });
 
   if (applyError?.message?.includes('stale_precondition')) {

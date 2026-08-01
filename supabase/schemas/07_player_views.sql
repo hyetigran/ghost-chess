@@ -16,9 +16,14 @@ create table "public"."player_views" (
     "redacted_fen" text not null,
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
-    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', null)),
-    "white_time_remaining" integer not null,
-    "black_time_remaining" integer not null,
+    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', 'timeout', null)),
+    -- Denormalized from games.settings->>'timeControlHours', same reasoning
+    -- as white_player_id/black_player_id above: the client needs this to
+    -- compute the current deadline (updated_at + this many hours,
+    -- src/lib/game/deadline.ts) without ever reading public.games. Not
+    -- secret — a game's time control is visible to both players by
+    -- definition (it's chosen at creation).
+    "time_control_hours" integer not null check (time_control_hours in (1, 12, 24)),
     "is_check" boolean not null default false,
     "captured_by_white" text[] not null default '{}',
     "captured_by_black" text[] not null default '{}',
