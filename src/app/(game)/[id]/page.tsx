@@ -86,7 +86,7 @@ export default function GameScreen() {
 
         {/* Chess board */}
         <ChessBoard
-          fen={game.redacted_fen}
+          redactedFen={game.redacted_fen}
           onMove={(from, to) => {
             if (!userId) return;
 
