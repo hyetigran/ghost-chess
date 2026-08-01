@@ -265,14 +265,16 @@ $$;
 -- active-game writes, so — short of real move legality, still #13's job —
 -- it checks what's cheap and unambiguous: the game must actually be
 -- active, and it must actually be this caller's turn. Clock values are
--- clamped to a non-negative integer rather than trusted as-is.
+-- clamped to a non-negative integer rather than trusted as-is. The next
+-- current_turn is derived from the row read above, not accepted as a
+-- parameter — a client could otherwise keep passing its own color back
+-- and pass the turn-ownership check on every subsequent call.
 create or replace function public.submit_own_move(
     p_game_id uuid,
     p_move_number int,
     p_move_text text,
     p_fen text,
     p_captured_piece text,
-    p_current_turn text,
     p_white_time_remaining numeric,
     p_black_time_remaining numeric
 )
@@ -284,6 +286,7 @@ as $$
 declare
     v_game public.games;
     v_move public.moves;
+    v_next_turn text;
 begin
     select * into v_game from public.games where id = p_game_id;
 
@@ -303,13 +306,15 @@ begin
         raise exception 'not your turn';
     end if;
 
+    v_next_turn := case when v_game.current_turn = 'white' then 'black' else 'white' end;
+
     insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
     values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
     returning * into v_move;
 
     update public.games
     set fen = p_fen,
-        current_turn = p_current_turn,
+        current_turn = v_next_turn,
         white_time_remaining = greatest(0, floor(p_white_time_remaining))::integer,
         black_time_remaining = greatest(0, floor(p_black_time_remaining))::integer
     where id = p_game_id;
@@ -318,18 +323,18 @@ begin
 end;
 $$;
 
--- Ends a game a participant is resigning or otherwise concluding. Same
--- reasoning as submit_own_move: games' SELECT RLS denies 'active' rows,
--- so a direct client UPDATE transitioning status away from 'active'
--- (resignation always targets an active game) can no longer locate the
--- row either. status is always forced to 'completed' server-side (the
--- only status this function ever produces) and winner_id, if given, must
--- actually be one of the two participants.
-create or replace function public.end_own_game(
-    p_game_id uuid,
-    p_result text,
-    p_winner_id uuid
-)
+-- Ends a game a participant is resigning. Same reasoning as
+-- submit_own_move: games' SELECT RLS denies 'active' rows, so a direct
+-- client UPDATE transitioning status away from 'active' can no longer
+-- locate the row either. This implements resignation specifically, not
+-- arbitrary game completion: result and winner_id are derived server-side
+-- (always 'abandoned', always the *other* participant), never accepted as
+-- parameters — a resigning client naming its own result/winner could
+-- otherwise forge a 'checkmate'/'stalemate'/'draw' outcome (or hand
+-- itself the win), which the ELO trigger would then process as real. A
+-- real checkmate/stalemate/draw completion needs actual server-validated
+-- game-end detection, which belongs with #13's move validation, not here.
+create or replace function public.end_own_game(p_game_id uuid)
 returns public.games
 language plpgsql
 security definer
@@ -337,6 +342,7 @@ set search_path = ''
 as $$
 declare
     v_game public.games;
+    v_winner_id uuid;
 begin
     select * into v_game from public.games where id = p_game_id;
 
@@ -348,20 +354,18 @@ begin
         raise exception 'game is not active';
     end if;
 
-    if not (v_game.white_player_id = auth.uid() or v_game.black_player_id = auth.uid()) then
+    if v_game.white_player_id = auth.uid() then
+        v_winner_id := v_game.black_player_id;
+    elsif v_game.black_player_id = auth.uid() then
+        v_winner_id := v_game.white_player_id;
+    else
         raise exception 'not a participant in this game';
-    end if;
-
-    if p_winner_id is not null
-        and p_winner_id <> v_game.white_player_id
-        and p_winner_id <> v_game.black_player_id then
-        raise exception 'winner must be a participant in this game';
     end if;
 
     update public.games
     set status = 'completed',
-        result = p_result,
-        winner_id = p_winner_id
+        result = 'abandoned',
+        winner_id = v_winner_id
     where id = p_game_id
     returning * into v_game;
 

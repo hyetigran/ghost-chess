@@ -27,7 +27,7 @@ AS $function$
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.submit_own_move(p_game_id uuid, p_move_number int, p_move_text text, p_fen text, p_captured_piece text, p_current_turn text, p_white_time_remaining numeric, p_black_time_remaining numeric)
+CREATE OR REPLACE FUNCTION public.submit_own_move(p_game_id uuid, p_move_number int, p_move_text text, p_fen text, p_captured_piece text, p_white_time_remaining numeric, p_black_time_remaining numeric)
  RETURNS public.moves
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -36,6 +36,7 @@ AS $function$
 declare
     v_game public.games;
     v_move public.moves;
+    v_next_turn text;
 begin
     select * into v_game from public.games where id = p_game_id;
 
@@ -55,13 +56,15 @@ begin
         raise exception 'not your turn';
     end if;
 
+    v_next_turn := case when v_game.current_turn = 'white' then 'black' else 'white' end;
+
     insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
     values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
     returning * into v_move;
 
     update public.games
     set fen = p_fen,
-        current_turn = p_current_turn,
+        current_turn = v_next_turn,
         white_time_remaining = greatest(0, floor(p_white_time_remaining))::integer,
         black_time_remaining = greatest(0, floor(p_black_time_remaining))::integer
     where id = p_game_id;
@@ -71,7 +74,7 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.end_own_game(p_game_id uuid, p_result text, p_winner_id uuid)
+CREATE OR REPLACE FUNCTION public.end_own_game(p_game_id uuid)
  RETURNS public.games
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -79,6 +82,7 @@ CREATE OR REPLACE FUNCTION public.end_own_game(p_game_id uuid, p_result text, p_
 AS $function$
 declare
     v_game public.games;
+    v_winner_id uuid;
 begin
     select * into v_game from public.games where id = p_game_id;
 
@@ -90,20 +94,18 @@ begin
         raise exception 'game is not active';
     end if;
 
-    if not (v_game.white_player_id = auth.uid() or v_game.black_player_id = auth.uid()) then
+    if v_game.white_player_id = auth.uid() then
+        v_winner_id := v_game.black_player_id;
+    elsif v_game.black_player_id = auth.uid() then
+        v_winner_id := v_game.white_player_id;
+    else
         raise exception 'not a participant in this game';
-    end if;
-
-    if p_winner_id is not null
-        and p_winner_id <> v_game.white_player_id
-        and p_winner_id <> v_game.black_player_id then
-        raise exception 'winner must be a participant in this game';
     end if;
 
     update public.games
     set status = 'completed',
-        result = p_result,
-        winner_id = p_winner_id
+        result = 'abandoned',
+        winner_id = v_winner_id
     where id = p_game_id
     returning * into v_game;
 

@@ -7,7 +7,6 @@ import type {
   GameSettings,
   Move,
   GameState,
-  GameResult,
   PlayerView,
 } from '~/types/database';
 
@@ -92,7 +91,12 @@ export async function makeMove(
   //
   // gameState.chess.move() above already advanced the internal turn, so
   // chess.turn() here is the side to move *next* — the elapsed time is
-  // charged to the opposite side, the one who actually just moved.
+  // charged to the opposite side, the one who actually just moved. The
+  // next current_turn itself is derived server-side from the game's own
+  // stored turn, not accepted as a parameter here — see submit_own_move's
+  // doc comment for why (a client could otherwise keep the turn pinned to
+  // itself and bypass the RPC's turn-ownership check on every subsequent
+  // call).
   const moverWasWhite = gameState.chess.turn() === 'b';
   const elapsedSeconds = (Date.now() - gameState.lastMoveTime) / 1000;
   const { data, error } = await supabase.rpc('submit_own_move', {
@@ -101,7 +105,6 @@ export async function makeMove(
     p_move_text: move.san,
     p_fen: gameState.chess.fen(),
     p_captured_piece: move.captured ?? null,
-    p_current_turn: gameState.chess.turn() === 'w' ? 'white' : 'black',
     p_white_time_remaining: moverWasWhite
       ? gameState.white_time_remaining - elapsedSeconds
       : gameState.white_time_remaining,
@@ -129,22 +132,16 @@ export async function getGameMoves(gameId: string): Promise<Move[]> {
 }
 
 /**
- * End game
+ * Resign a game. Result and winner are decided server-side (always
+ * 'abandoned', always the other participant) — see end_own_game's doc
+ * comment for why nothing about the outcome is accepted from the client.
  */
-export async function endGame(
-  gameId: string,
-  result: GameResult,
-  winnerId?: string,
-): Promise<Game> {
+export async function endGame(gameId: string): Promise<Game> {
   // Resignation always targets a currently-'active' game — same RLS
   // conflict as makeMove above, so this goes through the equivalent
-  // security-definer RPC rather than a direct .update() (#12). The RPC
-  // always forces status to 'completed' itself, so there's no p_status
-  // param to spoof a different transition through.
+  // security-definer RPC rather than a direct .update() (#12).
   const { data, error } = await supabase.rpc('end_own_game', {
     p_game_id: gameId,
-    p_result: result,
-    p_winner_id: winnerId ?? null,
   });
 
   if (error) throw error;

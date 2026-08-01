@@ -2,12 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
 import { createGame, endGame, makeMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
-import {
-  GameResult,
-  GameSettings,
-  GameState,
-  PlayerView,
-} from '~/types/database';
+import { GameSettings, GameState, PlayerView } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -87,13 +82,7 @@ export const useEndGame = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      result,
-      winnerId,
-    }: {
-      result: GameResult;
-      winnerId?: string;
-    }) => endGame(gameId, result, winnerId),
+    mutationFn: () => endGame(gameId),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['game', gameId] });
     },
