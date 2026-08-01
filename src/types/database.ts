@@ -60,6 +60,8 @@ export const moveSchema = z.object({
 export const playerViewSchema = z.object({
   game_id: z.string().uuid(),
   player_id: z.string().uuid(),
+  white_player_id: z.string().uuid().nullable(),
+  black_player_id: z.string().uuid().nullable(),
   redacted_fen: z.string(),
   current_turn: z.enum(['white', 'black']),
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),

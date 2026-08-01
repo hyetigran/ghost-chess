@@ -12,8 +12,20 @@ create policy "Users can update their own data" on public.users
     for update using (auth.uid() = id);
 
 -- Game policies
-create policy "Users can view their own games" on public.games
-    for select using (auth.uid() = white_player_id or auth.uid() = black_player_id);
+-- SELECT deliberately excludes 'active' games: that's the one status with
+-- real secrets (an in-progress hidden-information position), so clients
+-- must go through player_views instead (docs/adr/0001, #12). 'waiting' and
+-- 'completed'/'abandoned' games have nothing to hide — 'waiting' is always
+-- the standard starting position (see docs/adr/0003's "waiting" carve-out),
+-- and 'completed'/'abandoned' games are the ones player_views itself
+-- reveals in full — so direct reads stay open for those, which is also
+-- what lets createGame's post-insert `.select()` keep working (a game is
+-- always 'waiting' at the moment it's created).
+create policy "Users can view their own non-active games" on public.games
+    for select using (
+        (auth.uid() = white_player_id or auth.uid() = black_player_id)
+        and status <> 'active'
+    );
 
 create policy "Users can create games" on public.games
     for insert to authenticated
@@ -23,12 +35,18 @@ create policy "Users can update their own games" on public.games
     for update using (auth.uid() = white_player_id or auth.uid() = black_player_id);
 
 -- Move policies
-create policy "Users can view moves in their games" on public.moves
+-- Same reasoning as games above: moves.fen holds the true position after
+-- that move, so it's withheld for the same window. Nothing in the client
+-- currently reads moves at all (see #12's audit), but the RLS policy needs
+-- to be correct regardless of what today's UI happens to call, since
+-- anyone with a valid session could otherwise query this table directly.
+create policy "Users can view moves in their non-active games" on public.moves
     for select using (
         exists (
             select 1 from public.games
             where games.id = moves.game_id
             and (games.white_player_id = auth.uid() or games.black_player_id = auth.uid())
+            and games.status <> 'active'
         )
     );
 

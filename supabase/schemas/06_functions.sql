@@ -265,16 +265,20 @@ begin
 
     if new.white_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.white_player_id, white_fen, new.current_turn, new.status, new.result,
+            new.id, new.white_player_id, new.white_player_id, new.black_player_id,
+            white_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
@@ -289,16 +293,20 @@ begin
 
     if new.black_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.black_player_id, black_fen, new.current_turn, new.status, new.result,
+            new.id, new.black_player_id, new.white_player_id, new.black_player_id,
+            black_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,

@@ -1,13 +1,14 @@
 import { Chess } from 'chess.js';
 import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
-import { gameSchema, moveSchema } from '~/types/database';
+import { gameSchema, moveSchema, playerViewSchema } from '~/types/database';
 import type {
   Game,
   GameSettings,
   Move,
   GameState,
   GameResult,
+  PlayerView,
 } from '~/types/database';
 
 /**
@@ -156,15 +157,22 @@ export async function endGame(
 }
 
 /**
- * Get game by ID
+ * Get the caller's redacted view of a game (ADR-0001, #12). This is the
+ * only way a client reads game state while a game is active — `games`
+ * RLS denies direct SELECT for active games specifically (see
+ * 05_rls.sql), so a raw `games` query here would just return nothing for
+ * the one status that actually has secrets to protect. `player_views`
+ * carries everything the UI needs (own/redacted board, clocks, check,
+ * captures, and — since #12 — both player IDs) without ever exposing the
+ * true position while the game is still being played.
  */
-export async function getGame(gameId: string): Promise<Game> {
+export async function getGame(gameId: string): Promise<PlayerView> {
   const { data, error } = await supabase
-    .from('games')
+    .from('player_views')
     .select('*')
-    .eq('id', gameId)
+    .eq('game_id', gameId)
     .single();
 
   if (error) throw error;
-  return gameSchema.parse(data);
+  return playerViewSchema.parse(data);
 }
