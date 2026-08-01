@@ -2,11 +2,11 @@
 
 This is the technical picture of how the system fits together — the client, the server, and the data that flows between them. For domain vocabulary, see `CONTEXT.md`; for the reasoning behind any individual hard-to-reverse choice referenced here, see `docs/adr/`. This file synthesizes those decisions into one coherent architecture rather than re-arguing them.
 
-**Status**: this describes the target architecture settled during design (`docs/adr/0001`–`0007`). The codebase predates most of it — see "Implementation status" at the end before assuming any of this is already built.
+**Status**: this describes the target architecture settled during design (`docs/adr/0001`–`0007`), now being built on top of `add-game` (the most complete real implementation branch — see "Implementation status" at the end for what's actually landed vs. still aspirational).
 
 ## Stack
 
-- Frontend: Expo / React Native, NativeWind for styling, Zustand for local state, TanStack Query for server state
+- Frontend: Expo / React Native, NativeWind for styling, TanStack Query for server state
 - Move legality: chess.js
 - Backend: Supabase — Postgres, Auth (including Anonymous Auth for guests), Realtime
 
@@ -46,11 +46,8 @@ Per-move deadlines, not a cumulative clock: a fresh window opens each time it be
 
 ## Implementation status
 
-Everything above is the target shape agreed in `docs/adr/`. As of this writing, the codebase predates most of it:
-
-- `supabase/schema.ts` still defines the old `white_guest_id` / `black_guest_id` / `guest_conversions` / `set_guest_id` scheme, which `docs/adr/0005-anonymous-auth-for-guests.md` supersedes.
-- No `player_views` table, redaction trigger, or corresponding Realtime subscription exists yet.
-- `src/lib/game/state-helper.ts` doesn't yet call chess.js for move legality (flagged inline as a TODO in that file).
-- Neither `chess.js` nor `@supabase/supabase-js` is declared in `package.json` yet.
+- **Done**: guest identity already uses Supabase Anonymous Auth (`src/api/auth/index.ts`), matching `docs/adr/0005` — no separate guest-id scheme exists on this branch. chess.js drives move legality and FEN updates client-side (`src/api/server/game.ts`, `src/components/game/board/chess-board.tsx`), though see the gap below. `player_views` table, `redact_fen`/`sync_player_views` functions, the sync trigger, and its RLS policy are implemented (`supabase/schemas/06_functions.sql`, `07_player_views.sql`, migration `20260731220000_add_player_views.sql`), matching `docs/adr/0002`/`0003`. The redaction algorithm has an independently unit-tested TypeScript mirror at `src/lib/game/redact-fen.ts`.
+- **Not done / contradicts the ADRs, not just missing**: move validation still runs client-side only (`src/api/server/game.ts`'s `makeMove` calls `chess.move()` in the RN app, then writes straight to Supabase) — nothing yet enforces `docs/adr/0001`/`0007`'s server-side, constant-time validation, and clients still read/write `games` directly rather than `player_views` (the board component takes a raw `fen` prop and renders every piece unconditionally). Time control is a cumulative Fischer clock (`gameSettingsSchema.timeControl`/`timeIncrement`), the model `docs/adr/0006` rejected in favor of per-move deadlines — this needs a settings-schema change, not just additive work.
+- **Not started**: AI opponent, local pass-and-play, move confirmation, capture-flash animation, full-board reveal-on-completion UI, most product surfaces (onboarding, how-to-play, profile/stats, push notifications).
 
 Update this file as each piece lands rather than leaving it describing an aspirational state indefinitely.

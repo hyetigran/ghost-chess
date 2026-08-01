@@ -36,6 +36,7 @@ export const gameSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   fen: z.string(),
   pgn: z.string().nullable(),
+  is_check: z.boolean(),
   white_time_remaining: z.number().int().nonnegative(),
   black_time_remaining: z.number().int().nonnegative(),
   created_at: z.string().datetime(),
@@ -53,6 +54,24 @@ export const moveSchema = z.object({
   created_at: z.string().datetime(),
 });
 
+// Redacted, per-player view of a game — the only game-state shape a client
+// should ever read while a game is active. See docs/adr/0001, docs/adr/0002,
+// and ARCHITECTURE.md's "Data flow" section.
+export const playerViewSchema = z.object({
+  game_id: z.string().uuid(),
+  player_id: z.string().uuid(),
+  redacted_fen: z.string(),
+  current_turn: z.enum(['white', 'black']),
+  status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
+  result: gameResultSchema,
+  white_time_remaining: z.number().int().nonnegative(),
+  black_time_remaining: z.number().int().nonnegative(),
+  is_check: z.boolean(),
+  captured_by_white: z.array(z.string()),
+  captured_by_black: z.array(z.string()),
+  updated_at: z.string().datetime(),
+});
+
 // Response schemas
 export const databaseResponseSchema = <T extends z.ZodType>(schema: T) =>
   z.object({
@@ -65,6 +84,7 @@ export type User = z.infer<typeof userSchema>;
 export type GameSettings = z.infer<typeof gameSettingsSchema>;
 export type Game = z.infer<typeof gameSchema>;
 export type Move = z.infer<typeof moveSchema>;
+export type PlayerView = z.infer<typeof playerViewSchema>;
 
 // Response types
 export type DatabaseResponse<T> = {

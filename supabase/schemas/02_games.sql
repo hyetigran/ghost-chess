@@ -8,6 +8,7 @@ create table "public"."games" (
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "fen" text not null,
     "pgn" text not null,
+    "is_check" boolean not null default false,
     "white_time_remaining" integer not null,
     "black_time_remaining" integer not null,
     "winner_id" uuid references public.users(id) default null,
