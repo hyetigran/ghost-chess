@@ -45,6 +45,9 @@ This file tracks the `add-game` lineage (the real implementation branch, continu
   - **Code-review fix-up, Standards**: the playing/handoff/gameOver phase transition was originally inlined in the hook's `makeMove`, inconsistent with the established `reduceMoveConfirmation`/`useMoveConfirmation` split from #22 — extracted a pure, unit-tested `nextPhaseAfterMove` so `useLocalGame` stays a thin wrapper matching that pattern. Also gave the previously-unused `isCheck` output a real consumer (a "— Check!" indicator in the UI) rather than leaving it as Speculative Generality.
   - **Not fixed, disclosed instead**: `local-move.ts` and `decide-move.ts` independently declare identical `Color`/`MoveAttempt` type shapes — low severity, and sharing one would create backwards coupling between a no-adversary module and the server-side-arbiter module this design deliberately keeps separate.
   - Spec review confirmed no occlusion leak and zero Supabase/network imports anywhere in the local-game code path — the handoff screen renders in place of the board (not after it), and `fen`/`phase` update atomically in a single handler, so there's no transient render where a stale viewer's redaction could show the post-move position.
+- **#26 — how to play screen**: static rules-explanation + strategy-tips screen (PRD §4.3), `src/lib/content/how-to-play-content.ts` (a plain `{title, body}[]` data module, not logic) composed via `src/components/how-to-play/how-to-play-section.tsx` into `src/app/how-to-play.tsx`. New entry point on the home screen.
+  - **Spec review was a genuine rules-accuracy fact-check, not just feature-completeness** — the review agent checked the new copy sentence-by-sentence against `CONTEXT.md`'s Visibility/Move rejection glossary entries and PRD §2.1/2.2, since player-facing prose making factual claims about what the game hides is exactly the kind of content that's easy to get subtly wrong. Found one real inaccuracy: the copy implied capture-visibility was bidirectional ("captures they make... is hidden until the moment it affects you directly"), but it's one-directional — only a piece *you* capture becomes visible; if the opponent captures one of yours, you only see your own piece vanish, the capturing piece stays hidden. Reworded to state the direction explicitly. Also reworded a strategy tip that read as contradicting the "a check never reveals what or where" claim a few lines above it, so it's unambiguously framed as player-side deduction rather than something the game discloses.
+  - **Code-review fix-up, Standards, real and mechanical**: the new files hadn't been run through Prettier (this repo's own config) — would have failed CI/lint. Fixed with `prettier --write`. Also renamed the content type `HowToPlaySection` to `HowToPlayEntry`, since it collided with the component of the same name and was forcing an import alias.
 
 ## What's left (high level)
 
@@ -73,7 +76,8 @@ This file tracks the `add-game` lineage (the real implementation branch, continu
 
 - [x] Game creation / join screens exist.
 - [ ] Home/dashboard (#24, partial — issue kept open): stats + active + recent games done; local-play/vs.-AI entry points blocked on #20/#21 not existing yet.
-- [ ] Onboarding, how-to-play, profile/stats screen, push notifications.
+- [x] How to Play screen (#26).
+- [ ] Onboarding, profile/stats screen (verify against PRD), push notifications.
 
 ## Known issues / debt
 
