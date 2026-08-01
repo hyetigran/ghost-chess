@@ -1,4 +1,4 @@
-import { redactFen } from './redact-fen';
+import { redactFen } from '~/lib/game/redact-fen';
 
 describe('redactFen', () => {
   it('hides every opponent piece and keeps every own piece at the start position', () => {

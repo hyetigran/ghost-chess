@@ -24,6 +24,18 @@ CREATE INDEX idx_player_views_player ON public.player_views USING btree (player_
 
 alter table "public"."player_views" add constraint "player_views_pkey" PRIMARY KEY using index "player_views_pkey";
 
+alter table "public"."player_views" add constraint "player_views_current_turn_check" CHECK ((current_turn = ANY (ARRAY['white'::text, 'black'::text]))) not valid;
+
+alter table "public"."player_views" validate constraint "player_views_current_turn_check";
+
+alter table "public"."player_views" add constraint "player_views_status_check" CHECK ((status = ANY (ARRAY['waiting'::text, 'active'::text, 'completed'::text, 'abandoned'::text]))) not valid;
+
+alter table "public"."player_views" validate constraint "player_views_status_check";
+
+alter table "public"."player_views" add constraint "player_views_result_check" CHECK ((result = ANY (ARRAY['checkmate'::text, 'stalemate'::text, 'draw'::text, 'abandoned'::text, NULL::text]))) not valid;
+
+alter table "public"."player_views" validate constraint "player_views_result_check";
+
 alter table "public"."player_views" add constraint "player_views_game_id_fkey" FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE not valid;
 
 alter table "public"."player_views" validate constraint "player_views_game_id_fkey";
