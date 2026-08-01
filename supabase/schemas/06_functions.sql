@@ -64,10 +64,18 @@ begin
         black_expected := 1.0 / (1.0 + power(10, (white_rating - black_rating) / 400.0));
         
         -- Determine actual scores
-        case new.result
-            when 'checkmate' then
-                -- The player to move is the one who's been checkmated —
-                -- correct to derive from current_turn.
+        case
+            when new.result in ('checkmate', 'timeout') then
+                -- The player to move is the one who's lost — true for a
+                -- checkmate (they're the one checkmated) and for a
+                -- timeout (they're the one who failed to move in time,
+                -- docs/adr/0006, forfeit_lapsed_games below) — so both
+                -- correctly derive the loser from current_turn. Not true
+                -- for 'abandoned' below (resignation can happen on
+                -- either turn), which is why that's a separate branch
+                -- rather than folded in here. See CONTEXT.md's Forfeit
+                -- entry for why timeout and abandoned are distinct
+                -- result values in the first place.
                 if new.current_turn = 'white' then
                     white_score := 0;
                     black_score := 1;
@@ -77,47 +85,27 @@ begin
                     black_score := 0;
                     new.winner_id := new.white_player_id;
                 end if;
-            when 'stalemate' then
+            when new.result in ('stalemate', 'draw') then
                 white_score := 0.5;
                 black_score := 0.5;
-            when 'draw' then
-                white_score := 0.5;
-                black_score := 0.5;
-            when 'abandoned' then
+            when new.result = 'abandoned' then
                 -- Resignation (end_own_game, 06_functions.sql). Unlike
-                -- checkmate/timeout, who loses here has nothing to do with
-                -- whose turn it is — a player can resign on either turn —
-                -- so this trusts new.winner_id, which end_own_game already
-                -- set correctly, rather than re-deriving it from
-                -- current_turn. Previously this branch derived the loser
-                -- from current_turn like checkmate does, which silently
-                -- computed the wrong winner (and wrong ELO delta) whenever
-                -- a resignation happened on the resigner's own turn rather
-                -- than their opponent's.
+                -- checkmate/timeout above, who loses here has nothing to
+                -- do with whose turn it is — a player can resign on
+                -- either turn — so this trusts new.winner_id, which
+                -- end_own_game already set correctly, rather than
+                -- re-deriving it from current_turn. Previously this
+                -- branch derived the loser from current_turn like
+                -- checkmate does, which silently computed the wrong
+                -- winner (and wrong ELO delta) whenever a resignation
+                -- happened on the resigner's own turn rather than their
+                -- opponent's.
                 if new.winner_id = new.white_player_id then
                     white_score := 1;
                     black_score := 0;
                 else
                     white_score := 0;
                     black_score := 1;
-                end if;
-            when 'timeout' then
-                -- Forfeit on a lapsed per-move deadline (docs/adr/0006,
-                -- forfeit_lapsed_games below). Unlike resignation, this
-                -- *is* correctly derived from current_turn: a timeout is
-                -- specifically "the player to move failed to move in
-                -- time," so whoever's turn current_turn says it is is
-                -- exactly who forfeits. See CONTEXT.md's Forfeit entry for
-                -- why this is a distinct result from 'abandoned' rather
-                -- than reusing it.
-                if new.current_turn = 'white' then
-                    white_score := 0;
-                    black_score := 1;
-                    new.winner_id := new.black_player_id;
-                else
-                    white_score := 1;
-                    black_score := 0;
-                    new.winner_id := new.white_player_id;
                 end if;
             else
                 return new;

@@ -87,8 +87,8 @@ begin
         black_expected := 1.0 / (1.0 + power(10, (white_rating - black_rating) / 400.0));
 
         -- Determine actual scores
-        case new.result
-            when 'checkmate' then
+        case
+            when new.result in ('checkmate', 'timeout') then
                 if new.current_turn = 'white' then
                     white_score := 0;
                     black_score := 1;
@@ -98,29 +98,16 @@ begin
                     black_score := 0;
                     new.winner_id := new.white_player_id;
                 end if;
-            when 'stalemate' then
+            when new.result in ('stalemate', 'draw') then
                 white_score := 0.5;
                 black_score := 0.5;
-            when 'draw' then
-                white_score := 0.5;
-                black_score := 0.5;
-            when 'abandoned' then
+            when new.result = 'abandoned' then
                 if new.winner_id = new.white_player_id then
                     white_score := 1;
                     black_score := 0;
                 else
                     white_score := 0;
                     black_score := 1;
-                end if;
-            when 'timeout' then
-                if new.current_turn = 'white' then
-                    white_score := 0;
-                    black_score := 1;
-                    new.winner_id := new.black_player_id;
-                else
-                    white_score := 1;
-                    black_score := 0;
-                    new.winner_id := new.white_player_id;
                 end if;
             else
                 return new;
