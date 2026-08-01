@@ -1,0 +1,5 @@
+# AI opponent is subject to the same occlusion as a human player
+
+PRD §2.3 calls for an AI opponent of varying difficulty, but standard chess engines (the obvious "just plug in Stockfish" path) assume perfect information — feeding one the true board would make it an opponent that always knows where your pieces are while you never know where its pieces are, undermining the entire premise established in [ADR-0001](./0001-server-side-redaction.md) (occlusion is a security boundary, not a UI convenience).
+
+We decided the AI receives exactly the same redacted view a human player would (see [Visibility](../../CONTEXT.md)) and has to play the same deduction game — difficulty comes from how well it reasons under uncertainty, not from search depth against a fully known board. We rejected giving the AI privileged board access, even with search weakened to compensate, because there'd be no way to prove fairness to a player who suspects it — the whole point of server-side redaction is that trust can't be client-side or self-reported.
