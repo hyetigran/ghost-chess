@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Link } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   Card,
   CardContent,
@@ -9,11 +10,23 @@ import {
   Button,
   Text,
 } from '~/components/ui';
+import { StatsSummary } from '~/components/home/stats-summary';
+import { ActiveGamesList } from '~/components/home/active-games-list';
+import { RecentGamesList } from '~/components/home/recent-games-list';
+import { useAuth } from '~/context/auth-context';
+import { userQueries } from '~/lib/state/user/queries';
 
 export default function HomeScreen() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  const { data: stats } = useQuery(userQueries.stats(userId ?? ''));
+  const { data: activeGames } = useQuery(userQueries.activeGames(userId ?? ''));
+  const { data: history } = useQuery(userQueries.gameHistory(userId ?? ''));
+
   return (
-    <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
-      <Card className='w-full max-w-sm p-6 rounded-2xl'>
+    <ScrollView className='flex-1 gap-5 p-6 bg-background'>
+      <Card className='w-full mb-5 rounded-2xl'>
         <CardHeader className='items-center'>
           <CardTitle className='text-2xl font-bold'>Ghost Chess</CardTitle>
         </CardHeader>
@@ -40,6 +53,44 @@ export default function HomeScreen() {
           </Link>
         </CardContent>
       </Card>
-    </View>
+
+      {stats && (
+        <Card className='w-full mb-5 rounded-2xl'>
+          <CardHeader>
+            <CardTitle>Stats</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StatsSummary
+              wins={stats.wins}
+              losses={stats.losses}
+              draws={stats.draws}
+              eloRating={stats.elo_rating}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {userId && (
+        <Card className='w-full mb-5 rounded-2xl'>
+          <CardHeader>
+            <CardTitle>Active games</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
+          </CardContent>
+        </Card>
+      )}
+
+      {userId && (
+        <Card className='w-full mb-5 rounded-2xl'>
+          <CardHeader>
+            <CardTitle>Recent games</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecentGamesList games={history ?? []} viewerId={userId} />
+          </CardContent>
+        </Card>
+      )}
+    </ScrollView>
   );
 }

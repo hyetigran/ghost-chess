@@ -114,6 +114,7 @@ export async function getGameHistory(
       black_player_id,
       status,
       result,
+      winner_id,
       pgn,
       created_at
     `,

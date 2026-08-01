@@ -141,6 +141,7 @@ export type GameHistory = Pick<
   | 'black_player_id'
   | 'status'
   | 'result'
+  | 'winner_id'
   | 'pgn'
   | 'created_at'
 >;
@@ -177,6 +178,7 @@ export const gameHistorySchema = gameSchema.pick({
   black_player_id: true,
   status: true,
   result: true,
+  winner_id: true,
   pgn: true,
   created_at: true,
 });
