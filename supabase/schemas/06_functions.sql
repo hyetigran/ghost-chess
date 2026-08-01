@@ -207,9 +207,16 @@ end;
 $$ language plpgsql immutable;
 
 -- Keeps player_views in sync with games in the same transaction as every
--- move (docs/adr/0002). While a game is active, each player's row holds a
--- FEN redacted to their own pieces; once status leaves 'active', redaction
--- lifts and both rows hold the true final position (docs/adr/0003).
+-- move (docs/adr/0002). While a game is active (or waiting for an opponent),
+-- each player's row holds a FEN redacted to their own pieces; once a game
+-- actually finishes, redaction lifts and both rows hold the true final
+-- position (docs/adr/0003). ADR-0003 was written against a status enum of
+-- active|completed|abandoned and phrases this as "no longer active" — this
+-- schema also has a pre-game 'waiting' status the ADR didn't anticipate, so
+-- reveal is keyed on the terminal statuses ADR-0003 actually means
+-- ("the game is over, players can review it"), not on literally any
+-- non-active status, which would also reveal the (unstarted, unsecret)
+-- board while still 'waiting' for an opponent to join.
 -- Captured pieces are public to both players the instant they're captured
 -- (docs/adr's Visibility glossary entry), so both rows always carry the
 -- full capture history regardless of game status.
@@ -222,7 +229,7 @@ declare
     captured_by_white text[];
     captured_by_black text[];
 begin
-    reveal := (new.status <> 'active');
+    reveal := (new.status in ('completed', 'abandoned'));
 
     if reveal then
         white_fen := new.fen;

@@ -135,7 +135,7 @@ declare
     captured_by_white text[];
     captured_by_black text[];
 begin
-    reveal := (new.status <> 'active');
+    reveal := (new.status in ('completed', 'abandoned'));
 
     if reveal then
         white_fen := new.fen;

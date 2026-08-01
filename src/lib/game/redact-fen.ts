@@ -1,7 +1,7 @@
 export type PieceColor = 'white' | 'black';
 
 /**
- * Mirrors the `redact_fen` Postgres function (supabase/schemas/07_player_views.sql)
+ * Mirrors the `redact_fen` Postgres function (supabase/schemas/06_functions.sql)
  * used by the player_views redaction trigger. Kept in lockstep as a readable,
  * independently-testable reference for the same algorithm — the Postgres function
  * is the actual enforcement point (it runs inside the same transaction as every
