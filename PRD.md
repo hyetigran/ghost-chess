@@ -19,29 +19,32 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 
 - Standard chess rules apply for piece movement, check, checkmate, etc.
 - Each player can only see their own pieces on the board
-- Opponent's pieces are invisible until captured
-- When a player attempts to move to a square occupied by an invisible opponent piece, the move is rejected
+- Opponent's pieces are invisible at all times while the game is active — the only exception is the instant one is captured
+- When a player attempts any illegal move — including one that targets a square secretly occupied by an invisible opponent piece — the move is rejected with the same generic feedback as any other illegal move. The rejection never reveals why, so it discloses nothing about the opponent's position (see §3.4 for how this is enforced end-to-end, including at the response-timing level)
 - When a player captures an opponent's piece, it becomes visible briefly before being removed
 - The game tracks and displays captured pieces for both players
+- Once a game ends (checkmate, stalemate, draw, resignation, or abandonment), the true board position is revealed to both players
 
 ### 2.2 Visibility Rules
 
 - Player's own pieces: Always visible
-- Opponent's pieces: Invisible during gameplay
+- Opponent's pieces: Invisible for the duration of an active game, except momentarily at the instant of capture
 - Captured pieces: Displayed in a "captured pieces" area
 - Legal moves: Highlighted for selected pieces
-- Failed moves: Provide feedback when a move is rejected due to an invisible piece
+- Failed moves: All illegal moves — including attempts to move onto a hidden opponent piece — receive identical, generic "illegal move" feedback. Nothing about *why* a move failed is ever disclosed, whether through response content or response timing
+- Check: A player is still told when their own king is in check, even though this implies an invisible opponent piece is delivering it. This is treated as status of the player's own king, not a disclosure of a specific opponent position, and is not subject to the same information-hiding rule as failed moves
+- Game completion: Once a game is no longer active, occlusion lifts entirely and both players can see the true final position
 
 ### 2.3 Game Modes
 
-- Online multiplayer: Play against other users in real-time
+- Online multiplayer: Play against other users in real-time. This includes guests (see §3.3) — an account is not required to play a full online game
 - Local play: Pass-and-play on a single device
-- AI opponent: Practice against computer opponents of varying difficulty
+- AI opponent: Practice against computer opponents of varying difficulty. The AI plays under the same information constraints as a human opponent — it never has access to the player's hidden pieces. Difficulty comes from how well it reasons under uncertainty, not from privileged board access
 
 ### 2.4 Game Settings
 
-- Time controls: Various options (1 hour, 12 hours, 24 hours per player)
-- Move confirmation: Optional setting to confirm moves before execution
+- Time controls: Per-move deadlines (1 hour, 12 hours, or 24 hours to make each move), not a cumulative game clock. The deadline resets at the start of each of a player's turns; missing it forfeits the game. There is no grace period — if a "your turn" notification (§4.4) is missed and the deadline lapses, the forfeit is final
+- Move confirmation: Optional client-side "are you sure?" prompt shown before a move is sent to the server. This is purely local UX based on what the player already sees — it never involves a server round-trip or a preliminary legality check, which would otherwise create a second way to probe hidden squares beyond the single move-submission path (§3.4)
 - Sound effects: Toggleable
 - Vibration feedback: Toggleable
 
@@ -59,27 +62,34 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 - Styling: NativeWind (Tailwind CSS for React Native)
 - Game Logic: chess.js for move validation and game state
 - Backend: Supabase for authentication, database, and real-time functionality
+- Visibility enforcement: Server-side redaction. Clients never receive the true board state while a game is active — see §3.3 for how this is modeled and `CONTEXT.md` / `docs/adr/0001-server-side-redaction.md` for the full rationale
 
 ### 3.3 Data Model
 
 #### Users
 
-- User ID (primary key)
-- Username
-- Email
-- Authentication details
+- User ID (primary key) — a real `auth.users` row for every player, including guests
+- Username, Email, Authentication details — present for registered accounts; absent for guests
+- Guest flag — guests authenticate via Supabase Anonymous Auth rather than a separate identity scheme, so `auth.uid()` works uniformly for guests and registered users. A guest can convert to a full account later without losing their ID or game history (`docs/adr/0005-anonymous-auth-for-guests.md`)
 - Profile information
 - Statistics (wins, losses, draws)
 
 #### Games
 
 - Game ID (primary key)
-- Player IDs (white and black)
-- Current game state (FEN notation)
+- Player IDs (white and black) — a single ID column per side; no separate guest-ID column, since guests share the same identity model as registered users
+- True game state (FEN notation) — the authoritative position. Never returned directly to game clients while the game is active (`docs/adr/0001-server-side-redaction.md`)
 - Move history
 - Game settings
 - Game status (active, completed, abandoned)
 - Timestamps (created, updated, completed)
+
+#### Player Views (redacted state)
+
+- One row per (Game ID, Player ID), holding only what that player is currently allowed to see: their own pieces, capture history, check status, and the move-rejection/deadline signals described in §2.2/§2.4 — never the opponent's true position
+- Kept in sync with Games by a database trigger that recomputes both players' rows in the same transaction as every move, so a client can never observe a Games update without the corresponding redacted update (`docs/adr/0002-shadow-table-for-redacted-views.md`)
+- Once a game's status leaves `active`, redaction lifts and this row reflects the true final position for both players (`docs/adr/0003-reveal-on-game-completion.md`)
+- Clients subscribe to real-time changes on this table, scoped by row-level security to their own row — never on Games directly, which would otherwise broadcast the true position to both players regardless of application-level redaction
 
 #### Moves
 
@@ -126,7 +136,7 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 ### 4.4 Notifications
 
 - Game invitations
-- Your turn notifications
+- Your turn notifications — load-bearing under per-move time controls (§2.4): a missed notification does not pause or extend the deadline, and a lapsed deadline forfeits the game with no reconciliation
 - Game completion alerts
 - Time control warnings
 
@@ -155,8 +165,8 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 ### 5.4 Anti-Cheat Mechanisms
 
 - Server-side game state validation
-- Move timing analysis
-- Suspicious pattern detection
+- Constant-time move rejection: illegal-move handling must not branch into reason-specific code paths that do different amounts of work (e.g. no early-return "fast path" for geometrically-obvious illegal moves, no extra logging on only one branch). Response *content* for illegal moves is already generic (§2.2); this ensures response *timing* can't reopen that same leak. Legal-vs-illegal timing differences are fine — only illegal-for-which-reason needs to stay indistinguishable (`docs/adr/0007-constant-time-move-rejection.md`)
+- Move timing analysis and suspicious pattern detection, to catch engine-assisted play — the same class of problem any online chess platform has, not specific to this game's hidden-information mechanic
 - Reporting system for players
 
 ## 6. Analytics and Metrics
@@ -224,7 +234,7 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 
 ### 9.2 Security
 
-- Secure authentication
+- Secure authentication, including for guests — guest sessions use Supabase Anonymous Auth (a real, signed session) rather than a client-generated, unauthenticated identifier, since guests are shareable/invitable full players and a bare bearer identifier would be exposed by the invite flow itself (`docs/adr/0005-anonymous-auth-for-guests.md`)
 - Protection against common exploits
 - Data privacy compliance
 
@@ -251,6 +261,9 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 - Chess.js documentation
 - Expo/React Native best practices
 - Supabase documentation
+- `CONTEXT.md` — canonical domain glossary (Visibility, Move rejection, Guest, etc.); defers to this over the prose in this PRD if the two ever diverge
+- `ARCHITECTURE.md` — the synthesized technical picture (data flow, redaction, auth, move validation) referenced throughout this document
+- `docs/adr/` — architecture decision records for the hard-to-reverse calls referenced throughout this document
 
 ---
 

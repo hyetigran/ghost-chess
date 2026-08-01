@@ -1,0 +1,7 @@
+# Per-player shadow table for redacted game views
+
+Follows from [ADR-0001](./0001-server-side-redaction.md): the server must redact hidden state before it reaches a client, including over Realtime. Supabase's `postgres_changes` broadcasts the full row to every client whose RLS policy permits `SELECT`, and the existing `games` RLS policy permits both players — so subscribing to `games` directly would leak the true FEN on every move regardless of redaction elsewhere.
+
+We decided to add a `player_views`-style table holding one row per `(game_id, player)`, containing only what that player is currently allowed to see. Clients subscribe to `postgres_changes` on this table, scoped by RLS to their own row, so Realtime never has access to a row containing the opponent's true position. We rejected pushing redacted state over Realtime Broadcast channels instead, to avoid running two separate authorization mechanisms (RLS + channel auth) side by side.
+
+`player_views` is kept in sync by a Postgres trigger (`AFTER INSERT OR UPDATE` on `games`) that recomputes both players' rows in the same transaction as the move, rather than an async job (e.g. an Edge Function invoked after commit). We rejected the async route because it introduces a window where `player_views` can lag behind `games` with no transactional guarantee of catching up — unacceptable given the redaction is a security boundary, not just a display concern.
