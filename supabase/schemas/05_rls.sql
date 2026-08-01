@@ -48,3 +48,12 @@ create policy "Users can insert moves in their games" on public.moves
 -- A player may only ever read their own row, never their opponent's.
 create policy "Players can view their own player view" on public.player_views
     for select using (auth.uid() = player_id);
+
+-- Postgres's default privileges for tables created by the postgres role
+-- auto-grant REFERENCES/TRIGGER/TRUNCATE to anon/authenticated regardless
+-- of what's explicitly granted (TRUNCATE in particular is not subject to
+-- RLS at all), so those need an explicit revoke down to select-only.
+revoke all on table "public"."player_views" from "anon";
+revoke all on table "public"."player_views" from "authenticated";
+grant select on table "public"."player_views" to "anon";
+grant select on table "public"."player_views" to "authenticated";

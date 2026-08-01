@@ -127,19 +127,23 @@ end;
 $$ language plpgsql security definer;
 
 -- Redact a true FEN down to what a given color is allowed to see: every
--- opponent piece is blanked out, the opponent's castling rights are dropped,
--- and the en passant target square is always hidden (revealing it would
--- disclose that the opponent just double-pushed a pawn). Active color,
--- halfmove clock, and fullmove number are not secret and pass through
--- unchanged. Mirrored as a pure, independently-tested reference in
--- src/lib/game/redact-fen.ts — keep the two in lockstep if either changes.
+-- opponent piece is blanked out and the opponent's castling rights are
+-- dropped. The en passant target square and halfmove clock are always
+-- replaced with non-informative placeholders: en passant would disclose
+-- that the opponent just double-pushed a pawn, and the halfmove clock
+-- resets to 0 on *any* pawn move (not just captures), so passing it
+-- through would let a viewer detect a hidden opponent pawn move just by
+-- watching the clock reset. Active color and fullmove number are not
+-- secret and pass through unchanged. Mirrored as a pure,
+-- independently-tested reference in src/lib/game/redact-fen.ts — keep the
+-- two in lockstep if either changes.
 create or replace function public.redact_fen(true_fen text, viewer_color text)
 returns text as $$
 declare
+    fen_fields text[];
     placement text;
     active_color text;
     castling text;
-    halfmove text;
     fullmove text;
     ranks text[];
     redacted_ranks text[] := '{}';
@@ -156,11 +160,15 @@ begin
         raise exception 'viewer_color must be ''white'' or ''black'', got %', viewer_color;
     end if;
 
-    placement := split_part(true_fen, ' ', 1);
-    active_color := split_part(true_fen, ' ', 2);
-    castling := split_part(true_fen, ' ', 3);
-    halfmove := split_part(true_fen, ' ', 5);
-    fullmove := split_part(true_fen, ' ', 6);
+    fen_fields := regexp_split_to_array(true_fen, ' ');
+    if array_length(fen_fields, 1) <> 6 then
+        raise exception 'true_fen must have 6 space-separated fields, got %: %', coalesce(array_length(fen_fields, 1), 0), true_fen;
+    end if;
+
+    placement := fen_fields[1];
+    active_color := fen_fields[2];
+    castling := fen_fields[3];
+    fullmove := fen_fields[6];
 
     ranks := regexp_split_to_array(placement, '/');
     for i in 1..array_length(ranks, 1) loop
@@ -202,9 +210,9 @@ begin
         redacted_castling := '-';
     end if;
 
-    return array_to_string(redacted_ranks, '/') || ' ' || active_color || ' ' || redacted_castling || ' - ' || halfmove || ' ' || fullmove;
+    return array_to_string(redacted_ranks, '/') || ' ' || active_color || ' ' || redacted_castling || ' - 0 ' || fullmove;
 end;
-$$ language plpgsql immutable;
+$$ language plpgsql immutable set search_path = '';
 
 -- Keeps player_views in sync with games in the same transaction as every
 -- move (docs/adr/0002). While a game is active (or waiting for an opponent),
@@ -220,6 +228,15 @@ $$ language plpgsql immutable;
 -- Captured pieces are public to both players the instant they're captured
 -- (docs/adr's Visibility glossary entry), so both rows always carry the
 -- full capture history regardless of game status.
+--
+-- This trigger only fires on public.games writes, not public.moves writes —
+-- captured_by_white/captured_by_black stay correct only if every moves
+-- insert is followed by a games update in the same transaction. That's not
+-- true yet: src/api/server/game.ts's makeMove does two separate,
+-- non-transactional Supabase calls. Fixing that is #13's job (server-side
+-- atomic move submission), not something to patch here with a second
+-- trigger on moves, which would risk firing before or independently of the
+-- games update and producing an inconsistent redacted_fen.
 create or replace function public.sync_player_views()
 returns trigger as $$
 declare
@@ -240,8 +257,8 @@ begin
     end if;
 
     select
-        coalesce(array_agg(m.captured_piece) filter (where m.captured_piece is not null and m.player_id = new.white_player_id), '{}'),
-        coalesce(array_agg(m.captured_piece) filter (where m.captured_piece is not null and m.player_id = new.black_player_id), '{}')
+        coalesce(array_agg(m.captured_piece order by m.move_number) filter (where m.captured_piece is not null and m.player_id = new.white_player_id), '{}'),
+        coalesce(array_agg(m.captured_piece order by m.move_number) filter (where m.captured_piece is not null and m.player_id = new.black_player_id), '{}')
     into captured_by_white, captured_by_black
     from public.moves m
     where m.game_id = new.id;
@@ -296,7 +313,7 @@ begin
 
     return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = '';
 
 -- Triggers
 create trigger on_auth_user_created

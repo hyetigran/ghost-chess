@@ -7,18 +7,24 @@ export type PieceColor = 'white' | 'black';
  * is the actual enforcement point (it runs inside the same transaction as every
  * move per ADR-0002), this is not a substitute for it.
  *
- * Blanks out every opponent piece, drops the opponent's castling rights, and
- * always hides the en passant target square (revealing it would disclose that
- * the opponent just double-pushed a pawn). Active color, halfmove clock, and
- * fullmove number are not secret and pass through unchanged.
+ * Blanks out every opponent piece and drops the opponent's castling rights.
+ * The en passant target square and halfmove clock are always replaced with
+ * non-informative placeholders: en passant would disclose that the opponent
+ * just double-pushed a pawn, and the halfmove clock resets to 0 on *any*
+ * pawn move (not just captures), so passing it through would let a viewer
+ * detect a hidden opponent pawn move just by watching the clock reset.
+ * Active color and fullmove number are not secret and pass through unchanged.
  */
 export function redactFen(trueFen: string, viewerColor: PieceColor): string {
   if (viewerColor !== 'white' && viewerColor !== 'black') {
     throw new Error(`viewerColor must be "white" or "black", got "${viewerColor}"`);
   }
 
-  const [placement, activeColor, castling, , halfmove, fullmove] =
-    trueFen.split(' ');
+  const fields = trueFen.split(' ');
+  if (fields.length !== 6) {
+    throw new Error(`trueFen must have 6 space-separated fields, got ${fields.length}: "${trueFen}"`);
+  }
+  const [placement, activeColor, castling, , , fullmove] = fields;
 
   const redactedPlacement = placement
     .split('/')
@@ -27,7 +33,7 @@ export function redactFen(trueFen: string, viewerColor: PieceColor): string {
 
   const redactedCastling = redactCastling(castling, viewerColor);
 
-  return `${redactedPlacement} ${activeColor} ${redactedCastling} - ${halfmove} ${fullmove}`;
+  return `${redactedPlacement} ${activeColor} ${redactedCastling} - 0 ${fullmove}`;
 }
 
 function redactRank(rank: string, viewerColor: PieceColor): string {

@@ -57,10 +57,19 @@ describe('redactFen', () => {
     expect(redactFen(fen, 'black')).not.toContain('d6');
   });
 
-  it('passes through active color, halfmove clock, and fullmove number unchanged', () => {
+  it('passes through active color and fullmove number unchanged', () => {
     const fen = '8/8/8/8/8/8/8/8 b - - 12 34';
 
-    expect(redactFen(fen, 'white')).toBe('8/8/8/8/8/8/8/8 b - - 12 34');
+    expect(redactFen(fen, 'white')).toBe('8/8/8/8/8/8/8/8 b - - 0 34');
+  });
+
+  it('always redacts the halfmove clock to 0, regardless of the true value', () => {
+    // A nonzero halfmove clock means the opponent's last move was a pawn
+    // move or capture; passing it through would let a viewer detect a
+    // hidden pawn move just by watching the clock reset.
+    const fen = '8/8/8/8/8/8/8/8 w - - 7 10';
+
+    expect(redactFen(fen, 'white')).toBe('8/8/8/8/8/8/8/8 w - - 0 10');
   });
 
   it('renders an empty board with no castling rights as all dashes', () => {
@@ -74,5 +83,12 @@ describe('redactFen', () => {
 
     // @ts-expect-error - deliberately invalid input
     expect(() => redactFen(fen, 'red')).toThrow();
+  });
+
+  it('rejects a FEN that does not have exactly 6 space-separated fields', () => {
+    expect(() => redactFen('8/8/8/8/8/8/8/8 w - -', 'white')).toThrow();
+    expect(() =>
+      redactFen('8/8/8/8/8/8/8/8 w - - 0 1 extra', 'white'),
+    ).toThrow();
   });
 });

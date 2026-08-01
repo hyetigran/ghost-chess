@@ -50,12 +50,13 @@ CREATE OR REPLACE FUNCTION public.redact_fen(true_fen text, viewer_color text)
  RETURNS text
  LANGUAGE plpgsql
  IMMUTABLE
+ SET search_path = ''
 AS $function$
 declare
+    fen_fields text[];
     placement text;
     active_color text;
     castling text;
-    halfmove text;
     fullmove text;
     ranks text[];
     redacted_ranks text[] := '{}';
@@ -72,11 +73,15 @@ begin
         raise exception 'viewer_color must be ''white'' or ''black'', got %', viewer_color;
     end if;
 
-    placement := split_part(true_fen, ' ', 1);
-    active_color := split_part(true_fen, ' ', 2);
-    castling := split_part(true_fen, ' ', 3);
-    halfmove := split_part(true_fen, ' ', 5);
-    fullmove := split_part(true_fen, ' ', 6);
+    fen_fields := regexp_split_to_array(true_fen, ' ');
+    if array_length(fen_fields, 1) <> 6 then
+        raise exception 'true_fen must have 6 space-separated fields, got %: %', coalesce(array_length(fen_fields, 1), 0), true_fen;
+    end if;
+
+    placement := fen_fields[1];
+    active_color := fen_fields[2];
+    castling := fen_fields[3];
+    fullmove := fen_fields[6];
 
     ranks := regexp_split_to_array(placement, '/');
     for i in 1..array_length(ranks, 1) loop
@@ -118,7 +123,7 @@ begin
         redacted_castling := '-';
     end if;
 
-    return array_to_string(redacted_ranks, '/') || ' ' || active_color || ' ' || redacted_castling || ' - ' || halfmove || ' ' || fullmove;
+    return array_to_string(redacted_ranks, '/') || ' ' || active_color || ' ' || redacted_castling || ' - 0 ' || fullmove;
 end;
 $function$
 ;
@@ -127,6 +132,7 @@ CREATE OR REPLACE FUNCTION public.sync_player_views()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path = ''
 AS $function$
 declare
     reveal boolean;
@@ -146,8 +152,8 @@ begin
     end if;
 
     select
-        coalesce(array_agg(m.captured_piece) filter (where m.captured_piece is not null and m.player_id = new.white_player_id), '{}'),
-        coalesce(array_agg(m.captured_piece) filter (where m.captured_piece is not null and m.player_id = new.black_player_id), '{}')
+        coalesce(array_agg(m.captured_piece order by m.move_number) filter (where m.captured_piece is not null and m.player_id = new.white_player_id), '{}'),
+        coalesce(array_agg(m.captured_piece order by m.move_number) filter (where m.captured_piece is not null and m.player_id = new.black_player_id), '{}')
     into captured_by_white, captured_by_black
     from public.moves m
     where m.game_id = new.id;
@@ -205,33 +211,19 @@ end;
 $function$
 ;
 
-grant delete on table "public"."player_views" to "anon";
+-- player_views is written only by the sync_player_views trigger
+-- (SECURITY DEFINER, bypasses RLS). Postgres's default privileges for
+-- tables created by the postgres role auto-grant REFERENCES/TRIGGER/
+-- TRUNCATE to anon/authenticated regardless of what's explicitly granted
+-- below (TRUNCATE in particular is not subject to RLS at all), so those
+-- need an explicit revoke, not just an absent grant.
+revoke all on table "public"."player_views" from "anon";
 
-grant insert on table "public"."player_views" to "anon";
-
-grant references on table "public"."player_views" to "anon";
+revoke all on table "public"."player_views" from "authenticated";
 
 grant select on table "public"."player_views" to "anon";
 
-grant trigger on table "public"."player_views" to "anon";
-
-grant truncate on table "public"."player_views" to "anon";
-
-grant update on table "public"."player_views" to "anon";
-
-grant delete on table "public"."player_views" to "authenticated";
-
-grant insert on table "public"."player_views" to "authenticated";
-
-grant references on table "public"."player_views" to "authenticated";
-
 grant select on table "public"."player_views" to "authenticated";
-
-grant trigger on table "public"."player_views" to "authenticated";
-
-grant truncate on table "public"."player_views" to "authenticated";
-
-grant update on table "public"."player_views" to "authenticated";
 
 grant delete on table "public"."player_views" to "service_role";
 
