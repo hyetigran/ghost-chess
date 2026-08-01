@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { View } from 'react-native';
-import { Chess, type Square } from 'chess.js';
+import { type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
@@ -31,7 +31,7 @@ export default function GameScreen() {
   const endGame = useEndGame({ gameId });
   const timer = useGameTimer(gameId);
   useGameSubscription(gameId);
-  const { flashSquare, reportOwnCapture } = useCaptureFlash(
+  const { flashSquare, reportOwnMove } = useCaptureFlash(
     game,
     game?.white_player_id === userId ? 'white' : 'black',
   );
@@ -97,18 +97,12 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
-            // Own capture, detected directly rather than via the
-            // reactive redacted_fen diff useCaptureFlash also does for
-            // the opponent's captures: at this point `to` is still the
-            // pre-move state, so any piece already there is necessarily
-            // one the mover is legally capturing (chess.js never offers
-            // a friendly-occupied square as a legal target).
-            const preMove = new Chess(game.redacted_fen, {
-              skipValidation: true,
-            });
-            if (preMove.get(to as Square)) {
-              reportOwnCapture(to as Square);
-            }
+            // Whether this move is a capture isn't knowable here — the
+            // target square's occupant is exactly as hidden from the
+            // mover as everything else about the opponent's pieces.
+            // useCaptureFlash finds out reactively once the server's
+            // response confirms it (src/lib/hooks/use-capture-flash.ts).
+            reportOwnMove(to as Square);
 
             // ChessBoard doesn't have a promotion-piece picker yet (a
             // separate UI feature) — default to auto-queen, the standard

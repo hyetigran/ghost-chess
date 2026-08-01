@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Chess } from 'chess.js';
 import { createGame, endGame, submitMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
+import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { GameSettings, PlayerView } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
@@ -46,16 +46,12 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       // refetch is what picks up the real values.
       if (previousGame) {
         try {
-          // skipValidation: a redacted FEN structurally omits the
-          // opponent's king (redact_fen, supabase/schemas/06_functions.sql)
-          // — chess.js's default strict validation throws on that for
-          // any real active game, which this try/catch was silently
-          // swallowing every time (indistinguishable from the "illegal
-          // move" catch case below) rather than actually applying the
-          // optimistic update.
-          const chess = new Chess(previousGame.redacted_fen, {
-            skipValidation: true,
-          });
+          // Before chessFromRedactedFen existed, this threw for any real
+          // active game (redacted FENs omit the opponent's king) — the
+          // try/catch was silently swallowing it every time,
+          // indistinguishable from the "illegal move" catch case below,
+          // so the optimistic update never actually applied.
+          const chess = chessFromRedactedFen(previousGame.redacted_fen);
           chess.move({
             from: newMove.from,
             to: newMove.to,

@@ -1,4 +1,5 @@
-import { Chess, type Square } from 'chess.js';
+import { type Square } from 'chess.js';
+import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 
 // Finds the square where one of the viewer's own pieces was present in
 // `previousFen` but is no longer there in `newFen` — this is how a
@@ -14,20 +15,20 @@ import { Chess, type Square } from 'chess.js';
 // any vacated own-square in that situation is unambiguously a capture,
 // never an ordinary move-away. Calling this after the viewer's *own*
 // move would misreport the move's `from` square as a "capture" — that
-// case is detected separately, directly, at the point the move is made
-// (src/lib/game/selection.ts), since the mover already knows definitively
-// whether their move captured something.
+// direction is handled reactively instead, by watching the viewer's own
+// captured-count (src/lib/hooks/use-capture-flash.ts), since — despite
+// an earlier version of this comment claiming otherwise — the mover
+// genuinely does *not* know whether their own move was a capture at the
+// moment they make it: the whole premise of the game is that the target
+// square's occupant is exactly as hidden from the mover as everything
+// else about the opponent's pieces.
 export function findCapturedOwnSquare(
   previousFen: string,
   newFen: string,
   ownColor: 'w' | 'b',
 ): Square | null {
-  // skipValidation: both FENs are the viewer's own redacted view, which
-  // structurally omits the opponent's king (redact_fen) — chess.js's
-  // default strict validation would throw on that for any real active
-  // game.
-  const previous = new Chess(previousFen, { skipValidation: true });
-  const next = new Chess(newFen, { skipValidation: true });
+  const previous = chessFromRedactedFen(previousFen);
+  const next = chessFromRedactedFen(newFen);
 
   for (const row of previous.board()) {
     for (const piece of row) {

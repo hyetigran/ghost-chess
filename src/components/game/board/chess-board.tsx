@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import { Chess, type Square } from 'chess.js';
+import { type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
 import { squareAt, type Orientation } from '~/lib/game/board-geometry';
 import { pieceSymbol } from '~/lib/game/piece-symbol';
+import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 type Props = {
@@ -30,16 +31,8 @@ export function ChessBoard({
   orientation,
   flashSquare,
 }: Props): React.JSX.Element {
-  // skipValidation: a redacted FEN structurally omits the opponent's
-  // king along with every other opponent piece (redact_fen,
-  // supabase/schemas/06_functions.sql) — it's never a "complete legal
-  // position" by chess.js's own definition, so the default strict
-  // validation throws ("Invalid FEN: missing black king") on every real
-  // active game with anything hidden, i.e. nearly always. Reading pieces
-  // and generating moves for the viewer's own pieces both still work
-  // correctly without it.
   const chess = React.useMemo(
-    () => new Chess(redactedFen, { skipValidation: true }),
+    () => chessFromRedactedFen(redactedFen),
     [redactedFen],
   );
   const { selectedSquare, legalTargets, handleSquarePress } =
