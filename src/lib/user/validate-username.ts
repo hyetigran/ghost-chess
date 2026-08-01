@@ -1,4 +1,6 @@
-export type UsernameValidation = { valid: true } | { valid: false; error: string };
+export type UsernameValidation =
+  | { valid: true }
+  | { valid: false; error: string };
 
 // Mirrors userSchema.username's constraints (src/types/database.ts:
 // z.string().min(1).max(50)) so the profile screen can reject an invalid
