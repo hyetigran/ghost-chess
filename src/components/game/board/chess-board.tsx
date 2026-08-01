@@ -1,57 +1,60 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import { Chess, Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { Text } from '~/components/ui/text';
-import type { Game } from '~/types/database';
+import { squareAt, type Orientation } from '~/lib/game/board-geometry';
+import { pieceSymbol } from '~/lib/game/piece-symbol';
+import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 type Props = {
-  fen: string;
+  /**
+   * The FEN this board renders — always the caller's own redacted view
+   * (player_views.redacted_fen), never the true game state (ADR-0001).
+   * This component has no way to enforce that itself — it renders
+   * whatever FEN it's handed — the actual guarantee lives at the caller
+   * (src/api/server/game.ts's getGame reads player_views only, #12).
+   * Named explicitly rather than a generic `fen` so a future caller can't
+   * casually wire in the true games.fen without the prop name itself
+   * being a hint that something's wrong.
+   */
+  redactedFen: string;
   onMove: (from: string, to: string) => void;
-  orientation: 'white' | 'black';
+  orientation: Orientation;
 };
 
-export function ChessBoard({ fen, onMove, orientation }: Props) {
-  const [selectedSquare, setSelectedSquare] = React.useState<Square | null>(
-    null,
-  );
-  const chess = React.useMemo(() => new Chess(fen), [fen]);
-
-  const handleSquarePress = (square: Square) => {
-    if (!selectedSquare) {
-      setSelectedSquare(square);
-      return;
-    }
-
-    if (selectedSquare === square) {
-      setSelectedSquare(null);
-      return;
-    }
-
-    onMove(selectedSquare, square);
-    setSelectedSquare(null);
-  };
+export function ChessBoard({
+  redactedFen,
+  onMove,
+  orientation,
+}: Props): React.JSX.Element {
+  const chess = React.useMemo(() => new Chess(redactedFen), [redactedFen]);
+  const { selectedSquare, legalTargets, handleSquarePress } =
+    useSquareSelection(chess, orientation, onMove);
 
   return (
     <View className='w-full aspect-square'>
       <View className='flex-row flex-wrap flex-1'>
-        {Array.from({ length: 8 }).map((_, rank) =>
-          Array.from({ length: 8 }).map((_, file) => {
-            const square =
-              `${String.fromCharCode(97 + file)}${8 - rank}` as Square;
-            const isLight = (rank + file) % 2 === 0;
+        {Array.from({ length: 8 }).map((_, displayRank) =>
+          Array.from({ length: 8 }).map((_, displayFile) => {
+            const square = squareAt(displayRank, displayFile, orientation);
+            const isLight = (displayRank + displayFile) % 2 === 0;
             const piece = chess.get(square);
+            const isSelected = selectedSquare === square;
+            const isLegalTarget = legalTargets.has(square);
 
             return (
               <View
                 key={square}
-                className={`w-1/8 h-1/8 ${
+                className={`w-[12.5%] h-[12.5%] items-center justify-center ${
                   isLight ? 'bg-amber-100' : 'bg-amber-800'
-                } ${selectedSquare === square ? 'bg-blue-500' : ''}`}
+                } ${isSelected ? 'bg-blue-500' : ''} ${
+                  isLegalTarget ? 'bg-green-400' : ''
+                }`}
                 onTouchEnd={() => handleSquarePress(square)}
               >
                 {piece && (
                   <Text className='text-4xl text-center'>
-                    {getPieceSymbol(piece)}
+                    {pieceSymbol(piece)}
                   </Text>
                 )}
               </View>
@@ -61,18 +64,4 @@ export function ChessBoard({ fen, onMove, orientation }: Props) {
       </View>
     </View>
   );
-}
-
-function getPieceSymbol(piece: { type: string; color: string }) {
-  const symbols = {
-    p: '♟',
-    n: '♞',
-    b: '♝',
-    r: '♜',
-    q: '♛',
-    k: '♚',
-  };
-
-  const symbol = symbols[piece.type as keyof typeof symbols];
-  return piece.color === 'w' ? symbol : symbol?.toLowerCase();
 }
