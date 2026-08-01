@@ -46,7 +46,16 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       // refetch is what picks up the real values.
       if (previousGame) {
         try {
-          const chess = new Chess(previousGame.redacted_fen);
+          // skipValidation: a redacted FEN structurally omits the
+          // opponent's king (redact_fen, supabase/schemas/06_functions.sql)
+          // — chess.js's default strict validation throws on that for
+          // any real active game, which this try/catch was silently
+          // swallowing every time (indistinguishable from the "illegal
+          // move" catch case below) rather than actually applying the
+          // optimistic update.
+          const chess = new Chess(previousGame.redacted_fen, {
+            skipValidation: true,
+          });
           chess.move({
             from: newMove.from,
             to: newMove.to,

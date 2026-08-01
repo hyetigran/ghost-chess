@@ -27,7 +27,18 @@ export function ChessBoard({
   onMove,
   orientation,
 }: Props): React.JSX.Element {
-  const chess = React.useMemo(() => new Chess(redactedFen), [redactedFen]);
+  // skipValidation: a redacted FEN structurally omits the opponent's
+  // king along with every other opponent piece (redact_fen,
+  // supabase/schemas/06_functions.sql) — it's never a "complete legal
+  // position" by chess.js's own definition, so the default strict
+  // validation throws ("Invalid FEN: missing black king") on every real
+  // active game with anything hidden, i.e. nearly always. Reading pieces
+  // and generating moves for the viewer's own pieces both still work
+  // correctly without it.
+  const chess = React.useMemo(
+    () => new Chess(redactedFen, { skipValidation: true }),
+    [redactedFen],
+  );
   const { selectedSquare, legalTargets, handleSquarePress } =
     useSquareSelection(chess, orientation, onMove);
 
