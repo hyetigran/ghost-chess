@@ -21,6 +21,11 @@ export type LocalMoveOutcome =
       winner: Color | null;
     };
 
+export type LocalGamePhase =
+  | { type: 'playing'; viewer: Color }
+  | { type: 'handoff'; nextViewer: Color }
+  | { type: 'gameOver'; result: LocalGameResult; winner: Color | null };
+
 const ILLEGAL: LocalMoveOutcome = { legal: false };
 
 // Local pass-and-play (#20) has no server, no time control, and no
@@ -69,4 +74,16 @@ export function applyLocalMove(
     result,
     winner,
   };
+}
+
+// Pure phase transition after a legal move, extracted so useLocalGame stays
+// a thin wrapper (matching the reduceMoveConfirmation/useMoveConfirmation
+// pattern) rather than inlining this three-way read.
+export function nextPhaseAfterMove(
+  outcome: Extract<LocalMoveOutcome, { legal: true }>,
+): LocalGamePhase {
+  if (outcome.isGameOver && outcome.result) {
+    return { type: 'gameOver', result: outcome.result, winner: outcome.winner };
+  }
+  return { type: 'handoff', nextViewer: outcome.newCurrentTurn };
 }

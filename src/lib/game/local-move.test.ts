@@ -1,6 +1,12 @@
-import { applyLocalMove } from '~/lib/game/local-move';
+import { applyLocalMove, nextPhaseAfterMove } from '~/lib/game/local-move';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+function legalOutcome(fen: string, attempt: { from: string; to: string }) {
+  const outcome = applyLocalMove(fen, attempt);
+  if (!outcome.legal) throw new Error('expected legal');
+  return outcome;
+}
 
 describe('applyLocalMove', () => {
   it('applies a legal move and returns the resulting state', () => {
@@ -84,5 +90,42 @@ describe('applyLocalMove', () => {
     if (!outcome.legal) throw new Error('expected legal');
     expect(outcome.result).toBe('checkmate');
     expect(outcome.winner).toBe('black');
+  });
+});
+
+describe('nextPhaseAfterMove', () => {
+  it('transitions to handoff for the other color after a non-ending move', () => {
+    const outcome = legalOutcome(START_FEN, { from: 'e2', to: 'e4' });
+
+    expect(nextPhaseAfterMove(outcome)).toEqual({
+      type: 'handoff',
+      nextViewer: 'black',
+    });
+  });
+
+  it('transitions to gameOver with the winner after checkmate', () => {
+    const outcome = legalOutcome('6k1/5ppp/8/8/8/8/8/R6K w - - 0 1', {
+      from: 'a1',
+      to: 'a8',
+    });
+
+    expect(nextPhaseAfterMove(outcome)).toEqual({
+      type: 'gameOver',
+      result: 'checkmate',
+      winner: 'white',
+    });
+  });
+
+  it('transitions to gameOver with no winner after stalemate', () => {
+    const outcome = legalOutcome('k7/8/1K6/8/8/8/8/7Q w - - 0 1', {
+      from: 'h1',
+      to: 'h2',
+    });
+
+    expect(nextPhaseAfterMove(outcome)).toEqual({
+      type: 'gameOver',
+      result: 'stalemate',
+      winner: null,
+    });
   });
 });

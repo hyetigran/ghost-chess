@@ -8,7 +8,8 @@ import { redactFen } from '~/lib/game/redact-fen';
 import { useLocalGame } from '~/lib/hooks/use-local-game';
 
 export default function LocalGameScreen(): React.JSX.Element {
-  const { fen, phase, makeMove, confirmHandoff, reset } = useLocalGame();
+  const { fen, phase, isCheck, makeMove, confirmHandoff, reset } =
+    useLocalGame();
 
   if (phase.type === 'handoff') {
     return (
@@ -30,6 +31,7 @@ export default function LocalGameScreen(): React.JSX.Element {
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
         {phase.viewer === 'white' ? 'White' : 'Black'} to move
+        {isCheck ? ' — Check!' : ''}
       </Text>
       <ChessBoard
         redactedFen={redactFen(fen, phase.viewer)}
