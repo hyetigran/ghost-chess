@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
 import { createGame, endGame, submitMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
-import { Game, GameResult, GameSettings } from '~/types/database';
+import { GameSettings, PlayerView } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -27,35 +27,42 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       await queryClient.cancelQueries({ queryKey: ['game', gameId] });
 
       // Snapshot the previous value
-      const previousGame = queryClient.getQueryData<Game>(['game', gameId]);
+      const previousGame = queryClient.getQueryData<PlayerView>([
+        'game',
+        gameId,
+      ]);
 
-      // Optimistically apply the move locally for a snappy UI. The server
-      // is still the sole source of truth (submitMove above) — if this
-      // move turns out to be illegal (including one targeting a hidden
-      // opponent piece, which this client can't know about), onError rolls
-      // this back and the server's rejection is the real answer.
+      // Optimistically apply the move locally for a snappy UI, built from
+      // the mover's own redacted_fen (never the true games.fen — this
+      // client never reads that while a game is active, per #12), which is
+      // exactly what the mover is legitimately allowed to construct: their
+      // own move against their own known pieces. The server (submitMove
+      // above) is still the sole source of truth — if this move turns out
+      // to be illegal (including one targeting a hidden opponent piece,
+      // which this client can't know about), onError rolls this back and
+      // the server's rejection is the real answer. Clocks aren't touched
+      // here: submitMove doesn't take a client-computed gameState (ADR-0001
+      // — the server owns clock computation entirely), so onSettled's
+      // refetch is what picks up the real values.
       if (previousGame) {
         try {
-          const chess = new Chess(previousGame.fen);
+          const chess = new Chess(previousGame.redacted_fen);
           chess.move({
             from: newMove.from,
             to: newMove.to,
             promotion: newMove.promotion,
           });
 
-          // Not touching pgn: `chess` was constructed from just the FEN,
-          // so it has no move history — chess.pgn() here would return a
-          // one-move PGN and clobber previousGame's real history in the
-          // cache until onSettled's refetch overwrites it. The server
-          // owns this field; leave it alone until the real response lands.
           queryClient.setQueryData(['game', gameId], {
             ...previousGame,
-            fen: chess.fen(),
-            current_turn: chess.turn() === 'w' ? 'white' : 'black',
-          } satisfies Game);
+            redacted_fen: chess.fen(),
+            current_turn:
+              previousGame.current_turn === 'white' ? 'black' : 'white',
+          } satisfies PlayerView);
         } catch {
-          // chess.js throws on an illegal move; nothing to optimistically
-          // apply, just let the server respond.
+          // chess.js throws on an illegal move (e.g. one targeting a
+          // hidden opponent piece, which this client can't know about) —
+          // nothing to optimistically apply, just let the server respond.
         }
       }
 
@@ -83,13 +90,7 @@ export const useEndGame = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      result,
-      winnerId,
-    }: {
-      result: GameResult;
-      winnerId?: string;
-    }) => endGame(gameId, result, winnerId),
+    mutationFn: () => endGame(gameId),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['game', gameId] });
     },

@@ -59,6 +59,8 @@ export const moveSchema = z.object({
 export const playerViewSchema = z.object({
   game_id: z.string().uuid(),
   player_id: z.string().uuid(),
+  white_player_id: z.string().uuid().nullable(),
+  black_player_id: z.string().uuid().nullable(),
   redacted_fen: z.string(),
   current_turn: z.enum(['white', 'black']),
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
@@ -98,17 +100,24 @@ export type UserStatsResponse = DatabaseResponse<
 >;
 
 // Game response types
+//
+// Sourced from player_views, not games directly — a games-listing read for
+// "your active games" is a legitimate need (PRD's home/dashboard "recent
+// games"), but games' SELECT RLS denies active-status rows entirely (#12),
+// and even if it didn't, this shape must never carry the true fen. Uses
+// game_id (player_views' key) rather than id, and updated_at rather than
+// created_at (player_views has no created_at; "most recently active" is
+// arguably the more useful ordering for this list anyway).
 export type ActiveGame = Pick<
-  Game,
-  | 'id'
+  PlayerView,
+  | 'game_id'
   | 'white_player_id'
   | 'black_player_id'
   | 'status'
   | 'current_turn'
-  | 'fen'
   | 'white_time_remaining'
   | 'black_time_remaining'
-  | 'created_at'
+  | 'updated_at'
 >;
 
 export type GameHistory = Pick<
@@ -138,16 +147,15 @@ export type OpponentResponse = DatabaseResponse<Opponent>;
 export type GameResult = z.infer<typeof gameResultSchema>;
 
 // Schema exports
-export const activeGameSchema = gameSchema.pick({
-  id: true,
+export const activeGameSchema = playerViewSchema.pick({
+  game_id: true,
   white_player_id: true,
   black_player_id: true,
   status: true,
   current_turn: true,
-  fen: true,
   white_time_remaining: true,
   black_time_remaining: true,
-  created_at: true,
+  updated_at: true,
 });
 
 export const gameHistorySchema = gameSchema.pick({

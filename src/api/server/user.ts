@@ -67,28 +67,32 @@ export async function getUserStats(
 
 /**
  * Get user's active games
+ *
+ * Reads player_views, not games directly (#12) — games' SELECT RLS denies
+ * active-status rows entirely, and even if it didn't, an active-games list
+ * must never carry the true fen. player_views already has redacted state,
+ * both player IDs, and is scoped to the caller's own row by RLS.
  */
 export async function getActiveGames(
   userId: string,
 ): Promise<ActiveGamesResponse['data']> {
   const { data, error } = await supabase
-    .from('games')
+    .from('player_views')
     .select(
       `
-      id,
+      game_id,
       white_player_id,
       black_player_id,
       status,
       current_turn,
-      fen,
       white_time_remaining,
       black_time_remaining,
-      created_at
+      updated_at
     `,
     )
-    .or(`white_player_id.eq.${userId},black_player_id.eq.${userId}`)
+    .eq('player_id', userId)
     .eq('status', 'active')
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false });
 
   if (error) throw error;
   return z.array(activeGameSchema).parse(data);

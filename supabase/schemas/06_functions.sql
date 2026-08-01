@@ -214,6 +214,61 @@ begin
 end;
 $$ language plpgsql immutable set search_path = '';
 
+-- Ends a game a participant is resigning. #13's apply_move (also security
+-- definer) is the sole writer for real moves, but resignation is a
+-- separate concern it doesn't touch — games' SELECT RLS denies 'active'
+-- rows entirely (#12), which also blocks a direct client UPDATE from
+-- even locating the row (Postgres requires a row to pass a table's
+-- SELECT policy before UPDATE can see it, independent of the UPDATE
+-- policy's own USING clause — and games has no UPDATE policy at all now,
+-- see 05_rls.sql), so resignation needs this same security-definer
+-- escape hatch. This implements resignation specifically, not
+-- arbitrary game completion: result and winner_id are derived server-side
+-- (always 'abandoned', always the *other* participant), never accepted as
+-- parameters — a resigning client naming its own result/winner could
+-- otherwise forge a 'checkmate'/'stalemate'/'draw' outcome (or hand
+-- itself the win), which the ELO trigger would then process as real. A
+-- real checkmate/stalemate/draw completion needs actual server-validated
+-- game-end detection, which belongs with #13's move validation, not here.
+create or replace function public.end_own_game(p_game_id uuid)
+returns public.games
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_game public.games;
+    v_winner_id uuid;
+begin
+    select * into v_game from public.games where id = p_game_id;
+
+    if v_game is null then
+        raise exception 'game not found';
+    end if;
+
+    if v_game.status <> 'active' then
+        raise exception 'game is not active';
+    end if;
+
+    if v_game.white_player_id = auth.uid() then
+        v_winner_id := v_game.black_player_id;
+    elsif v_game.black_player_id = auth.uid() then
+        v_winner_id := v_game.white_player_id;
+    else
+        raise exception 'not a participant in this game';
+    end if;
+
+    update public.games
+    set status = 'completed',
+        result = 'abandoned',
+        winner_id = v_winner_id
+    where id = p_game_id
+    returning * into v_game;
+
+    return v_game;
+end;
+$$;
+
 -- Keeps player_views in sync with games in the same transaction as every
 -- move (docs/adr/0002). While a game is active (or waiting for an opponent),
 -- each player's row holds a FEN redacted to their own pieces; once a game
@@ -265,16 +320,20 @@ begin
 
     if new.white_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.white_player_id, white_fen, new.current_turn, new.status, new.result,
+            new.id, new.white_player_id, new.white_player_id, new.black_player_id,
+            white_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
@@ -289,16 +348,20 @@ begin
 
     if new.black_player_id is not null then
         insert into public.player_views (
-            game_id, player_id, redacted_fen, current_turn, status, result,
+            game_id, player_id, white_player_id, black_player_id,
+            redacted_fen, current_turn, status, result,
             white_time_remaining, black_time_remaining, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
-            new.id, new.black_player_id, black_fen, new.current_turn, new.status, new.result,
+            new.id, new.black_player_id, new.white_player_id, new.black_player_id,
+            black_fen, new.current_turn, new.status, new.result,
             new.white_time_remaining, new.black_time_remaining, new.is_check,
             captured_by_white, captured_by_black, now()
         )
         on conflict (game_id, player_id) do update set
+            white_player_id = excluded.white_player_id,
+            black_player_id = excluded.black_player_id,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,

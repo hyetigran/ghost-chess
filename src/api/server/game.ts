@@ -1,8 +1,8 @@
 import { Chess } from 'chess.js';
 import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
-import { gameSchema, moveSchema } from '~/types/database';
-import type { Game, GameSettings, Move, GameResult } from '~/types/database';
+import { gameSchema, moveSchema, playerViewSchema } from '~/types/database';
+import type { Game, GameSettings, Move, PlayerView } from '~/types/database';
 
 /**
  * Create a new game
@@ -112,38 +112,41 @@ export async function getGameMoves(gameId: string): Promise<Move[]> {
 }
 
 /**
- * End game
+ * Resign a game. Result and winner are decided server-side (always
+ * 'abandoned', always the other participant) — see end_own_game's doc
+ * comment for why nothing about the outcome is accepted from the client.
  */
-export async function endGame(
-  gameId: string,
-  result: GameResult,
-  winnerId?: string,
-): Promise<Game> {
-  const { data, error } = await supabase
-    .from('games')
-    .update({
-      status: 'completed',
-      result,
-      winner_id: winnerId,
-    })
-    .eq('id', gameId)
-    .select()
-    .single();
+export async function endGame(gameId: string): Promise<Game> {
+  // Resignation always targets a currently-'active' game, and games' SELECT
+  // RLS denies active rows entirely (#12) — which also gates UPDATE, since
+  // Postgres requires a row to pass a table's SELECT policy before UPDATE
+  // can see it. So this goes through a security-definer RPC rather than a
+  // direct .update().
+  const { data, error } = await supabase.rpc('end_own_game', {
+    p_game_id: gameId,
+  });
 
   if (error) throw error;
   return gameSchema.parse(data);
 }
 
 /**
- * Get game by ID
+ * Get the caller's redacted view of a game (ADR-0001, #12). This is the
+ * only way a client reads game state while a game is active — `games`
+ * RLS denies direct SELECT for active games specifically (see
+ * 05_rls.sql), so a raw `games` query here would just return nothing for
+ * the one status that actually has secrets to protect. `player_views`
+ * carries everything the UI needs (own/redacted board, clocks, check,
+ * captures, and — since #12 — both player IDs) without ever exposing the
+ * true position while the game is still being played.
  */
-export async function getGame(gameId: string): Promise<Game> {
+export async function getGame(gameId: string): Promise<PlayerView> {
   const { data, error } = await supabase
-    .from('games')
+    .from('player_views')
     .select('*')
-    .eq('id', gameId)
+    .eq('game_id', gameId)
     .single();
 
   if (error) throw error;
-  return gameSchema.parse(data);
+  return playerViewSchema.parse(data);
 }
