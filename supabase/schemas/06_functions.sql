@@ -76,7 +76,16 @@ begin
         white_expected := 1.0 / (1.0 + power(10, (black_rating - white_rating) / 400.0));
         black_expected := 1.0 / (1.0 + power(10, (white_rating - black_rating) / 400.0));
         
-        -- Determine actual scores
+        -- Determine actual scores. This trigger fires AFTER update of
+        -- status, so any new.winner_id assignment here would be
+        -- inert — Postgres ignores NEW mutations from AFTER row
+        -- triggers, they never reach the stored row. winner_id is
+        -- already set correctly by whichever direct UPDATE actually
+        -- completed the game before this trigger runs (apply_move for
+        -- checkmate, forfeit_lapsed_games for timeout, end_own_game for
+        -- abandoned) — this only needs to compute the *scores*, reading
+        -- new.winner_id where it's already reliable (the 'abandoned'
+        -- branch below) rather than trying to also set it.
         case
             when new.result in ('checkmate', 'timeout') then
                 -- The player to move is the one who's lost — true for a
@@ -92,11 +101,9 @@ begin
                 if new.current_turn = 'white' then
                     white_score := 0;
                     black_score := 1;
-                    new.winner_id := new.black_player_id;
                 else
                     white_score := 1;
                     black_score := 0;
-                    new.winner_id := new.white_player_id;
                 end if;
             when new.result in ('stalemate', 'draw') then
                 white_score := 0.5;
@@ -350,13 +357,13 @@ begin
     if new.white_player_id is not null then
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
-            redacted_fen, current_turn, status, result,
+            redacted_fen, current_turn, status, result, winner_id,
             time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.white_player_id, new.white_player_id, new.black_player_id,
-            white_fen, new.current_turn, new.status, new.result,
+            white_fen, new.current_turn, new.status, new.result, new.winner_id,
             (new.settings->>'timeControlHours')::integer, new.is_check,
             captured_by_white, captured_by_black, new.updated_at
         )
@@ -367,6 +374,7 @@ begin
             current_turn = excluded.current_turn,
             status = excluded.status,
             result = excluded.result,
+            winner_id = excluded.winner_id,
             time_control_hours = excluded.time_control_hours,
             is_check = excluded.is_check,
             captured_by_white = excluded.captured_by_white,
@@ -377,13 +385,13 @@ begin
     if new.black_player_id is not null then
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
-            redacted_fen, current_turn, status, result,
+            redacted_fen, current_turn, status, result, winner_id,
             time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.black_player_id, new.white_player_id, new.black_player_id,
-            black_fen, new.current_turn, new.status, new.result,
+            black_fen, new.current_turn, new.status, new.result, new.winner_id,
             (new.settings->>'timeControlHours')::integer, new.is_check,
             captured_by_white, captured_by_black, new.updated_at
         )
@@ -394,6 +402,7 @@ begin
             current_turn = excluded.current_turn,
             status = excluded.status,
             result = excluded.result,
+            winner_id = excluded.winner_id,
             time_control_hours = excluded.time_control_hours,
             is_check = excluded.is_check,
             captured_by_white = excluded.captured_by_white,

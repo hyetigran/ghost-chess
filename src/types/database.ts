@@ -72,6 +72,10 @@ export const playerViewSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
   result: gameResultSchema,
+  // Denormalized from games.winner_id — not secret (who won is never
+  // hidden information, only the in-progress position is), needed for
+  // the post-game "you won"/"you lost" summary (#19).
+  winner_id: z.string().uuid().nullable(),
   // Denormalized from games.settings.timeControlHours (not secret — a
   // game's time control is visible to both players by definition) so the
   // client can compute the current deadline (src/lib/game/deadline.ts)

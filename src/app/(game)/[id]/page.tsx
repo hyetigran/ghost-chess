@@ -148,7 +148,10 @@ export default function GameScreen() {
       {/* Game over modal */}
       <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
         <GameOverModal
+          gameId={gameId}
           result={game.result}
+          winnerId={game.winner_id}
+          viewerId={userId}
           onRematch={() => {
             // Implement rematch
           }}

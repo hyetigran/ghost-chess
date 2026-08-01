@@ -17,6 +17,12 @@ create table "public"."player_views" (
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
     "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', 'timeout', null)),
+    -- Denormalized from games.winner_id, same reasoning as
+    -- white_player_id/black_player_id above — not secret (who won is
+    -- never hidden information, only the in-progress position is), and
+    -- the client needs it to show "you won"/"you lost" (#19) without
+    -- reading public.games.
+    "winner_id" uuid references public.users(id) on delete set null,
     -- Denormalized from games.settings->>'timeControlHours', same reasoning
     -- as white_player_id/black_player_id above: the client needs this to
     -- compute the current deadline (updated_at + this many hours,
