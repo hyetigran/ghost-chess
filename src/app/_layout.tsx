@@ -25,6 +25,7 @@ import { setAndroidNavigationBar } from '~/lib/style/android-navigation-bar';
 import { NAV_THEME } from '~/lib/style/constants';
 import { useColorScheme } from '~/lib/style/useColorScheme';
 import { AuthProvider } from '~/context/auth-context';
+import { SettingsProvider } from '~/context/settings-context';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -155,14 +156,16 @@ function Providers({ children }: { children: React.ReactNode }) {
       <KeyboardProvider>
         <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
           <AuthProvider>
-            <APIProvider>
-              <BottomSheetModalProvider>
-                <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-                {children}
-                <FlashMessage position='top' />
-                <PortalHost />
-              </BottomSheetModalProvider>
-            </APIProvider>
+            <SettingsProvider>
+              <APIProvider>
+                <BottomSheetModalProvider>
+                  <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+                  {children}
+                  <FlashMessage position='top' />
+                  <PortalHost />
+                </BottomSheetModalProvider>
+              </APIProvider>
+            </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
       </KeyboardProvider>
