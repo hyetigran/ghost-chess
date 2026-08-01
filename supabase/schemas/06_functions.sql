@@ -214,119 +214,15 @@ begin
 end;
 $$ language plpgsql immutable set search_path = '';
 
--- Lets the moves INSERT policy check game participancy without needing
--- direct SELECT access to games. A raw `exists (select 1 from games
--- where ...)` inside another table's RLS policy is still subject to
--- games' own RLS — which denies 'active' rows to participants entirely
--- (#12) — so that check would always fail for exactly the status moves
--- are normally inserted under. Security definer lets it read games
--- regardless of the caller's RLS, but it only ever returns a boolean,
--- never row data, so it doesn't reopen the leak that restriction exists
--- to close.
---
--- Deliberately takes no user-id parameter and always checks auth.uid():
--- EXECUTE on this function must stay grantable to `authenticated` (RLS
--- policy expressions are evaluated as the calling role, and calling a
--- function from within a policy still requires that role to hold EXECUTE
--- on it — revoking it, as an earlier version of this comment/migration
--- suggested, breaks the moves INSERT policy outright). Since EXECUTE
--- can't be restricted, the function itself is restricted instead: a
--- direct call can only ever answer "am I a participant", never probe
--- membership for an arbitrary other user.
-create or replace function public.is_game_participant(p_game_id uuid)
-returns boolean
-language sql
-security definer
-set search_path = ''
-stable
-as $$
-    select exists (
-        select 1 from public.games
-        where id = p_game_id
-        and (white_player_id = auth.uid() or black_player_id = auth.uid())
-    );
-$$;
-
--- Persists a client-already-validated move: inserts the moves row and
--- updates games' live state (fen/turn/clocks) in the same transaction.
--- This is *not* server-side move legality validation — the client (via
--- chess.js) is still the only thing checking the move is legal, exactly
--- as before #12; real server-side validation is #13's job, on a separate
--- branch. This exists purely because #12's tightened SELECT RLS on games
--- means a participant's own direct UPDATE against an *active* game can no
--- longer even locate the row: Postgres requires a row to pass the table's
--- SELECT policy before UPDATE can see it (independent of the UPDATE
--- policy's own USING clause), and games' SELECT policy now denies
--- 'active' rows to everyone but this security-definer path. A useful side
--- effect: the moves-insert and games-update below, previously two
--- separate non-transactional client calls, are now atomic.
---
--- Bypassing RLS this way makes this function the only remaining gate on
--- active-game writes, so — short of real move legality, still #13's job —
--- it checks what's cheap and unambiguous: the game must actually be
--- active, and it must actually be this caller's turn. Clock values are
--- clamped to a non-negative integer rather than trusted as-is. The next
--- current_turn is derived from the row read above, not accepted as a
--- parameter — a client could otherwise keep passing its own color back
--- and pass the turn-ownership check on every subsequent call.
-create or replace function public.submit_own_move(
-    p_game_id uuid,
-    p_move_number int,
-    p_move_text text,
-    p_fen text,
-    p_captured_piece text,
-    p_white_time_remaining numeric,
-    p_black_time_remaining numeric
-)
-returns public.moves
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_game public.games;
-    v_move public.moves;
-    v_next_turn text;
-begin
-    select * into v_game from public.games where id = p_game_id;
-
-    if v_game is null then
-        raise exception 'game not found';
-    end if;
-
-    if v_game.status <> 'active' then
-        raise exception 'game is not active';
-    end if;
-
-    if v_game.current_turn = 'white' and v_game.white_player_id <> auth.uid() then
-        raise exception 'not your turn';
-    end if;
-
-    if v_game.current_turn = 'black' and v_game.black_player_id <> auth.uid() then
-        raise exception 'not your turn';
-    end if;
-
-    v_next_turn := case when v_game.current_turn = 'white' then 'black' else 'white' end;
-
-    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
-    values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
-    returning * into v_move;
-
-    update public.games
-    set fen = p_fen,
-        current_turn = v_next_turn,
-        white_time_remaining = greatest(0, floor(p_white_time_remaining))::integer,
-        black_time_remaining = greatest(0, floor(p_black_time_remaining))::integer
-    where id = p_game_id;
-
-    return v_move;
-end;
-$$;
-
--- Ends a game a participant is resigning. Same reasoning as
--- submit_own_move: games' SELECT RLS denies 'active' rows, so a direct
--- client UPDATE transitioning status away from 'active' can no longer
--- locate the row either. This implements resignation specifically, not
+-- Ends a game a participant is resigning. #13's apply_move (also security
+-- definer) is the sole writer for real moves, but resignation is a
+-- separate concern it doesn't touch — games' SELECT RLS denies 'active'
+-- rows entirely (#12), which also blocks a direct client UPDATE from
+-- even locating the row (Postgres requires a row to pass a table's
+-- SELECT policy before UPDATE can see it, independent of the UPDATE
+-- policy's own USING clause — and games has no UPDATE policy at all now,
+-- see 05_rls.sql), so resignation needs this same security-definer
+-- escape hatch. This implements resignation specifically, not
 -- arbitrary game completion: result and winner_id are derived server-side
 -- (always 'abandoned', always the *other* participant), never accepted as
 -- parameters — a resigning client naming its own result/winner could
@@ -481,6 +377,82 @@ begin
     return new;
 end;
 $$ language plpgsql security definer set search_path = '';
+
+-- Atomically applies an already-validated move: inserts the moves row and
+-- updates games in a single transaction, so player_views' sync trigger
+-- (docs/adr/0002) never observes one write without the other. This
+-- function does NOT itself validate chess legality — that happens in the
+-- submit-move edge function via chess.js (src/lib/game/decide-move.ts's
+-- Deno counterpart), which is the only caller. It must never be callable
+-- by anon/authenticated: since this function trusts its arguments
+-- completely, a client calling it directly could write any fen it wants,
+-- bypassing chess rules entirely and defeating the entire point of having
+-- server-side validation (docs/adr/0007). See the revoke below.
+--
+-- It DOES guard against a race the edge function alone can't close: the
+-- edge function reads games.fen, decides legality against it, then calls
+-- this function — two concurrent submissions (e.g. a double-tap) can both
+-- read the same fen and both pass that decision before either commits.
+-- p_expected_fen makes the games update conditional on the position not
+-- having changed since the caller validated against it; if zero rows
+-- match, this raises rather than silently applying a move computed
+-- against a position that's no longer current. move_number is computed
+-- here from public.moves, inside this transaction, rather than trusted
+-- from a value the edge function computed from an earlier, separately-run
+-- count query — the same race would otherwise apply to it too. A unique
+-- constraint on moves(game_id, move_number) (03_moves.sql) backstops both.
+create or replace function public.apply_move(
+    p_game_id uuid,
+    p_player_id uuid,
+    p_expected_fen text,
+    p_move_text text,
+    p_new_fen text,
+    p_captured_piece text,
+    p_new_current_turn text,
+    p_is_check boolean,
+    p_status text,
+    p_result text,
+    p_winner_id uuid,
+    p_white_time_remaining int,
+    p_black_time_remaining int
+)
+returns void as $$
+declare
+    v_move_number int;
+    v_updated_rows int;
+begin
+    select count(*) + 1 into v_move_number
+    from public.moves
+    where game_id = p_game_id;
+
+    update public.games
+    set fen = p_new_fen,
+        current_turn = p_new_current_turn,
+        is_check = p_is_check,
+        status = p_status,
+        result = p_result,
+        winner_id = coalesce(p_winner_id, winner_id),
+        white_time_remaining = p_white_time_remaining,
+        black_time_remaining = p_black_time_remaining,
+        updated_at = now()
+    where id = p_game_id
+      and fen = p_expected_fen;
+
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows = 0 then
+        raise exception 'stale_precondition: games.fen no longer matches what this move was validated against';
+    end if;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, p_player_id, v_move_number, p_move_text, p_new_fen, p_captured_piece);
+end;
+$$ language plpgsql security definer set search_path = '';
+
+-- Postgres grants EXECUTE on new functions to PUBLIC by default. Revoke it
+-- and grant only to service_role (used exclusively by the submit-move edge
+-- function) — anon/authenticated must never be able to call this directly.
+revoke execute on function public.apply_move from public;
+grant execute on function public.apply_move to service_role;
 
 -- Triggers
 create trigger on_auth_user_created

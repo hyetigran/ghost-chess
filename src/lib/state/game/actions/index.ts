@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
-import { createGame, endGame, makeMove } from '~/api/server/game';
+import { createGame, endGame, submitMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
-import { GameSettings, GameState, PlayerView } from '~/types/database';
+import { GameSettings, PlayerView } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -14,15 +14,13 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       from,
       to,
       promotion,
-      gameState,
     }: {
       from: string;
       to: string;
       promotion?: string;
-      gameState: GameState;
     }) => {
       if (!userId) throw new Error('User not authenticated');
-      return makeMove(gameId, userId, gameState, from, to, promotion);
+      return submitMove(gameId, from, to, promotion);
     },
     onMutate: async (newMove) => {
       // Cancel any outgoing refetches
@@ -34,11 +32,18 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
         gameId,
       ]);
 
-      // Optimistically update to the new value. Built from the mover's own
-      // redacted_fen (never the true games.fen — this client never reads
-      // that while a game is active, per #12), which is exactly what the
-      // mover is legitimately allowed to construct: their own move against
-      // their own known pieces.
+      // Optimistically apply the move locally for a snappy UI, built from
+      // the mover's own redacted_fen (never the true games.fen — this
+      // client never reads that while a game is active, per #12), which is
+      // exactly what the mover is legitimately allowed to construct: their
+      // own move against their own known pieces. The server (submitMove
+      // above) is still the sole source of truth — if this move turns out
+      // to be illegal (including one targeting a hidden opponent piece,
+      // which this client can't know about), onError rolls this back and
+      // the server's rejection is the real answer. Clocks aren't touched
+      // here: submitMove doesn't take a client-computed gameState (ADR-0001
+      // — the server owns clock computation entirely), so onSettled's
+      // refetch is what picks up the real values.
       if (previousGame) {
         try {
           const chess = new Chess(previousGame.redacted_fen);
@@ -53,8 +58,6 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
             redacted_fen: chess.fen(),
             current_turn:
               previousGame.current_turn === 'white' ? 'black' : 'white',
-            white_time_remaining: newMove.gameState.white_time_remaining,
-            black_time_remaining: newMove.gameState.black_time_remaining,
           } satisfies PlayerView);
         } catch {
           // chess.js throws on an illegal move (e.g. one targeting a
@@ -70,6 +73,11 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       if (context?.previousGame) {
         queryClient.setQueryData(['game', gameId], context.previousGame);
       }
+      // Not surfaced in the UI yet (no toast/notification system exists) —
+      // logged so a rejection isn't completely silent. `err.code` is
+      // deliberately generic ("illegal_move") for anything board-related,
+      // per ADR-0007; this is a debugging aid, not user-facing copy.
+      console.warn('move rejected:', err instanceof Error ? err.message : err);
     },
     onSettled: () => {
       // Refetch the game to ensure we have the latest data

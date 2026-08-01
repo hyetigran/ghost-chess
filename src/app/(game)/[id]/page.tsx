@@ -12,10 +12,6 @@ import { gameQueries } from '~/lib/state/game/queries';
 import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useAuth } from '~/context/auth-context';
-import { Chess } from 'chess.js';
-
-// Create a single chess instance for move validation
-const chess = new Chess();
 
 export default function GameScreen() {
   const { id: gameId } = useLocalSearchParams<{ id: string }>();
@@ -90,18 +86,11 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
-            const gameState = {
-              chess,
-              lastMoveTime: Date.now(),
-              white_time_remaining: game.white_time_remaining,
-              black_time_remaining: game.black_time_remaining,
-            };
-
-            makeMove.mutate({
-              from,
-              to,
-              gameState,
-            });
+            // ChessBoard doesn't have a promotion-piece picker yet (a
+            // separate UI feature) — default to auto-queen, the standard
+            // convention when no picker is available, rather than let
+            // every promotion attempt fail as an unexplained illegal move.
+            makeMove.mutate({ from, to, promotion: 'q' });
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
         />

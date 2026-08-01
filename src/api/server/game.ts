@@ -2,13 +2,7 @@ import { Chess } from 'chess.js';
 import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
 import { gameSchema, moveSchema, playerViewSchema } from '~/types/database';
-import type {
-  Game,
-  GameSettings,
-  Move,
-  GameState,
-  PlayerView,
-} from '~/types/database';
+import type { Game, GameSettings, Move, PlayerView } from '~/types/database';
 
 /**
  * Create a new game
@@ -45,76 +39,62 @@ export async function createGame(
 }
 
 /**
- * Get game state
+ * The uniform code returned for every illegal-move reason (ADR-0007,
+ * including a nonexistent gameId — a distinct "not found" response would
+ * confirm which game IDs are real before any board-related check runs) is
+ * "illegal_move". "unauthorized" and "rate_limited" are allowed to differ
+ * since neither discloses anything about hidden game state.
  */
-export async function getGameState(gameId: string): Promise<GameState> {
-  const { data, error } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
+export type SubmitMoveErrorCode =
+  | 'illegal_move'
+  | 'unauthorized'
+  | 'rate_limited'
+  | 'internal_error';
 
-  if (error) throw error;
+export type SubmitMoveError = Error & { code: SubmitMoveErrorCode };
 
-  const game = gameSchema.parse(data);
-  return {
-    chess: new Chess(game.fen),
-    lastMoveTime: Date.now(),
-    white_time_remaining: game.white_time_remaining,
-    black_time_remaining: game.black_time_remaining,
-  };
+function submitMoveError(code: SubmitMoveErrorCode): SubmitMoveError {
+  return Object.assign(new Error(code), { code });
 }
 
 /**
- * Make a move
+ * Submit a move for server-side validation (ADR-0001, ADR-0007). This is
+ * the only path that ever writes to games/moves — there is no client-side
+ * legality check and no separate pre-flight endpoint; the move is either
+ * accepted or rejected in this one call. The true resulting state is
+ * deliberately not returned here (ADR-0001) — callers should read the new
+ * state from player_views, not from this response.
  */
-export async function makeMove(
+export async function submitMove(
   gameId: string,
-  playerId: string,
-  gameState: GameState,
   from: string,
   to: string,
   promotion?: string,
-): Promise<Move> {
-  const move = gameState.chess.move({ from, to, promotion });
-  if (!move) {
-    throw new Error('Invalid move');
-  }
-
-  // Moves are always inserted, and games always updated, while the game is
-  // 'active' — and games'/moves' SELECT RLS denies active-game rows (#12).
-  // Since Postgres requires a row to pass the table's SELECT policy before
-  // UPDATE can even see it (and moves' INSERT policy needs to read games to
-  // check participancy), neither a direct .insert() nor a direct .update()
-  // can reach these rows anymore. submit_own_move is a security-definer RPC
-  // that does both writes atomically after checking participancy itself.
-  //
-  // gameState.chess.move() above already advanced the internal turn, so
-  // chess.turn() here is the side to move *next* — the elapsed time is
-  // charged to the opposite side, the one who actually just moved. The
-  // next current_turn itself is derived server-side from the game's own
-  // stored turn, not accepted as a parameter here — see submit_own_move's
-  // doc comment for why (a client could otherwise keep the turn pinned to
-  // itself and bypass the RPC's turn-ownership check on every subsequent
-  // call).
-  const moverWasWhite = gameState.chess.turn() === 'b';
-  const elapsedSeconds = (Date.now() - gameState.lastMoveTime) / 1000;
-  const { data, error } = await supabase.rpc('submit_own_move', {
-    p_game_id: gameId,
-    p_move_number: gameState.chess.history().length,
-    p_move_text: move.san,
-    p_fen: gameState.chess.fen(),
-    p_captured_piece: move.captured ?? null,
-    p_white_time_remaining: moverWasWhite
-      ? gameState.white_time_remaining - elapsedSeconds
-      : gameState.white_time_remaining,
-    p_black_time_remaining: moverWasWhite
-      ? gameState.black_time_remaining
-      : gameState.black_time_remaining - elapsedSeconds,
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('submit-move', {
+    body: { gameId, from, to, promotion },
   });
 
-  if (error) throw error;
-  return moveSchema.parse(data);
+  if (!error) return;
+
+  let code: SubmitMoveErrorCode = 'internal_error';
+  const context = (error as { context?: Response }).context;
+  if (context) {
+    try {
+      const body = (await context.json()) as { error?: string };
+      if (
+        body.error === 'illegal_move' ||
+        body.error === 'unauthorized' ||
+        body.error === 'rate_limited'
+      ) {
+        code = body.error;
+      }
+    } catch {
+      // Response body wasn't JSON — fall through to internal_error.
+    }
+  }
+
+  throw submitMoveError(code);
 }
 
 /**
@@ -137,9 +117,11 @@ export async function getGameMoves(gameId: string): Promise<Move[]> {
  * comment for why nothing about the outcome is accepted from the client.
  */
 export async function endGame(gameId: string): Promise<Game> {
-  // Resignation always targets a currently-'active' game — same RLS
-  // conflict as makeMove above, so this goes through the equivalent
-  // security-definer RPC rather than a direct .update() (#12).
+  // Resignation always targets a currently-'active' game, and games' SELECT
+  // RLS denies active rows entirely (#12) — which also gates UPDATE, since
+  // Postgres requires a row to pass a table's SELECT policy before UPDATE
+  // can see it. So this goes through a security-definer RPC rather than a
+  // direct .update().
   const { data, error } = await supabase.rpc('end_own_game', {
     p_game_id: gameId,
   });

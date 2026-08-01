@@ -3,6 +3,7 @@ alter table "public"."users" enable row level security;
 alter table "public"."games" enable row level security;
 alter table "public"."moves" enable row level security;
 alter table "public"."player_views" enable row level security;
+alter table "public"."move_attempts" enable row level security;
 
 -- User policies
 create policy "Users can view their own data" on public.users
@@ -31,8 +32,16 @@ create policy "Users can create games" on public.games
     for insert to authenticated
     with check (auth.uid() = white_player_id or auth.uid() = black_player_id);
 
-create policy "Users can update their own games" on public.games
-    for update using (auth.uid() = white_player_id or auth.uid() = black_player_id);
+-- No UPDATE policy: with RLS enabled and no policy for a command, Postgres
+-- denies it outright, which is exactly right now that #13's apply_move and
+-- #12's end_own_game (both security definer, bypassing RLS themselves) are
+-- the only two ways games ever gets written to after creation. A prior
+-- "participant can update their own games" policy existed here, but once
+-- neither of those RPCs relies on it (they don't — security definer
+-- functions bypass RLS regardless of policy), its only remaining effect
+-- was letting a client rewrite fen/status/result/winner_id/clocks directly
+-- via a raw REST call, with no validation at all — a full bypass of #13's
+-- entire server-side validation model, not just a leak.
 
 -- Move policies
 -- Same reasoning as games above: moves.fen holds the true position after
@@ -50,14 +59,14 @@ create policy "Users can view moves in their non-active games" on public.moves
         )
     );
 
--- Uses is_game_participant() rather than a raw EXISTS against games: a
--- move is always inserted while its game is 'active', and a plain
--- subquery here would be silently gated by games' own SELECT RLS (which
--- denies 'active' rows to participants, #12), making every real insert
--- fail. See that function's comment in 06_functions.sql.
-create policy "Users can insert moves in their games" on public.moves
-    for insert to authenticated
-    with check (public.is_game_participant(moves.game_id));
+-- No INSERT policy: same reasoning as games' missing UPDATE policy above.
+-- apply_move (#13) is the only legitimate writer, is security definer, and
+-- is locked to service_role — it needs no RLS grant at all. A prior
+-- participant-scoped INSERT policy existed here (from #12, before #13's
+-- validated write path existed), but its only remaining effect once
+-- apply_move exists would be letting a client insert an arbitrary,
+-- unvalidated move row directly via REST — a bypass of chess-legality
+-- checking entirely, not just a leak.
 
 -- Player view policies
 -- No insert/update/delete policy: rows are written only by the
@@ -74,3 +83,15 @@ revoke all on table "public"."player_views" from "anon";
 revoke all on table "public"."player_views" from "authenticated";
 grant select on table "public"."player_views" to "anon";
 grant select on table "public"."player_views" to "authenticated";
+
+-- move_attempts has no policies at all: clients get zero access (not even
+-- select), only the submit-move edge function via the service role writes
+-- here. Same default-privilege revoke as player_views, but without
+-- re-granting select afterward.
+revoke all on table "public"."move_attempts" from "anon";
+revoke all on table "public"."move_attempts" from "authenticated";
+
+-- service_role's default privileges on a postgres-owned table are also
+-- limited (DELETE/REFERENCES/TRIGGER only, no SELECT/INSERT) — the
+-- submit-move edge function needs both to log and count attempts.
+grant select, insert on table "public"."move_attempts" to "service_role";

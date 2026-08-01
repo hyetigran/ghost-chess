@@ -19,3 +19,6 @@ create index "idx_moves_game_move_number" on public.moves using btree ("game_id"
 
 -- Player view indexes
 create index "idx_player_views_player" on public.player_views using btree ("player_id");
+
+-- Move attempt indexes (rate limiting)
+create index "idx_move_attempts_player_created_at" on public.move_attempts using btree ("player_id", "created_at");

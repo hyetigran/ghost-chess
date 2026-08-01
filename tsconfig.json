@@ -18,7 +18,8 @@
     "docs",
     "cli",
     "android",
-    "ios"
+    "ios",
+    "supabase/functions"
   ],
   "include": [
     "**/*.ts",
