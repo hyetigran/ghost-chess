@@ -1,42 +1,35 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import { Text } from '~/components/ui/text';
+import { pieceSymbol } from '~/lib/game/piece-symbol';
 
 type Props = {
-  whitePieces: string[];
-  blackPieces: string[];
+  /** Piece types white has captured — always black's pieces. */
+  capturedByWhite: string[];
+  /** Piece types black has captured — always white's pieces. */
+  capturedByBlack: string[];
 };
 
-export function CapturedPieces({ whitePieces, blackPieces }: Props) {
+export function CapturedPieces({
+  capturedByWhite,
+  capturedByBlack,
+}: Props): React.JSX.Element {
   return (
     <View className='flex-row justify-between p-4'>
       <View className='flex-row gap-1'>
-        {whitePieces.map((piece, index) => (
+        {capturedByWhite.map((type, index) => (
           <Text key={`white-${index}`} className='text-2xl'>
-            {getPieceSymbol(piece)}
+            {pieceSymbol({ type, color: 'b' })}
           </Text>
         ))}
       </View>
       <View className='flex-row gap-1'>
-        {blackPieces.map((piece, index) => (
+        {capturedByBlack.map((type, index) => (
           <Text key={`black-${index}`} className='text-2xl'>
-            {getPieceSymbol(piece)}
+            {pieceSymbol({ type, color: 'w' })}
           </Text>
         ))}
       </View>
     </View>
   );
-}
-
-function getPieceSymbol(piece: string) {
-  const symbols = {
-    P: '♟',
-    N: '♞',
-    B: '♝',
-    R: '♜',
-    Q: '♛',
-    K: '♚',
-  };
-
-  return symbols[piece as keyof typeof symbols] || piece;
 }
