@@ -2,6 +2,8 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { Button, Text } from '~/components/ui';
+import { gameRoute } from '~/lib/navigation/game-route';
+import { isViewersTurn } from '~/lib/game/viewer-turn';
 import type { ActiveGame } from '~/types/database';
 
 type Props = {
@@ -21,16 +23,18 @@ export function ActiveGamesList({ games, viewerId }: Props): React.JSX.Element {
   return (
     <View className='gap-2'>
       {games.map((game) => {
-        const viewerColor = game.white_player_id === viewerId ? 'white' : 'black';
-        const isYourTurn = game.current_turn === viewerColor;
+        const isYourTurn = isViewersTurn(
+          game.current_turn,
+          game.white_player_id,
+          viewerId,
+        );
 
         return (
-          <Link
-            key={game.game_id}
-            href={{ pathname: '/(game)/[id]/page', params: { id: game.game_id } }}
-            asChild
-          >
-            <Button variant={isYourTurn ? 'default' : 'outline'} className='justify-between'>
+          <Link key={game.game_id} href={gameRoute(game.game_id)} asChild>
+            <Button
+              variant={isYourTurn ? 'default' : 'outline'}
+              className='justify-between'
+            >
               <Text>{isYourTurn ? 'Your turn' : "Opponent's turn"}</Text>
             </Button>
           </Link>

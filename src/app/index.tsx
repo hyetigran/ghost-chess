@@ -10,6 +10,7 @@ import {
   Button,
   Text,
 } from '~/components/ui';
+import { HomeSection } from '~/components/home/home-section';
 import { StatsSummary } from '~/components/home/stats-summary';
 import { ActiveGamesList } from '~/components/home/active-games-list';
 import { RecentGamesList } from '~/components/home/recent-games-list';
@@ -55,41 +56,26 @@ export default function HomeScreen() {
       </Card>
 
       {stats && (
-        <Card className='w-full mb-5 rounded-2xl'>
-          <CardHeader>
-            <CardTitle>Stats</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatsSummary
-              wins={stats.wins}
-              losses={stats.losses}
-              draws={stats.draws}
-              eloRating={stats.elo_rating}
-            />
-          </CardContent>
-        </Card>
+        <HomeSection title='Stats'>
+          <StatsSummary
+            wins={stats.wins}
+            losses={stats.losses}
+            draws={stats.draws}
+            eloRating={stats.elo_rating}
+          />
+        </HomeSection>
       )}
 
       {userId && (
-        <Card className='w-full mb-5 rounded-2xl'>
-          <CardHeader>
-            <CardTitle>Active games</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
-          </CardContent>
-        </Card>
+        <HomeSection title='Active games'>
+          <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
+        </HomeSection>
       )}
 
       {userId && (
-        <Card className='w-full mb-5 rounded-2xl'>
-          <CardHeader>
-            <CardTitle>Recent games</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RecentGamesList games={history ?? []} viewerId={userId} />
-          </CardContent>
-        </Card>
+        <HomeSection title='Recent games'>
+          <RecentGamesList games={history ?? []} viewerId={userId} />
+        </HomeSection>
       )}
     </ScrollView>
   );

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { Button, Text } from '~/components/ui';
 import { describeGameResult } from '~/lib/game/game-result-text';
+import { gameRoute } from '~/lib/navigation/game-route';
 import type { GameHistory } from '~/types/database';
 
 type Props = {
@@ -22,11 +23,7 @@ export function RecentGamesList({ games, viewerId }: Props): React.JSX.Element {
   return (
     <View className='gap-2'>
       {games.map((game) => (
-        <Link
-          key={game.id}
-          href={{ pathname: '/(game)/[id]/page', params: { id: game.id } }}
-          asChild
-        >
+        <Link key={game.id} href={gameRoute(game.id)} asChild>
           <Button variant='outline' className='justify-between'>
             <Text>
               {describeGameResult(game.result, game.winner_id, viewerId)}
