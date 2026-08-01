@@ -112,10 +112,30 @@ describe('decideMove', () => {
   });
 
   it('a rejection is identical in shape regardless of which of the above reasons caused it', () => {
-    const illegalMove = decideMove(baseGame(), WHITE_ID, { from: 'e2', to: 'e5' }, { now: 1000 });
-    const notParticipant = decideMove(baseGame(), OUTSIDER_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
-    const notYourTurn = decideMove(baseGame(), BLACK_ID, { from: 'e7', to: 'e5' }, { now: 1000 });
-    const inactiveGame = decideMove(baseGame({ status: 'waiting' }), WHITE_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
+    const illegalMove = decideMove(
+      baseGame(),
+      WHITE_ID,
+      { from: 'e2', to: 'e5' },
+      { now: 1000 },
+    );
+    const notParticipant = decideMove(
+      baseGame(),
+      OUTSIDER_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
+    const notYourTurn = decideMove(
+      baseGame(),
+      BLACK_ID,
+      { from: 'e7', to: 'e5' },
+      { now: 1000 },
+    );
+    const inactiveGame = decideMove(
+      baseGame({ status: 'waiting' }),
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
 
     expect(illegalMove).toEqual(notParticipant);
     expect(notParticipant).toEqual(notYourTurn);
@@ -129,7 +149,12 @@ describe('decideMove', () => {
       black_player_id: BLACK_ID,
     });
 
-    const outcome = decideMove(game, WHITE_ID, { from: 'a1', to: 'a8' }, { now: 1000 });
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'a1', to: 'a8' },
+      { now: 1000 },
+    );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
@@ -144,7 +169,12 @@ describe('decideMove', () => {
       fen: 'k7/8/1K6/8/8/8/8/7Q w - - 0 1',
     });
 
-    const outcome = decideMove(game, WHITE_ID, { from: 'h1', to: 'h2' }, { now: 1000 });
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'h1', to: 'h2' },
+      { now: 1000 },
+    );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
@@ -164,7 +194,12 @@ describe('decideMove', () => {
       moveHistory: ['Nf3', 'Nf6', 'Ng1', 'Ng8', 'Nf3', 'Nf6', 'Ng1'],
     });
 
-    const outcome = decideMove(game, BLACK_ID, { from: 'f6', to: 'g8' }, { now: 1000 });
+    const outcome = decideMove(
+      game,
+      BLACK_ID,
+      { from: 'f6', to: 'g8' },
+      { now: 1000 },
+    );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
@@ -179,7 +214,12 @@ describe('decideMove', () => {
     // baseGame(), but with an empty moveHistory it must not be treated as
     // a repeated position.
     const game = baseGame(); // start position, empty moveHistory
-    const outcome = decideMove(game, WHITE_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
@@ -191,7 +231,12 @@ describe('decideMove', () => {
       fen: '4k3/8/8/8/4b3/3K4/8/8 w - - 0 1',
     });
 
-    const outcome = decideMove(game, WHITE_ID, { from: 'd3', to: 'e4' }, { now: 1000 });
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'd3', to: 'e4' },
+      { now: 1000 },
+    );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
@@ -217,7 +262,7 @@ describe('decideMove', () => {
     expect(outcome.legal).toBe(true);
   });
 
-  it('rejects a move once the mover\'s deadline has lapsed, even though it would otherwise be legal', () => {
+  it("rejects a move once the mover's deadline has lapsed, even though it would otherwise be legal", () => {
     const turnStarted = new Date('2026-01-01T00:00:00.000Z').getTime();
     const game = baseGame({
       updated_at: new Date(turnStarted).toISOString(),
@@ -269,5 +314,54 @@ describe('decideMove', () => {
       { now: 1000 },
     );
     expect(outcome).toEqual({ legal: false });
+  });
+
+  // #30's "smoke test for critical flows" — every other test above calls
+  // decideMove once against a hand-built fixture. This instead feeds each
+  // move's own output (newFen, newCurrentTurn, moveText accumulated into
+  // moveHistory) into the next call, the same way a real game actually
+  // progresses move-by-move through this function — closer to what would
+  // catch a real end-to-end regression than isolated single-call fixtures.
+  it('plays a full game through to checkmate move by move, each move built from the previous outcome', () => {
+    // Scholar's mate: 1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6?? 4. Qxf7#
+    const moves: { from: string; to: string; color: string }[] = [
+      { from: 'e2', to: 'e4', color: WHITE_ID },
+      { from: 'e7', to: 'e5', color: BLACK_ID },
+      { from: 'd1', to: 'h5', color: WHITE_ID },
+      { from: 'b8', to: 'c6', color: BLACK_ID },
+      { from: 'f1', to: 'c4', color: WHITE_ID },
+      { from: 'g8', to: 'f6', color: BLACK_ID },
+      { from: 'h5', to: 'f7', color: WHITE_ID },
+    ];
+
+    let game = baseGame();
+    let lastOutcome: ReturnType<typeof decideMove> | null = null;
+
+    for (const move of moves) {
+      const outcome = decideMove(
+        game,
+        move.color,
+        { from: move.from, to: move.to },
+        { now: 1000 },
+      );
+
+      expect(outcome.legal).toBe(true);
+      if (!outcome.legal)
+        throw new Error(`expected ${move.from}-${move.to} to be legal`);
+
+      lastOutcome = outcome;
+      game = {
+        ...game,
+        fen: outcome.newFen,
+        current_turn: outcome.newCurrentTurn,
+        status: outcome.status,
+        moveHistory: [...game.moveHistory, outcome.moveText],
+      };
+    }
+
+    expect(lastOutcome?.status).toBe('completed');
+    expect(lastOutcome?.result).toBe('checkmate');
+    expect(lastOutcome?.winnerId).toBe(WHITE_ID);
+    expect(lastOutcome?.moveText).toBe('Qxf7#');
   });
 });

@@ -12,10 +12,15 @@
 
 name: Tests (jest)
 
-# Disabled while in development: this workflow calls `pnpm run test:ci`,
-# a script that doesn't exist in package.json yet (only `test` does).
-# Re-enable (restore the push/pull_request triggers below) once a
-# test:ci script is added.
+# `test:ci` now exists (#30) and has been verified locally to produce all
+# three artifacts this job's coverage-comment step reads
+# (coverage-summary.json, jest-junit.xml, coverage.txt) — the original
+# blocker for auto-triggering is resolved. Still left as manual-dispatch
+# only, matching every other CI workflow in this repo (type-check.yml
+# included) being workflow_dispatch-only right now — flipping that
+# repo-wide manual-CI stance is a call for whoever owns that decision,
+# not something to change as a side effect of adding this script. Restore
+# the push/pull_request triggers below when ready.
 on:
   workflow_dispatch:
 
