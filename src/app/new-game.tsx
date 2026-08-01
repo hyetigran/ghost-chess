@@ -9,16 +9,22 @@ import {
   Text,
   Button,
 } from '~/components/ui';
+import { timeControlLabel } from '~/lib/game/time-control-label';
 import { useCreateGame } from '~/lib/state/game/actions';
+import type { GameSettings } from '~/types/database';
+
+const TIME_CONTROL_OPTIONS: GameSettings['timeControlHours'][] = [1, 12, 24];
 
 export default function NewGameScreen() {
   const { mutate: createGame, isPending } = useCreateGame();
+  const [timeControlHours, setTimeControlHours] =
+    React.useState<GameSettings['timeControlHours']>(24);
 
   const handleCreateGame = () => {
     createGame(
       {
         settings: {
-          timeControlHours: 24,
+          timeControlHours,
           isPrivate: false,
           allowTakebacks: false,
         },
@@ -46,6 +52,25 @@ export default function NewGameScreen() {
           <Text className='text-center text-muted-foreground'>
             Create a new chess game and invite your friends
           </Text>
+
+          <View className='gap-2'>
+            <Text className='text-sm text-muted-foreground'>
+              {timeControlLabel(timeControlHours)}
+            </Text>
+            <View className='flex-row gap-2'>
+              {TIME_CONTROL_OPTIONS.map((hours) => (
+                <Button
+                  key={hours}
+                  variant={timeControlHours === hours ? 'default' : 'outline'}
+                  className='flex-1'
+                  onPress={() => setTimeControlHours(hours)}
+                >
+                  <Text>{hours}h</Text>
+                </Button>
+              ))}
+            </View>
+          </View>
+
           <Button disabled={isPending} onPress={handleCreateGame}>
             <Text>Create Game</Text>
           </Button>

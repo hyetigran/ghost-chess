@@ -1,16 +1,22 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useState, useEffect, useContext } from 'react';
-
-const MOVE_CONFIRMATION_KEY = 'settings.moveConfirmationEnabled';
+import React, { createContext, useContext } from 'react';
+import { usePersistedBoolean } from '~/lib/hooks/use-persisted-boolean';
 
 type SettingsContextType = {
   moveConfirmationEnabled: boolean;
   setMoveConfirmationEnabled: (enabled: boolean) => void;
+  soundEnabled: boolean;
+  setSoundEnabled: (enabled: boolean) => void;
+  vibrationEnabled: boolean;
+  setVibrationEnabled: (enabled: boolean) => void;
 };
 
 const SettingsContext = createContext<SettingsContextType>({
   moveConfirmationEnabled: false,
   setMoveConfirmationEnabled: () => {},
+  soundEnabled: true,
+  setSoundEnabled: () => {},
+  vibrationEnabled: true,
+  setVibrationEnabled: () => {},
 });
 
 export function SettingsProvider({
@@ -18,23 +24,27 @@ export function SettingsProvider({
 }: {
   children: React.ReactNode;
 }): React.JSX.Element {
-  const [moveConfirmationEnabled, setMoveConfirmationEnabledState] =
-    useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(MOVE_CONFIRMATION_KEY).then((value) => {
-      if (value !== null) setMoveConfirmationEnabledState(value === 'true');
-    });
-  }, []);
-
-  const setMoveConfirmationEnabled = (enabled: boolean): void => {
-    setMoveConfirmationEnabledState(enabled);
-    AsyncStorage.setItem(MOVE_CONFIRMATION_KEY, String(enabled));
-  };
+  const [moveConfirmationEnabled, setMoveConfirmationEnabled] =
+    usePersistedBoolean('settings.moveConfirmationEnabled', false);
+  const [soundEnabled, setSoundEnabled] = usePersistedBoolean(
+    'settings.soundEnabled',
+    true,
+  );
+  const [vibrationEnabled, setVibrationEnabled] = usePersistedBoolean(
+    'settings.vibrationEnabled',
+    true,
+  );
 
   return (
     <SettingsContext.Provider
-      value={{ moveConfirmationEnabled, setMoveConfirmationEnabled }}
+      value={{
+        moveConfirmationEnabled,
+        setMoveConfirmationEnabled,
+        soundEnabled,
+        setSoundEnabled,
+        vibrationEnabled,
+        setVibrationEnabled,
+      }}
     >
       {children}
     </SettingsContext.Provider>
