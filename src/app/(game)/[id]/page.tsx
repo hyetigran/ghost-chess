@@ -112,6 +112,7 @@ export default function GameScreen() {
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
           flashSquare={flashSquare}
+          interactive={game.status === 'active'}
         />
 
         {/* Captured pieces */}
