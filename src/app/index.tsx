@@ -33,6 +33,11 @@ export default function HomeScreen() {
               </Button>
             </Link>
           </View>
+          <Link href='/settings' asChild>
+            <Button variant='ghost'>
+              <Text>Settings</Text>
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </View>

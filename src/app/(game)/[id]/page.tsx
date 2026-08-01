@@ -1,12 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
-import { View } from 'react-native';
+import { View, Vibration } from 'react-native';
 import { type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { GameControls } from '~/components/game/controls/game-controls';
-import { MoveConfirmationToggle } from '~/components/game/controls/move-confirmation-toggle';
 import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-move-dialog';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
@@ -39,8 +38,7 @@ export default function GameScreen() {
     game,
     game?.white_player_id === userId ? 'white' : 'black',
   );
-  const { moveConfirmationEnabled, setMoveConfirmationEnabled } =
-    useSettings();
+  const { moveConfirmationEnabled, vibrationEnabled } = useSettings();
   const { pendingMove, attemptMove, confirm, cancel } = useMoveConfirmation(
     moveConfirmationEnabled,
     (move) => {
@@ -57,6 +55,10 @@ export default function GameScreen() {
       setShowGameOver(true);
     }
   }, [game?.status]);
+
+  React.useEffect(() => {
+    if (flashSquare && vibrationEnabled) Vibration.vibrate();
+  }, [flashSquare, vibrationEnabled]);
 
   if (isLoading) {
     return (
@@ -154,11 +156,6 @@ export default function GameScreen() {
             // Implement draw offer
           }}
           isYourTurn={isYourTurn}
-        />
-
-        <MoveConfirmationToggle
-          enabled={moveConfirmationEnabled}
-          onToggle={setMoveConfirmationEnabled}
         />
       </View>
 
