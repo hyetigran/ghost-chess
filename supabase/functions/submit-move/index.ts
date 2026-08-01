@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
     console.error('failed to log move attempt:', attemptLogError.message);
   }
 
-  const { data: game, error: gameError } = await adminClient
+  const { data: game } = await adminClient
     .from('games')
     .select(
       'id, fen, current_turn, status, white_player_id, black_player_id, updated_at, white_time_remaining, black_time_remaining',
@@ -135,21 +135,24 @@ Deno.serve(async (req: Request) => {
     .eq('id', body.gameId)
     .maybeSingle<GameRow>();
 
-  if (gameError || !game) {
-    return new Response(JSON.stringify({ error: 'not_found' }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const callerColor: 'white' | 'black' | null =
-    game.white_player_id === user.id
+  // A nonexistent gameId is folded into the same uniform illegal-move
+  // response rather than a distinct 404: a 404 returned before any
+  // chess.js/participant work would confirm which game IDs are real,
+  // which is a disclosure ADR-0007 doesn't carve out an exception for
+  // (unlike auth/rate-limit, this is about the game itself, not just
+  // request-level bookkeeping). Falling back to the starting position
+  // keeps the chess.js call — and therefore the timing profile — the same
+  // shape as the real-game path; `legal` still forces false via `!game`.
+  const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const callerColor: 'white' | 'black' | null = game
+    ? game.white_player_id === user.id
       ? 'white'
       : game.black_player_id === user.id
         ? 'black'
-        : null;
+        : null
+    : null;
 
-  const chess = new Chess(game.fen);
+  const chess = new Chess(game?.fen ?? START_FEN);
   // deno-lint-ignore no-explicit-any
   let moveResult: any = null;
   try {
@@ -163,12 +166,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const legal =
+    game !== null &&
+    game !== undefined &&
     game.status === 'active' &&
     callerColor !== null &&
     callerColor === game.current_turn &&
     moveResult !== null;
 
-  if (!legal || !callerColor) {
+  if (!legal || !callerColor || !game) {
     return ILLEGAL_MOVE_RESPONSE;
   }
 

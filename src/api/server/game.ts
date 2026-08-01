@@ -39,24 +39,22 @@ export async function createGame(
 }
 
 /**
- * The uniform code returned for every illegal-move reason (ADR-0007) is
- * "illegal_move" — this type also includes the non-board-related failure
- * modes (auth, rate limiting, not found), which are allowed to differ
- * since they don't disclose anything about hidden game state.
+ * The uniform code returned for every illegal-move reason (ADR-0007,
+ * including a nonexistent gameId — a distinct "not found" response would
+ * confirm which game IDs are real before any board-related check runs) is
+ * "illegal_move". "unauthorized" and "rate_limited" are allowed to differ
+ * since neither discloses anything about hidden game state.
  */
 export type SubmitMoveErrorCode =
   | 'illegal_move'
   | 'unauthorized'
   | 'rate_limited'
-  | 'not_found'
   | 'internal_error';
 
-export class SubmitMoveError extends Error {
-  code: SubmitMoveErrorCode;
-  constructor(code: SubmitMoveErrorCode) {
-    super(code);
-    this.code = code;
-  }
+export type SubmitMoveError = Error & { code: SubmitMoveErrorCode };
+
+function submitMoveError(code: SubmitMoveErrorCode): SubmitMoveError {
+  return Object.assign(new Error(code), { code });
 }
 
 /**
@@ -87,8 +85,7 @@ export async function submitMove(
       if (
         body.error === 'illegal_move' ||
         body.error === 'unauthorized' ||
-        body.error === 'rate_limited' ||
-        body.error === 'not_found'
+        body.error === 'rate_limited'
       ) {
         code = body.error;
       }
@@ -97,7 +94,7 @@ export async function submitMove(
     }
   }
 
-  throw new SubmitMoveError(code);
+  throw submitMoveError(code);
 }
 
 /**
