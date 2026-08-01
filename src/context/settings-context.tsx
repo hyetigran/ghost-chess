@@ -13,7 +13,11 @@ const SettingsContext = createContext<SettingsContextType>({
   setMoveConfirmationEnabled: () => {},
 });
 
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
+export function SettingsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.JSX.Element {
   const [moveConfirmationEnabled, setMoveConfirmationEnabledState] =
     useState(false);
 
@@ -23,7 +27,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setMoveConfirmationEnabled = (enabled: boolean) => {
+  const setMoveConfirmationEnabled = (enabled: boolean): void => {
     setMoveConfirmationEnabledState(enabled);
     AsyncStorage.setItem(MOVE_CONFIRMATION_KEY, String(enabled));
   };
@@ -37,4 +41,5 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useSettings = () => useContext(SettingsContext);
+export const useSettings = (): SettingsContextType =>
+  useContext(SettingsContext);

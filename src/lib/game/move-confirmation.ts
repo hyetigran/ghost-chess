@@ -23,14 +23,11 @@ export function reduceMoveConfirmation(
 ): MoveConfirmationResult {
   switch (event.type) {
     case 'attempt':
-      if (!event.confirmationEnabled) {
+      if (!event.confirmationEnabled)
         return { state: { pending: null }, toSubmit: event.move };
-      }
       return { state: { pending: event.move }, toSubmit: null };
     case 'confirm':
-      if (!state.pending) {
-        return { state, toSubmit: null };
-      }
+      if (!state.pending) return { state, toSubmit: null };
       return { state: { pending: null }, toSubmit: state.pending };
     case 'cancel':
       return { state: { pending: null }, toSubmit: null };
