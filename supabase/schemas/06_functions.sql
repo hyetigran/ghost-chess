@@ -1,4 +1,17 @@
 -- User creation function
+--
+-- username falls back to a generated guest handle when signup metadata
+-- doesn't provide one — which is every signup today, since the only
+-- signup path this app actually has is Anonymous Auth (ADR-0005,
+-- src/api/auth/index.ts's signInAnonymously), and its metadata carries
+-- device_id, not username. Without the fallback, this insert violates
+-- users.username's NOT NULL constraint, which — since this function runs
+-- from a trigger in the same transaction as the auth.users insert —
+-- rolls back the whole signup, not just the public.users row (#32). The
+-- fallback is derived from new.id (globally unique, guaranteed by
+-- auth.users' own primary key), so it can't collide with
+-- users.username's UNIQUE constraint the way a counter or short random
+-- suffix could.
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -9,7 +22,7 @@ begin
     )
     values (
         new.id,
-        new.raw_user_meta_data->>'username',
+        coalesce(new.raw_user_meta_data->>'username', 'guest_' || replace(new.id::text, '-', '')),
         new.email
     );
     return new;
