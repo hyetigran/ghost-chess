@@ -99,6 +99,10 @@ export async function getActiveGames(
 
 /**
  * Get user's game history
+ *
+ * Restricted to terminal states (completed/abandoned) — 'waiting' and
+ * 'active' games have no result yet, so describeGameResult would render
+ * a game that hasn't finished (or hasn't even started) as "Game over."
  */
 export async function getGameHistory(
   userId: string,
@@ -114,11 +118,13 @@ export async function getGameHistory(
       black_player_id,
       status,
       result,
+      winner_id,
       pgn,
       created_at
     `,
     )
     .or(`white_player_id.eq.${userId},black_player_id.eq.${userId}`)
+    .in('status', ['completed', 'abandoned'])
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
