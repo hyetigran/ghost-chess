@@ -16,3 +16,6 @@ create index "idx_moves_game" on public.moves using btree ("game_id");
 create index "idx_moves_player" on public.moves using btree ("player_id");
 create index "idx_moves_created_at" on public.moves using btree ("created_at");
 create index "idx_moves_game_move_number" on public.moves using btree ("game_id", "move_number");
+
+-- Player view indexes
+create index "idx_player_views_player" on public.player_views using btree ("player_id");

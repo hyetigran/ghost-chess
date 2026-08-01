@@ -2,6 +2,7 @@
 alter table "public"."users" enable row level security;
 alter table "public"."games" enable row level security;
 alter table "public"."moves" enable row level security;
+alter table "public"."player_views" enable row level security;
 
 -- User policies
 create policy "Users can view their own data" on public.users
@@ -40,3 +41,19 @@ create policy "Users can insert moves in their games" on public.moves
             and (games.white_player_id = auth.uid() or games.black_player_id = auth.uid())
         )
     );
+
+-- Player view policies
+-- No insert/update/delete policy: rows are written only by the
+-- sync_player_views trigger, which runs as security definer and bypasses RLS.
+-- A player may only ever read their own row, never their opponent's.
+create policy "Players can view their own player view" on public.player_views
+    for select using (auth.uid() = player_id);
+
+-- Postgres's default privileges for tables created by the postgres role
+-- auto-grant REFERENCES/TRIGGER/TRUNCATE to anon/authenticated regardless
+-- of what's explicitly granted (TRUNCATE in particular is not subject to
+-- RLS at all), so those need an explicit revoke down to select-only.
+revoke all on table "public"."player_views" from "anon";
+revoke all on table "public"."player_views" from "authenticated";
+grant select on table "public"."player_views" to "anon";
+grant select on table "public"."player_views" to "authenticated";
