@@ -28,17 +28,23 @@ revoke all on table "public"."move_attempts" from "authenticated";
 
 grant select, insert on table "public"."move_attempts" to "service_role";
 
+alter table "public"."moves" add constraint "moves_game_id_move_number_key" UNIQUE ("game_id", "move_number");
+
 set check_function_bodies = off;
 
-CREATE OR REPLACE FUNCTION public.apply_move(p_game_id uuid, p_player_id uuid, p_move_number integer, p_move_text text, p_new_fen text, p_captured_piece text, p_new_current_turn text, p_is_check boolean, p_status text, p_result text, p_winner_id uuid, p_white_time_remaining integer, p_black_time_remaining integer)
+CREATE OR REPLACE FUNCTION public.apply_move(p_game_id uuid, p_player_id uuid, p_expected_fen text, p_move_text text, p_new_fen text, p_captured_piece text, p_new_current_turn text, p_is_check boolean, p_status text, p_result text, p_winner_id uuid, p_white_time_remaining integer, p_black_time_remaining integer)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path = ''
 AS $function$
+declare
+    v_move_number int;
+    v_updated_rows int;
 begin
-    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
-    values (p_game_id, p_player_id, p_move_number, p_move_text, p_new_fen, p_captured_piece);
+    select count(*) + 1 into v_move_number
+    from public.moves
+    where game_id = p_game_id;
 
     update public.games
     set fen = p_new_fen,
@@ -50,7 +56,16 @@ begin
         white_time_remaining = p_white_time_remaining,
         black_time_remaining = p_black_time_remaining,
         updated_at = now()
-    where id = p_game_id;
+    where id = p_game_id
+      and fen = p_expected_fen;
+
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows = 0 then
+        raise exception 'stale_precondition: games.fen no longer matches what this move was validated against';
+    end if;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, p_player_id, v_move_number, p_move_text, p_new_fen, p_captured_piece);
 end;
 $function$
 ;

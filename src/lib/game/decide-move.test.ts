@@ -14,6 +14,12 @@ function baseGame(overrides: Partial<GameSnapshot> = {}): GameSnapshot {
     updated_at: new Date(1000).toISOString(),
     white_time_remaining: 600,
     black_time_remaining: 600,
+    // Empty by default: most fixtures below use a hand-constructed `fen`
+    // for a specific position (e.g. an endgame study) with no realistic
+    // move sequence reaching it, which is fine for everything except
+    // repetition — see the dedicated repetition test, which provides a
+    // real moveHistory instead of a fen override.
+    moveHistory: [],
     ...overrides,
   };
 }
@@ -146,6 +152,39 @@ describe('decideMove', () => {
     expect(outcome.status).toBe('completed');
     expect(outcome.result).toBe('stalemate');
     expect(outcome.winnerId).toBeNull();
+  });
+
+  it('detects threefold repetition as a completed draw, using replayed history rather than the bare fen', () => {
+    // Knights shuffle out and back three times, reaching the start
+    // position each time. A bare `new Chess(fen)` has no memory of the
+    // earlier two occurrences and could never detect this — only a Chess
+    // instance built by replaying the full history from move 1 can.
+    const game = baseGame({
+      fen: 'rnbqkb1r/pppppppp/5n2/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 7 4',
+      current_turn: 'black',
+      moveHistory: ['Nf3', 'Nf6', 'Ng1', 'Ng8', 'Nf3', 'Nf6', 'Ng1'],
+    });
+
+    const outcome = decideMove(game, BLACK_ID, { from: 'f6', to: 'g8' }, { now: 1000 });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.status).toBe('completed');
+    expect(outcome.result).toBe('draw');
+    expect(outcome.winnerId).toBeNull();
+  });
+
+  it('does not falsely detect repetition from a fen-only fixture with no history', () => {
+    // Sanity check for the fallback path itself: the checkmate fixture
+    // above reuses the same starting fen pattern as other tests via
+    // baseGame(), but with an empty moveHistory it must not be treated as
+    // a repeated position.
+    const game = baseGame(); // start position, empty moveHistory
+    const outcome = decideMove(game, WHITE_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.result).toBeNull();
   });
 
   it('detects insufficient-material draw as a completed draw with no winner', () => {

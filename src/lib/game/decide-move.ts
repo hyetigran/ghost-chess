@@ -14,6 +14,17 @@ export type GameSnapshot = {
   updated_at: string;
   white_time_remaining: number;
   black_time_remaining: number;
+  /**
+   * SAN move history in order, from the start of the game. Required to
+   * correctly detect threefold repetition: chess.js tracks repeated
+   * positions internally as moves are played on an instance, and has no
+   * way to recover that history from a bare FEN snapshot — constructing
+   * `new Chess(fen)` alone means isThreefoldRepetition()/isDraw() can
+   * never see a repetition that happened before the snapshot. `fen` is
+   * kept on this type for context/debugging; the Chess instance below is
+   * built by replaying this history, not by loading `fen` directly.
+   */
+  moveHistory: string[];
 };
 
 export type MoveAttempt = {
@@ -39,6 +50,36 @@ export type MoveOutcome =
     };
 
 const ILLEGAL: MoveOutcome = { legal: false };
+
+/**
+ * Reconstructs a Chess instance by replaying moveHistory from the start,
+ * so repetition-tracking is populated (see GameSnapshot.moveHistory's
+ * comment). An empty history loads `fen` directly instead: for a real
+ * game this is equivalent (zero moves played means fen is necessarily the
+ * starting position anyway), and it's what lets tests exercise a specific
+ * position directly (e.g. a constructed endgame study) without needing a
+ * move sequence that actually reaches it, for scenarios that aren't about
+ * repetition. Also falls back to `fen` if replay fails outright — that
+ * loses repetition detection for this call but keeps the function
+ * available rather than throwing on defensive, shouldn't-happen input
+ * (moveHistory is DB-sourced, written only by apply_move from moves this
+ * same decision already validated, but this isn't a hot path worth
+ * trusting blindly).
+ */
+function buildChessFromHistory(game: GameSnapshot): Chess {
+  if (game.moveHistory.length === 0) {
+    return new Chess(game.fen);
+  }
+  try {
+    const chess = new Chess();
+    for (const san of game.moveHistory) {
+      chess.move(san);
+    }
+    return chess;
+  } catch {
+    return new Chess(game.fen);
+  }
+}
 
 /**
  * The single, server-side move-validation decision per ADR-0007: given the
@@ -69,7 +110,7 @@ export function decideMove(
         ? 'black'
         : null;
 
-  const chess = new Chess(game.fen);
+  const chess = buildChessFromHistory(game);
   let moveResult: ReturnType<Chess['move']> | null;
   try {
     moveResult = chess.move({
@@ -91,6 +132,13 @@ export function decideMove(
     return ILLEGAL;
   }
 
+  // Clamped at 0, but reaching 0 has no consequence here — it does not
+  // end the game or declare the opponent the winner. Deliberately not
+  // built: this is the current, cumulative Fischer-clock time model,
+  // which ADR-0006 already rejected in favor of per-move deadlines
+  // (ticket #14, not yet built). Flag-based game-over logic for the
+  // model being replaced would be throwaway work; #14 will need this
+  // properly regardless, against a different clock shape.
   const elapsedSeconds = Math.max(0, (now - new Date(game.updated_at).getTime()) / 1000);
   const whiteTimeRemaining =
     callerColor === 'white'

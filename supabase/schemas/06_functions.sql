@@ -318,17 +318,30 @@ $$ language plpgsql security definer set search_path = '';
 -- Atomically applies an already-validated move: inserts the moves row and
 -- updates games in a single transaction, so player_views' sync trigger
 -- (docs/adr/0002) never observes one write without the other. This
--- function does NOT itself validate legality — that happens in the
+-- function does NOT itself validate chess legality — that happens in the
 -- submit-move edge function via chess.js (src/lib/game/decide-move.ts's
 -- Deno counterpart), which is the only caller. It must never be callable
 -- by anon/authenticated: since this function trusts its arguments
 -- completely, a client calling it directly could write any fen it wants,
 -- bypassing chess rules entirely and defeating the entire point of having
 -- server-side validation (docs/adr/0007). See the revoke below.
+--
+-- It DOES guard against a race the edge function alone can't close: the
+-- edge function reads games.fen, decides legality against it, then calls
+-- this function — two concurrent submissions (e.g. a double-tap) can both
+-- read the same fen and both pass that decision before either commits.
+-- p_expected_fen makes the games update conditional on the position not
+-- having changed since the caller validated against it; if zero rows
+-- match, this raises rather than silently applying a move computed
+-- against a position that's no longer current. move_number is computed
+-- here from public.moves, inside this transaction, rather than trusted
+-- from a value the edge function computed from an earlier, separately-run
+-- count query — the same race would otherwise apply to it too. A unique
+-- constraint on moves(game_id, move_number) (03_moves.sql) backstops both.
 create or replace function public.apply_move(
     p_game_id uuid,
     p_player_id uuid,
-    p_move_number int,
+    p_expected_fen text,
     p_move_text text,
     p_new_fen text,
     p_captured_piece text,
@@ -341,9 +354,13 @@ create or replace function public.apply_move(
     p_black_time_remaining int
 )
 returns void as $$
+declare
+    v_move_number int;
+    v_updated_rows int;
 begin
-    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
-    values (p_game_id, p_player_id, p_move_number, p_move_text, p_new_fen, p_captured_piece);
+    select count(*) + 1 into v_move_number
+    from public.moves
+    where game_id = p_game_id;
 
     update public.games
     set fen = p_new_fen,
@@ -355,7 +372,16 @@ begin
         white_time_remaining = p_white_time_remaining,
         black_time_remaining = p_black_time_remaining,
         updated_at = now()
-    where id = p_game_id;
+    where id = p_game_id
+      and fen = p_expected_fen;
+
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows = 0 then
+        raise exception 'stale_precondition: games.fen no longer matches what this move was validated against';
+    end if;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, p_player_id, v_move_number, p_move_text, p_new_fen, p_captured_piece);
 end;
 $$ language plpgsql security definer set search_path = '';
 

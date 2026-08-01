@@ -86,7 +86,11 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
-            makeMove.mutate({ from, to });
+            // ChessBoard doesn't have a promotion-piece picker yet (a
+            // separate UI feature) — default to auto-queen, the standard
+            // convention when no picker is available, rather than let
+            // every promotion attempt fail as an unexplained illegal move.
+            makeMove.mutate({ from, to, promotion: 'q' });
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
         />

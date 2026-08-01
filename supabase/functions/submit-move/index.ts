@@ -15,10 +15,11 @@
 // not the RN app's Metro/Node module graph), so — same as ADR-0002's
 // redact_fen/redact-fen.ts pair — the duplication is deliberate.
 //
-// Authorization/rate-limiting/not-found responses (401/429/404) ARE allowed
-// to differ from the illegal-move response and from each other: none of
-// them disclose anything about hidden board state, which is the only thing
-// ADR-0007 requires staying uniform.
+// Authorization/rate-limiting responses (401/429) ARE allowed to differ
+// from the illegal-move response and from each other: neither discloses
+// anything about hidden board state, which is the only thing ADR-0007
+// requires staying uniform. A nonexistent gameId is NOT given its own
+// response — see illegalMoveResponse()'s call site below.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Chess } from 'npm:chess.js@1.1.0';
 
@@ -32,6 +33,16 @@ type SubmitMoveRequest = {
   promotion?: string;
 };
 
+// games.id and move_attempts.game_id are both uuid columns. Without this
+// check, a non-UUID gameId makes the move_attempts insert below fail with
+// Postgres error 22P02 — silently, since that insert only logs its error
+// rather than blocking on it — so a caller who always sends a malformed
+// gameId would never increment their own rate-limit counter. Validating
+// the shape up front (alongside from/to) keeps this on the same
+// information-free code path as every other malformed-request case.
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type GameRow = {
   id: string;
   fen: string;
@@ -44,10 +55,18 @@ type GameRow = {
   black_time_remaining: number;
 };
 
-const ILLEGAL_MOVE_RESPONSE = new Response(
-  JSON.stringify({ error: 'illegal_move' }),
-  { status: 400, headers: { 'Content-Type': 'application/json' } },
-);
+// A Fetch Response body is single-use, and Deno's production runtime
+// reuses the same module-scope isolate across requests (unlike the local
+// `--no-verify-jwt` dev server's "oneshot" policy, which re-evaluates the
+// module per request and would never have caught this) — a module-scope
+// singleton Response would throw "body already consumed" on its second
+// use. Must be a fresh Response per call.
+function illegalMoveResponse(): Response {
+  return new Response(JSON.stringify({ error: 'illegal_move' }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
@@ -93,20 +112,34 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch {
-    return ILLEGAL_MOVE_RESPONSE;
+    return illegalMoveResponse();
   }
-  if (!body?.gameId || !body?.from || !body?.to) {
-    return ILLEGAL_MOVE_RESPONSE;
+  if (
+    typeof body?.gameId !== 'string' ||
+    !UUID_PATTERN.test(body.gameId) ||
+    typeof body?.from !== 'string' ||
+    typeof body?.to !== 'string'
+  ) {
+    return illegalMoveResponse();
   }
 
   const windowStart = new Date(
     Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000,
   ).toISOString();
-  const { count: recentAttempts } = await adminClient
+  const { count: recentAttempts, error: rateLimitError } = await adminClient
     .from('move_attempts')
     .select('id', { count: 'exact', head: true })
     .eq('player_id', user.id)
     .gte('created_at', windowStart);
+
+  // A failed count silently disables the rate limit for this request
+  // (recentAttempts stays undefined, ?? 0 always passes) — this is exactly
+  // the class of failure a missing grant caused for player_views in #11,
+  // so it's worth logging even though (like the attempt-log insert below)
+  // it doesn't block the request.
+  if (rateLimitError) {
+    console.error('rate-limit query failed:', rateLimitError.message);
+  }
 
   if ((recentAttempts ?? 0) >= RATE_LIMIT_MAX_ATTEMPTS) {
     return new Response(JSON.stringify({ error: 'rate_limited' }), {
@@ -135,6 +168,18 @@ Deno.serve(async (req: Request) => {
     .eq('id', body.gameId)
     .maybeSingle<GameRow>();
 
+  // Full SAN history, oldest first — needed to correctly detect threefold
+  // repetition (a bare `new Chess(fen)` has no memory of earlier
+  // occurrences of the same position; see decide-move.ts's matching
+  // comment) and to compute move_number without a second, separately-run
+  // query that the games fetch above could race against.
+  const { data: priorMoves } = await adminClient
+    .from('moves')
+    .select('move_text')
+    .eq('game_id', body.gameId)
+    .order('move_number', { ascending: true });
+  const moveHistory = (priorMoves ?? []).map((m) => m.move_text as string);
+
   // A nonexistent gameId is folded into the same uniform illegal-move
   // response rather than a distinct 404: a 404 returned before any
   // chess.js/participant work would confirm which game IDs are real,
@@ -152,7 +197,27 @@ Deno.serve(async (req: Request) => {
         : null
     : null;
 
-  const chess = new Chess(game?.fen ?? START_FEN);
+  // Replay history rather than loading game.fen directly, same reasoning
+  // as decide-move.ts's buildChessFromHistory: an empty history (a fresh
+  // game, or the not-found fallback above) is equivalent to loading the
+  // fen/start position directly, so this doesn't change behavior for
+  // those cases.
+  const chess =
+    moveHistory.length === 0
+      ? new Chess(game?.fen ?? START_FEN)
+      : new Chess();
+  try {
+    for (const san of moveHistory) {
+      chess.move(san);
+    }
+  } catch {
+    // Replay failed on defensive, shouldn't-happen input (moveHistory is
+    // DB-sourced from moves apply_move itself wrote) — fall back to the
+    // true fen so the request can still be handled, just without
+    // repetition detection for this call.
+    chess.load(game?.fen ?? START_FEN);
+  }
+
   // deno-lint-ignore no-explicit-any
   let moveResult: any = null;
   try {
@@ -174,7 +239,7 @@ Deno.serve(async (req: Request) => {
     moveResult !== null;
 
   if (!legal || !callerColor || !game) {
-    return ILLEGAL_MOVE_RESPONSE;
+    return illegalMoveResponse();
   }
 
   const elapsedSeconds = Math.max(
@@ -206,15 +271,16 @@ Deno.serve(async (req: Request) => {
     result = 'draw';
   }
 
-  const { count: moveCount } = await adminClient
-    .from('moves')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_id', body.gameId);
-
+  // p_expected_fen (not a move number computed here) is what makes this
+  // call concurrency-safe — see apply_move's doc comment
+  // (supabase/schemas/06_functions.sql). move_number is computed inside
+  // that same function, from the same transaction that checks this
+  // precondition, not from the moveHistory query above (which could itself
+  // be stale by the time this call lands).
   const { error: applyError } = await adminClient.rpc('apply_move', {
     p_game_id: body.gameId,
     p_player_id: user.id,
-    p_move_number: (moveCount ?? 0) + 1,
+    p_expected_fen: game.fen,
     p_move_text: moveResult.san,
     p_new_fen: chess.fen(),
     p_captured_piece: moveResult.captured ?? null,
@@ -226,6 +292,16 @@ Deno.serve(async (req: Request) => {
     p_white_time_remaining: whiteTimeRemaining,
     p_black_time_remaining: blackTimeRemaining,
   });
+
+  if (applyError?.message?.includes('stale_precondition')) {
+    // Another move landed between our read and this call (e.g. a
+    // double-submit). Not a server bug and not a special case worth its
+    // own response — from the caller's perspective this move, evaluated
+    // against a position that's no longer current, is simply no longer
+    // valid, so it gets the same uniform rejection as any other illegal
+    // move.
+    return illegalMoveResponse();
+  }
 
   if (applyError) {
     return new Response(JSON.stringify({ error: 'internal_error' }), {

@@ -43,10 +43,14 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
             promotion: newMove.promotion,
           });
 
+          // Not touching pgn: `chess` was constructed from just the FEN,
+          // so it has no move history — chess.pgn() here would return a
+          // one-move PGN and clobber previousGame's real history in the
+          // cache until onSettled's refetch overwrites it. The server
+          // owns this field; leave it alone until the real response lands.
           queryClient.setQueryData(['game', gameId], {
             ...previousGame,
             fen: chess.fen(),
-            pgn: chess.pgn(),
             current_turn: chess.turn() === 'w' ? 'white' : 'black',
           } satisfies Game);
         } catch {
@@ -62,6 +66,11 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       if (context?.previousGame) {
         queryClient.setQueryData(['game', gameId], context.previousGame);
       }
+      // Not surfaced in the UI yet (no toast/notification system exists) —
+      // logged so a rejection isn't completely silent. `err.code` is
+      // deliberately generic ("illegal_move") for anything board-related,
+      // per ADR-0007; this is a debugging aid, not user-facing copy.
+      console.warn('move rejected:', err instanceof Error ? err.message : err);
     },
     onSettled: () => {
       // Refetch the game to ensure we have the latest data
