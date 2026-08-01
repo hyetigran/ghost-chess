@@ -6,4 +6,6 @@ module.exports = {
   moduleNameMapper: {
     '^~/(.*)$': '<rootDir>/src/$1',
   },
+  collectCoverageFrom: ['src/lib/**/*.ts', '!src/lib/**/*.test.ts'],
+  coverageReporters: ['text', 'lcov', 'json-summary'],
 };
