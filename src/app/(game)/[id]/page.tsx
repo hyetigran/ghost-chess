@@ -11,6 +11,7 @@ import { useMakeMove, useEndGame } from '~/lib/state/game/actions';
 import { gameQueries } from '~/lib/state/game/queries';
 import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
+import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
 import { useAuth } from '~/context/auth-context';
 
 export default function GameScreen() {
@@ -26,6 +27,7 @@ export default function GameScreen() {
   const makeMove = useMakeMove({ gameId });
   const endGame = useEndGame({ gameId });
   const timer = useGameTimer(gameId);
+  useGameSubscription(gameId);
 
   const [showGameOver, setShowGameOver] = React.useState(false);
 

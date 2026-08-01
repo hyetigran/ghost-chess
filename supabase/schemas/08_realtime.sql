@@ -1,0 +1,12 @@
+-- player_views only — never games (ADR-0002, #15). Realtime authorizes
+-- postgres_changes per-subscriber against the table's SELECT RLS, so a
+-- client subscribing here with just a game_id filter still only ever
+-- receives their own row ("Players can view their own player view",
+-- 05_rls.sql) — the opponent's row for the same game is delivered to
+-- nobody but them. Subscribing to games directly would have the same
+-- property today (its SELECT RLS also denies 'active' rows to
+-- participants, #12) coincidentally, not by design — player_views is the
+-- one surface this is actually guaranteed to hold for, since redaction is
+-- baked into what the row contains rather than relying on a specific RLS
+-- shape staying exactly as restrictive as it happens to be today.
+alter publication supabase_realtime add table public.player_views;
