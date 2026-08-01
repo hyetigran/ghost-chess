@@ -14,3 +14,7 @@ _Avoid_: Local player (guests are not limited to local/pass-and-play; that's a s
 
 **Move rejection**:
 The response to any illegal move attempt, including one that targets a square secretly occupied by an invisible opponent piece. All illegal moves are rejected identically and give no signal about why — attempting to move onto a hidden piece is indistinguishable from any other illegal move. This preserves absolute occlusion (see Visibility): there is no leak vector through move attempts.
+
+**Forfeit**:
+A game lost because the current player's move deadline (`docs/adr/0006-per-move-time-control.md`) lapsed without a move — the server-side scheduled check, not the player, ends the game. Distinct from Resignation: a forfeit is always tied to whichever side's turn it was when the deadline lapsed (the player *to move* loses), whereas a resignation can happen on either player's turn. The two are tracked as separate `result` values (`timeout` vs `abandoned`) precisely because "who loses" is derived differently for each — conflating them was a real bug (the ELO trigger inferred the loser from whose turn it was for both cases, which is only correct for a timeout). There is no grace period for a missed "your turn" notification (PRD §2.4/§4.4) — a lapsed deadline is final regardless of why the player didn't act.
+_Avoid_: "Abandoned" as a synonym for forfeit-by-timeout — that word is reserved for Resignation in this codebase's `result` values, a historical naming choice (resigning "abandons" the game) that predates this entry; not worth a rename on its own.

@@ -1,8 +1,15 @@
 import { Chess } from 'chess.js';
+import { isDeadlineLapsed, type TimeControlHours } from '~/lib/game/deadline';
 
 export type Color = 'white' | 'black';
 export type GameStatus = 'waiting' | 'active' | 'completed' | 'abandoned';
-export type GameResult = 'checkmate' | 'stalemate' | 'draw' | 'abandoned' | null;
+export type GameResult =
+  | 'checkmate'
+  | 'stalemate'
+  | 'draw'
+  | 'abandoned'
+  | 'timeout'
+  | null;
 
 export type GameSnapshot = {
   fen: string;
@@ -10,10 +17,14 @@ export type GameSnapshot = {
   status: GameStatus;
   white_player_id: string | null;
   black_player_id: string | null;
-  /** ISO timestamp of the game row's last update, for elapsed-time deduction. */
+  /**
+   * ISO timestamp of the game row's last update. Doubles as "when did the
+   * current player's turn start" (docs/adr/0006, src/lib/game/deadline.ts)
+   * — set to now() on every accepted move, so it's the anchor the per-move
+   * deadline counts from.
+   */
   updated_at: string;
-  white_time_remaining: number;
-  black_time_remaining: number;
+  time_control_hours: TimeControlHours;
   /**
    * SAN move history in order, from the start of the game. Required to
    * correctly detect threefold repetition: chess.js tracks repeated
@@ -45,8 +56,6 @@ export type MoveOutcome =
       status: GameStatus;
       result: GameResult;
       winnerId: string | null;
-      whiteTimeRemaining: number;
-      blackTimeRemaining: number;
     };
 
 const ILLEGAL: MoveOutcome = { legal: false };
@@ -122,32 +131,26 @@ export function decideMove(
     moveResult = null;
   }
 
+  // A lapsed deadline makes any move attempt too late, including one that
+  // would otherwise be perfectly legal — the mover no longer gets to act.
+  // This is folded into the same uniform `legal` boolean as every other
+  // rejection reason (ADR-0007) rather than checked separately, so a
+  // deadline-lapsed rejection is indistinguishable from any other illegal
+  // move. It doesn't itself end the game (that's forfeit_lapsed_games',
+  // supabase/schemas/06_functions.sql, a scheduled job — a client can't be
+  // relied on to be open to trigger it, docs/adr/0006); this just makes
+  // sure a move can never sneak through in the window between the
+  // deadline lapsing and that job's next tick.
   const legal =
     game.status === 'active' &&
     callerColor !== null &&
     callerColor === game.current_turn &&
+    !isDeadlineLapsed(game.updated_at, game.time_control_hours, new Date(now)) &&
     moveResult !== null;
 
   if (!legal || moveResult === null || callerColor === null) {
     return ILLEGAL;
   }
-
-  // Clamped at 0, but reaching 0 has no consequence here — it does not
-  // end the game or declare the opponent the winner. Deliberately not
-  // built: this is the current, cumulative Fischer-clock time model,
-  // which ADR-0006 already rejected in favor of per-move deadlines
-  // (ticket #14, not yet built). Flag-based game-over logic for the
-  // model being replaced would be throwaway work; #14 will need this
-  // properly regardless, against a different clock shape.
-  const elapsedSeconds = Math.max(0, (now - new Date(game.updated_at).getTime()) / 1000);
-  const whiteTimeRemaining =
-    callerColor === 'white'
-      ? Math.max(0, Math.round(game.white_time_remaining - elapsedSeconds))
-      : game.white_time_remaining;
-  const blackTimeRemaining =
-    callerColor === 'black'
-      ? Math.max(0, Math.round(game.black_time_remaining - elapsedSeconds))
-      : game.black_time_remaining;
 
   let status: GameStatus = 'active';
   let result: GameResult = null;
@@ -175,7 +178,5 @@ export function decideMove(
     status,
     result,
     winnerId,
-    whiteTimeRemaining,
-    blackTimeRemaining,
   };
 }

@@ -25,7 +25,7 @@ export default function GameScreen() {
   } = useQuery(gameQueries.gameById(gameId));
   const makeMove = useMakeMove({ gameId });
   const endGame = useEndGame({ gameId });
-  useGameTimer(gameId);
+  const timer = useGameTimer(gameId);
 
   const [showGameOver, setShowGameOver] = React.useState(false);
 
@@ -76,7 +76,9 @@ export default function GameScreen() {
             {game.black_player_id === userId ? 'You' : 'Opponent'}
           </Text>
           <Text className='font-mono text-lg'>
-            {formatTime(game.black_time_remaining)}
+            {timer?.activeColor === 'black'
+              ? formatTime(timer.secondsRemaining)
+              : '—'}
           </Text>
         </View>
 
@@ -101,7 +103,9 @@ export default function GameScreen() {
             {game.white_player_id === userId ? 'You' : 'Opponent'}
           </Text>
           <Text className='font-mono text-lg'>
-            {formatTime(game.white_time_remaining)}
+            {timer?.activeColor === 'white'
+              ? formatTime(timer.secondsRemaining)
+              : '—'}
           </Text>
         </View>
 

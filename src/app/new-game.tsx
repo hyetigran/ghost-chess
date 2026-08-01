@@ -9,7 +9,6 @@ import {
   Text,
   Button,
 } from '~/components/ui';
-import { DAY_SECONDS } from '~/lib/constants/common';
 import { useCreateGame } from '~/lib/state/game/actions';
 
 export default function NewGameScreen() {
@@ -19,8 +18,7 @@ export default function NewGameScreen() {
     createGame(
       {
         settings: {
-          timeControl: 60 * DAY_SECONDS,
-          timeIncrement: DAY_SECONDS,
+          timeControlHours: 24,
           isPrivate: false,
           allowTakebacks: false,
         },

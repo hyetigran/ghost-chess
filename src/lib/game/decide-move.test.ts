@@ -12,8 +12,7 @@ function baseGame(overrides: Partial<GameSnapshot> = {}): GameSnapshot {
     white_player_id: WHITE_ID,
     black_player_id: BLACK_ID,
     updated_at: new Date(1000).toISOString(),
-    white_time_remaining: 600,
-    black_time_remaining: 600,
+    time_control_hours: 24,
     // Empty by default: most fixtures below use a hand-constructed `fen`
     // for a specific position (e.g. an endgame study) with no realistic
     // move sequence reaching it, which is fine for everything except
@@ -201,38 +200,61 @@ describe('decideMove', () => {
     expect(outcome.winnerId).toBeNull();
   });
 
-  it('deducts elapsed time from only the mover\'s clock', () => {
-    const game = baseGame({ updated_at: new Date(1000).toISOString() });
-
-    const outcome = decideMove(
-      game,
-      WHITE_ID,
-      { from: 'e2', to: 'e4' },
-      { now: 1000 + 15_000 }, // 15 seconds later
-    );
-
-    expect(outcome.legal).toBe(true);
-    if (!outcome.legal) throw new Error('expected legal');
-    expect(outcome.whiteTimeRemaining).toBe(585);
-    expect(outcome.blackTimeRemaining).toBe(600);
-  });
-
-  it('clamps a mover\'s clock at 0 rather than going negative', () => {
+  it('accepts a move made right up until the deadline', () => {
+    const turnStarted = new Date('2026-01-01T00:00:00.000Z').getTime();
     const game = baseGame({
-      updated_at: new Date(1000).toISOString(),
-      white_time_remaining: 5,
+      updated_at: new Date(turnStarted).toISOString(),
+      time_control_hours: 1,
     });
 
     const outcome = decideMove(
       game,
       WHITE_ID,
       { from: 'e2', to: 'e4' },
-      { now: 1000 + 15_000 },
+      { now: turnStarted + 59 * 60 * 1000 }, // 59 minutes in, 1 to go
     );
 
     expect(outcome.legal).toBe(true);
-    if (!outcome.legal) throw new Error('expected legal');
-    expect(outcome.whiteTimeRemaining).toBe(0);
+  });
+
+  it('rejects a move once the mover\'s deadline has lapsed, even though it would otherwise be legal', () => {
+    const turnStarted = new Date('2026-01-01T00:00:00.000Z').getTime();
+    const game = baseGame({
+      updated_at: new Date(turnStarted).toISOString(),
+      time_control_hours: 1,
+    });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: turnStarted + 60 * 60 * 1000 }, // exactly at the deadline
+    );
+
+    expect(outcome).toEqual({ legal: false });
+  });
+
+  it('a deadline-lapsed rejection is identical in shape to every other rejection reason', () => {
+    const turnStarted = new Date('2026-01-01T00:00:00.000Z').getTime();
+    const game = baseGame({
+      updated_at: new Date(turnStarted).toISOString(),
+      time_control_hours: 1,
+    });
+
+    const lapsed = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: turnStarted + 2 * 60 * 60 * 1000 },
+    );
+    const notYourTurn = decideMove(
+      baseGame(),
+      BLACK_ID,
+      { from: 'e7', to: 'e5' },
+      { now: 1000 },
+    );
+
+    expect(lapsed).toEqual(notYourTurn);
   });
 
   it('rejects malformed square input without throwing', () => {

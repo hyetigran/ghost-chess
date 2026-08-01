@@ -85,8 +85,7 @@ export async function getActiveGames(
       black_player_id,
       status,
       current_turn,
-      white_time_remaining,
-      black_time_remaining,
+      time_control_hours,
       updated_at
     `,
     )

@@ -66,6 +66,8 @@ begin
         -- Determine actual scores
         case new.result
             when 'checkmate' then
+                -- The player to move is the one who's been checkmated —
+                -- correct to derive from current_turn.
                 if new.current_turn = 'white' then
                     white_score := 0;
                     black_score := 1;
@@ -82,6 +84,32 @@ begin
                 white_score := 0.5;
                 black_score := 0.5;
             when 'abandoned' then
+                -- Resignation (end_own_game, 06_functions.sql). Unlike
+                -- checkmate/timeout, who loses here has nothing to do with
+                -- whose turn it is — a player can resign on either turn —
+                -- so this trusts new.winner_id, which end_own_game already
+                -- set correctly, rather than re-deriving it from
+                -- current_turn. Previously this branch derived the loser
+                -- from current_turn like checkmate does, which silently
+                -- computed the wrong winner (and wrong ELO delta) whenever
+                -- a resignation happened on the resigner's own turn rather
+                -- than their opponent's.
+                if new.winner_id = new.white_player_id then
+                    white_score := 1;
+                    black_score := 0;
+                else
+                    white_score := 0;
+                    black_score := 1;
+                end if;
+            when 'timeout' then
+                -- Forfeit on a lapsed per-move deadline (docs/adr/0006,
+                -- forfeit_lapsed_games below). Unlike resignation, this
+                -- *is* correctly derived from current_turn: a timeout is
+                -- specifically "the player to move failed to move in
+                -- time," so whoever's turn current_turn says it is is
+                -- exactly who forfeits. See CONTEXT.md's Forfeit entry for
+                -- why this is a distinct result from 'abandoned' rather
+                -- than reusing it.
                 if new.current_turn = 'white' then
                     white_score := 0;
                     black_score := 1;
@@ -322,14 +350,14 @@ begin
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
             redacted_fen, current_turn, status, result,
-            white_time_remaining, black_time_remaining, is_check,
+            time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.white_player_id, new.white_player_id, new.black_player_id,
             white_fen, new.current_turn, new.status, new.result,
-            new.white_time_remaining, new.black_time_remaining, new.is_check,
-            captured_by_white, captured_by_black, now()
+            (new.settings->>'timeControlHours')::integer, new.is_check,
+            captured_by_white, captured_by_black, new.updated_at
         )
         on conflict (game_id, player_id) do update set
             white_player_id = excluded.white_player_id,
@@ -338,8 +366,7 @@ begin
             current_turn = excluded.current_turn,
             status = excluded.status,
             result = excluded.result,
-            white_time_remaining = excluded.white_time_remaining,
-            black_time_remaining = excluded.black_time_remaining,
+            time_control_hours = excluded.time_control_hours,
             is_check = excluded.is_check,
             captured_by_white = excluded.captured_by_white,
             captured_by_black = excluded.captured_by_black,
@@ -350,14 +377,14 @@ begin
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
             redacted_fen, current_turn, status, result,
-            white_time_remaining, black_time_remaining, is_check,
+            time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.black_player_id, new.white_player_id, new.black_player_id,
             black_fen, new.current_turn, new.status, new.result,
-            new.white_time_remaining, new.black_time_remaining, new.is_check,
-            captured_by_white, captured_by_black, now()
+            (new.settings->>'timeControlHours')::integer, new.is_check,
+            captured_by_white, captured_by_black, new.updated_at
         )
         on conflict (game_id, player_id) do update set
             white_player_id = excluded.white_player_id,
@@ -366,8 +393,7 @@ begin
             current_turn = excluded.current_turn,
             status = excluded.status,
             result = excluded.result,
-            white_time_remaining = excluded.white_time_remaining,
-            black_time_remaining = excluded.black_time_remaining,
+            time_control_hours = excluded.time_control_hours,
             is_check = excluded.is_check,
             captured_by_white = excluded.captured_by_white,
             captured_by_black = excluded.captured_by_black,
@@ -412,9 +438,7 @@ create or replace function public.apply_move(
     p_is_check boolean,
     p_status text,
     p_result text,
-    p_winner_id uuid,
-    p_white_time_remaining int,
-    p_black_time_remaining int
+    p_winner_id uuid
 )
 returns void as $$
 declare
@@ -425,6 +449,9 @@ begin
     from public.moves
     where game_id = p_game_id;
 
+    -- updated_at = now() is the only per-move deadline anchor (docs/adr/0006,
+    -- src/lib/game/deadline.ts) — no separate clock columns to update
+    -- alongside it.
     update public.games
     set fen = p_new_fen,
         current_turn = p_new_current_turn,
@@ -432,8 +459,6 @@ begin
         status = p_status,
         result = p_result,
         winner_id = coalesce(p_winner_id, winner_id),
-        white_time_remaining = p_white_time_remaining,
-        black_time_remaining = p_black_time_remaining,
         updated_at = now()
     where id = p_game_id
       and fen = p_expected_fen;
@@ -454,6 +479,39 @@ $$ language plpgsql security definer set search_path = '';
 revoke execute on function public.apply_move from public;
 grant execute on function public.apply_move to service_role;
 
+-- Enforces per-move deadlines (docs/adr/0006): scheduled via pg_cron below
+-- to run independent of any client being online — a player can't rely on
+-- the app being open to notice a deadline lapsed. Forfeits every active
+-- game where the player to move has run out of time, crediting the win to
+-- the other participant; update_ratings_after_game's 'timeout' branch
+-- (above) then updates ELO the same way it does for any other completed
+-- game, since this is a normal games UPDATE like any other. No grace
+-- period (PRD §2.4/§4.4, CONTEXT.md's Forfeit entry): a missed "your
+-- turn" notification doesn't pause or extend anything here — this only
+-- ever compares updated_at (set to now() on every move, so it doubles as
+-- "when did the current turn start") against the stored time control.
+create or replace function public.forfeit_lapsed_games()
+returns void as $$
+begin
+    update public.games
+    set status = 'completed',
+        result = 'timeout',
+        winner_id = case
+            when current_turn = 'white' then black_player_id
+            else white_player_id
+        end
+    where status = 'active'
+      and updated_at <= now() - make_interval(hours => (settings->>'timeControlHours')::int);
+end;
+$$ language plpgsql security definer set search_path = '';
+
+-- Not a user-facing RPC — nothing in it depends on a calling user's
+-- identity (no auth.uid() check, no parameters), so unlike apply_move
+-- there's no data it could leak or corrupt if called directly. Revoked
+-- anyway for clarity: this is a scheduled system job, not something a
+-- client should ever have reason to invoke.
+revoke execute on function public.forfeit_lapsed_games from public;
+
 -- Triggers
 create trigger on_auth_user_created
     after insert on auth.users
@@ -468,3 +526,16 @@ create trigger on_game_completed
 create trigger on_game_change_sync_player_views
     after insert or update on public.games
     for each row execute function public.sync_player_views();
+
+-- Scheduled job: enforces per-move deadlines independent of any client
+-- being open (docs/adr/0006). Every minute is frequent enough that the
+-- gap between a deadline lapsing and the forfeit actually landing stays
+-- well under the coarsest time control (1 hour) without meaningfully
+-- loading the database (an index-friendly scan of active games,
+-- 04_indexes.sql's idx_games_status). cron.schedule is idempotent — safe
+-- to re-run this migration/schema.
+select cron.schedule(
+    'forfeit-lapsed-games',
+    '* * * * *',
+    $$ select public.forfeit_lapsed_games(); $$
+);
