@@ -89,6 +89,12 @@ export async function makeMove(
   // check participancy), neither a direct .insert() nor a direct .update()
   // can reach these rows anymore. submit_own_move is a security-definer RPC
   // that does both writes atomically after checking participancy itself.
+  //
+  // gameState.chess.move() above already advanced the internal turn, so
+  // chess.turn() here is the side to move *next* — the elapsed time is
+  // charged to the opposite side, the one who actually just moved.
+  const moverWasWhite = gameState.chess.turn() === 'b';
+  const elapsedSeconds = (Date.now() - gameState.lastMoveTime) / 1000;
   const { data, error } = await supabase.rpc('submit_own_move', {
     p_game_id: gameId,
     p_move_number: gameState.chess.history().length,
@@ -96,16 +102,12 @@ export async function makeMove(
     p_fen: gameState.chess.fen(),
     p_captured_piece: move.captured ?? null,
     p_current_turn: gameState.chess.turn() === 'w' ? 'white' : 'black',
-    p_white_time_remaining:
-      gameState.chess.turn() === 'w'
-        ? gameState.white_time_remaining -
-          (Date.now() - gameState.lastMoveTime) / 1000
-        : gameState.white_time_remaining,
-    p_black_time_remaining:
-      gameState.chess.turn() === 'b'
-        ? gameState.black_time_remaining -
-          (Date.now() - gameState.lastMoveTime) / 1000
-        : gameState.black_time_remaining,
+    p_white_time_remaining: moverWasWhite
+      ? gameState.white_time_remaining - elapsedSeconds
+      : gameState.white_time_remaining,
+    p_black_time_remaining: moverWasWhite
+      ? gameState.black_time_remaining
+      : gameState.black_time_remaining - elapsedSeconds,
   });
 
   if (error) throw error;
@@ -136,10 +138,11 @@ export async function endGame(
 ): Promise<Game> {
   // Resignation always targets a currently-'active' game — same RLS
   // conflict as makeMove above, so this goes through the equivalent
-  // security-definer RPC rather than a direct .update() (#12).
+  // security-definer RPC rather than a direct .update() (#12). The RPC
+  // always forces status to 'completed' itself, so there's no p_status
+  // param to spoof a different transition through.
   const { data, error } = await supabase.rpc('end_own_game', {
     p_game_id: gameId,
-    p_status: 'completed',
     p_result: result,
     p_winner_id: winnerId ?? null,
   });

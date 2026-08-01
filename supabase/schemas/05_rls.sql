@@ -57,7 +57,7 @@ create policy "Users can view moves in their non-active games" on public.moves
 -- fail. See that function's comment in 06_functions.sql.
 create policy "Users can insert moves in their games" on public.moves
     for insert to authenticated
-    with check (public.is_game_participant(moves.game_id, auth.uid()));
+    with check (public.is_game_participant(moves.game_id));
 
 -- Player view policies
 -- No insert/update/delete policy: rows are written only by the

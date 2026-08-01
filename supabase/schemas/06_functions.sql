@@ -223,7 +223,17 @@ $$ language plpgsql immutable set search_path = '';
 -- regardless of the caller's RLS, but it only ever returns a boolean,
 -- never row data, so it doesn't reopen the leak that restriction exists
 -- to close.
-create or replace function public.is_game_participant(p_game_id uuid, p_user_id uuid)
+--
+-- Deliberately takes no user-id parameter and always checks auth.uid():
+-- EXECUTE on this function must stay grantable to `authenticated` (RLS
+-- policy expressions are evaluated as the calling role, and calling a
+-- function from within a policy still requires that role to hold EXECUTE
+-- on it — revoking it, as an earlier version of this comment/migration
+-- suggested, breaks the moves INSERT policy outright). Since EXECUTE
+-- can't be restricted, the function itself is restricted instead: a
+-- direct call can only ever answer "am I a participant", never probe
+-- membership for an arbitrary other user.
+create or replace function public.is_game_participant(p_game_id uuid)
 returns boolean
 language sql
 security definer
@@ -233,7 +243,7 @@ as $$
     select exists (
         select 1 from public.games
         where id = p_game_id
-        and (white_player_id = p_user_id or black_player_id = p_user_id)
+        and (white_player_id = auth.uid() or black_player_id = auth.uid())
     );
 $$;
 
@@ -250,6 +260,12 @@ $$;
 -- 'active' rows to everyone but this security-definer path. A useful side
 -- effect: the moves-insert and games-update below, previously two
 -- separate non-transactional client calls, are now atomic.
+--
+-- Bypassing RLS this way makes this function the only remaining gate on
+-- active-game writes, so — short of real move legality, still #13's job —
+-- it checks what's cheap and unambiguous: the game must actually be
+-- active, and it must actually be this caller's turn. Clock values are
+-- clamped to a non-negative integer rather than trusted as-is.
 create or replace function public.submit_own_move(
     p_game_id uuid,
     p_move_number int,
@@ -266,10 +282,25 @@ security definer
 set search_path = ''
 as $$
 declare
+    v_game public.games;
     v_move public.moves;
 begin
-    if not public.is_game_participant(p_game_id, auth.uid()) then
-        raise exception 'not a participant in this game';
+    select * into v_game from public.games where id = p_game_id;
+
+    if v_game is null then
+        raise exception 'game not found';
+    end if;
+
+    if v_game.status <> 'active' then
+        raise exception 'game is not active';
+    end if;
+
+    if v_game.current_turn = 'white' and v_game.white_player_id <> auth.uid() then
+        raise exception 'not your turn';
+    end if;
+
+    if v_game.current_turn = 'black' and v_game.black_player_id <> auth.uid() then
+        raise exception 'not your turn';
     end if;
 
     insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
@@ -279,8 +310,8 @@ begin
     update public.games
     set fen = p_fen,
         current_turn = p_current_turn,
-        white_time_remaining = p_white_time_remaining,
-        black_time_remaining = p_black_time_remaining
+        white_time_remaining = greatest(0, floor(p_white_time_remaining))::integer,
+        black_time_remaining = greatest(0, floor(p_black_time_remaining))::integer
     where id = p_game_id;
 
     return v_move;
@@ -291,10 +322,11 @@ $$;
 -- reasoning as submit_own_move: games' SELECT RLS denies 'active' rows,
 -- so a direct client UPDATE transitioning status away from 'active'
 -- (resignation always targets an active game) can no longer locate the
--- row either.
+-- row either. status is always forced to 'completed' server-side (the
+-- only status this function ever produces) and winner_id, if given, must
+-- actually be one of the two participants.
 create or replace function public.end_own_game(
     p_game_id uuid,
-    p_status text,
     p_result text,
     p_winner_id uuid
 )
@@ -306,12 +338,28 @@ as $$
 declare
     v_game public.games;
 begin
-    if not public.is_game_participant(p_game_id, auth.uid()) then
+    select * into v_game from public.games where id = p_game_id;
+
+    if v_game is null then
+        raise exception 'game not found';
+    end if;
+
+    if v_game.status <> 'active' then
+        raise exception 'game is not active';
+    end if;
+
+    if not (v_game.white_player_id = auth.uid() or v_game.black_player_id = auth.uid()) then
         raise exception 'not a participant in this game';
     end if;
 
+    if p_winner_id is not null
+        and p_winner_id <> v_game.white_player_id
+        and p_winner_id <> v_game.black_player_id then
+        raise exception 'winner must be a participant in this game';
+    end if;
+
     update public.games
-    set status = p_status,
+    set status = 'completed',
         result = p_result,
         winner_id = p_winner_id
     where id = p_game_id
