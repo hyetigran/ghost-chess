@@ -3,6 +3,7 @@ alter table "public"."users" enable row level security;
 alter table "public"."games" enable row level security;
 alter table "public"."moves" enable row level security;
 alter table "public"."player_views" enable row level security;
+alter table "public"."move_attempts" enable row level security;
 
 -- User policies
 create policy "Users can view their own data" on public.users
@@ -57,3 +58,15 @@ revoke all on table "public"."player_views" from "anon";
 revoke all on table "public"."player_views" from "authenticated";
 grant select on table "public"."player_views" to "anon";
 grant select on table "public"."player_views" to "authenticated";
+
+-- move_attempts has no policies at all: clients get zero access (not even
+-- select), only the submit-move edge function via the service role writes
+-- here. Same default-privilege revoke as player_views, but without
+-- re-granting select afterward.
+revoke all on table "public"."move_attempts" from "anon";
+revoke all on table "public"."move_attempts" from "authenticated";
+
+-- service_role's default privileges on a postgres-owned table are also
+-- limited (DELETE/REFERENCES/TRIGGER only, no SELECT/INSERT) — the
+-- submit-move edge function needs both to log and count attempts.
+grant select, insert on table "public"."move_attempts" to "service_role";

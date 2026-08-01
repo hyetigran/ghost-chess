@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Chess } from 'chess.js';
-import { createGame, endGame, makeMove } from '~/api/server/game';
+import { createGame, endGame, submitMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
-import { Game, GameResult, GameSettings, GameState } from '~/types/database';
+import { Game, GameResult, GameSettings } from '~/types/database';
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -14,15 +14,13 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       from,
       to,
       promotion,
-      gameState,
     }: {
       from: string;
       to: string;
       promotion?: string;
-      gameState: GameState;
     }) => {
       if (!userId) throw new Error('User not authenticated');
-      return makeMove(gameId, userId, gameState, from, to, promotion);
+      return submitMove(gameId, from, to, promotion);
     },
     onMutate: async (newMove) => {
       // Cancel any outgoing refetches
@@ -31,26 +29,30 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       // Snapshot the previous value
       const previousGame = queryClient.getQueryData<Game>(['game', gameId]);
 
-      // Optimistically update to the new value
+      // Optimistically apply the move locally for a snappy UI. The server
+      // is still the sole source of truth (submitMove above) — if this
+      // move turns out to be illegal (including one targeting a hidden
+      // opponent piece, which this client can't know about), onError rolls
+      // this back and the server's rejection is the real answer.
       if (previousGame) {
-        const chess = new Chess(previousGame.fen);
-        chess.move({
-          from: newMove.from,
-          to: newMove.to,
-          promotion: newMove.promotion,
-        });
+        try {
+          const chess = new Chess(previousGame.fen);
+          chess.move({
+            from: newMove.from,
+            to: newMove.to,
+            promotion: newMove.promotion,
+          });
 
-        const updatedGame: Game = {
-          ...previousGame,
-          fen: chess.fen(),
-          pgn: chess.pgn(),
-          current_turn:
-            previousGame.current_turn === 'white' ? 'black' : 'white',
-          white_time_remaining: newMove.gameState.white_time_remaining,
-          black_time_remaining: newMove.gameState.black_time_remaining,
-        };
-
-        queryClient.setQueryData(['game', gameId], updatedGame);
+          queryClient.setQueryData(['game', gameId], {
+            ...previousGame,
+            fen: chess.fen(),
+            pgn: chess.pgn(),
+            current_turn: chess.turn() === 'w' ? 'white' : 'black',
+          } satisfies Game);
+        } catch {
+          // chess.js throws on an illegal move; nothing to optimistically
+          // apply, just let the server respond.
+        }
       }
 
       return { previousGame };

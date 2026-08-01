@@ -315,6 +315,56 @@ begin
 end;
 $$ language plpgsql security definer set search_path = '';
 
+-- Atomically applies an already-validated move: inserts the moves row and
+-- updates games in a single transaction, so player_views' sync trigger
+-- (docs/adr/0002) never observes one write without the other. This
+-- function does NOT itself validate legality — that happens in the
+-- submit-move edge function via chess.js (src/lib/game/decide-move.ts's
+-- Deno counterpart), which is the only caller. It must never be callable
+-- by anon/authenticated: since this function trusts its arguments
+-- completely, a client calling it directly could write any fen it wants,
+-- bypassing chess rules entirely and defeating the entire point of having
+-- server-side validation (docs/adr/0007). See the revoke below.
+create or replace function public.apply_move(
+    p_game_id uuid,
+    p_player_id uuid,
+    p_move_number int,
+    p_move_text text,
+    p_new_fen text,
+    p_captured_piece text,
+    p_new_current_turn text,
+    p_is_check boolean,
+    p_status text,
+    p_result text,
+    p_winner_id uuid,
+    p_white_time_remaining int,
+    p_black_time_remaining int
+)
+returns void as $$
+begin
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, p_player_id, p_move_number, p_move_text, p_new_fen, p_captured_piece);
+
+    update public.games
+    set fen = p_new_fen,
+        current_turn = p_new_current_turn,
+        is_check = p_is_check,
+        status = p_status,
+        result = p_result,
+        winner_id = coalesce(p_winner_id, winner_id),
+        white_time_remaining = p_white_time_remaining,
+        black_time_remaining = p_black_time_remaining,
+        updated_at = now()
+    where id = p_game_id;
+end;
+$$ language plpgsql security definer set search_path = '';
+
+-- Postgres grants EXECUTE on new functions to PUBLIC by default. Revoke it
+-- and grant only to service_role (used exclusively by the submit-move edge
+-- function) — anon/authenticated must never be able to call this directly.
+revoke execute on function public.apply_move from public;
+grant execute on function public.apply_move to service_role;
+
 -- Triggers
 create trigger on_auth_user_created
     after insert on auth.users

@@ -2,13 +2,7 @@ import { Chess } from 'chess.js';
 import { supabase } from '~/api/supabase/client';
 import { z } from 'zod';
 import { gameSchema, moveSchema } from '~/types/database';
-import type {
-  Game,
-  GameSettings,
-  Move,
-  GameState,
-  GameResult,
-} from '~/types/database';
+import type { Game, GameSettings, Move, GameResult } from '~/types/database';
 
 /**
  * Create a new game
@@ -45,77 +39,65 @@ export async function createGame(
 }
 
 /**
- * Get game state
+ * The uniform code returned for every illegal-move reason (ADR-0007) is
+ * "illegal_move" — this type also includes the non-board-related failure
+ * modes (auth, rate limiting, not found), which are allowed to differ
+ * since they don't disclose anything about hidden game state.
  */
-export async function getGameState(gameId: string): Promise<GameState> {
-  const { data, error } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
+export type SubmitMoveErrorCode =
+  | 'illegal_move'
+  | 'unauthorized'
+  | 'rate_limited'
+  | 'not_found'
+  | 'internal_error';
 
-  if (error) throw error;
-
-  const game = gameSchema.parse(data);
-  return {
-    chess: new Chess(game.fen),
-    lastMoveTime: Date.now(),
-    white_time_remaining: game.white_time_remaining,
-    black_time_remaining: game.black_time_remaining,
-  };
+export class SubmitMoveError extends Error {
+  code: SubmitMoveErrorCode;
+  constructor(code: SubmitMoveErrorCode) {
+    super(code);
+    this.code = code;
+  }
 }
 
 /**
- * Make a move
+ * Submit a move for server-side validation (ADR-0001, ADR-0007). This is
+ * the only path that ever writes to games/moves — there is no client-side
+ * legality check and no separate pre-flight endpoint; the move is either
+ * accepted or rejected in this one call. The true resulting state is
+ * deliberately not returned here (ADR-0001) — callers should read the new
+ * state from player_views, not from this response.
  */
-export async function makeMove(
+export async function submitMove(
   gameId: string,
-  playerId: string,
-  gameState: GameState,
   from: string,
   to: string,
   promotion?: string,
-): Promise<Move> {
-  const move = gameState.chess.move({ from, to, promotion });
-  if (!move) {
-    throw new Error('Invalid move');
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('submit-move', {
+    body: { gameId, from, to, promotion },
+  });
+
+  if (!error) return;
+
+  let code: SubmitMoveErrorCode = 'internal_error';
+  const context = (error as { context?: Response }).context;
+  if (context) {
+    try {
+      const body = (await context.json()) as { error?: string };
+      if (
+        body.error === 'illegal_move' ||
+        body.error === 'unauthorized' ||
+        body.error === 'rate_limited' ||
+        body.error === 'not_found'
+      ) {
+        code = body.error;
+      }
+    } catch {
+      // Response body wasn't JSON — fall through to internal_error.
+    }
   }
 
-  const { data, error } = await supabase
-    .from('moves')
-    .insert({
-      game_id: gameId,
-      player_id: playerId,
-      move_number: gameState.chess.history().length,
-      move_text: move.san,
-      fen: gameState.chess.fen(),
-      captured_piece: move.captured,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // Update game state in database
-  await supabase
-    .from('games')
-    .update({
-      fen: gameState.chess.fen(),
-      current_turn: gameState.chess.turn() === 'w' ? 'white' : 'black',
-      white_time_remaining:
-        gameState.chess.turn() === 'w'
-          ? gameState.white_time_remaining -
-            (Date.now() - gameState.lastMoveTime) / 1000
-          : gameState.white_time_remaining,
-      black_time_remaining:
-        gameState.chess.turn() === 'b'
-          ? gameState.black_time_remaining -
-            (Date.now() - gameState.lastMoveTime) / 1000
-          : gameState.black_time_remaining,
-    })
-    .eq('id', gameId);
-
-  return moveSchema.parse(data);
+  throw new SubmitMoveError(code);
 }
 
 /**

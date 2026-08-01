@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { Chess } from 'chess.js';
 
 // Base schemas
 export const gameSettingsSchema = z.object({
@@ -135,13 +134,6 @@ export type ActiveGamesResponse = DatabaseResponse<ActiveGame[]>;
 export type GameHistoryResponse = DatabaseResponse<GameHistory[]>;
 export type LeaderboardResponse = DatabaseResponse<LeaderboardUser[]>;
 export type OpponentResponse = DatabaseResponse<Opponent>;
-
-export type GameState = {
-  chess: Chess;
-  lastMoveTime: number;
-  white_time_remaining: number;
-  black_time_remaining: number;
-};
 
 export type GameResult = z.infer<typeof gameResultSchema>;
 

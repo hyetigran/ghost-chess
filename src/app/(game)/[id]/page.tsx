@@ -12,10 +12,6 @@ import { gameQueries } from '~/lib/state/game/queries';
 import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useAuth } from '~/context/auth-context';
-import { Chess } from 'chess.js';
-
-// Create a single chess instance for move validation
-const chess = new Chess();
 
 export default function GameScreen() {
   const { id: gameId } = useLocalSearchParams<{ id: string }>();
@@ -90,18 +86,7 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
-            const gameState = {
-              chess,
-              lastMoveTime: Date.now(),
-              white_time_remaining: game.white_time_remaining,
-              black_time_remaining: game.black_time_remaining,
-            };
-
-            makeMove.mutate({
-              from,
-              to,
-              gameState,
-            });
+            makeMove.mutate({ from, to });
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
         />

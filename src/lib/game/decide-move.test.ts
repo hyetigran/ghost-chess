@@ -1,0 +1,212 @@
+import { decideMove, type GameSnapshot } from '~/lib/game/decide-move';
+
+const WHITE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const BLACK_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const OUTSIDER_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+function baseGame(overrides: Partial<GameSnapshot> = {}): GameSnapshot {
+  return {
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    current_turn: 'white',
+    status: 'active',
+    white_player_id: WHITE_ID,
+    black_player_id: BLACK_ID,
+    updated_at: new Date(1000).toISOString(),
+    white_time_remaining: 600,
+    black_time_remaining: 600,
+    ...overrides,
+  };
+}
+
+describe('decideMove', () => {
+  it('accepts a legal move by the participant whose turn it is', () => {
+    const outcome = decideMove(
+      baseGame(),
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.moveText).toBe('e4');
+    // chess.js only reports an en passant target when a capture is
+    // actually possible; no black pawn is adjacent to e4 here, so it's "-".
+    expect(outcome.newFen).toBe(
+      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+    );
+    expect(outcome.capturedPiece).toBeNull();
+    expect(outcome.newCurrentTurn).toBe('black');
+    expect(outcome.isCheck).toBe(false);
+    expect(outcome.status).toBe('active');
+    expect(outcome.result).toBeNull();
+    expect(outcome.winnerId).toBeNull();
+  });
+
+  it('records the captured piece on a capturing move', () => {
+    const game = baseGame({
+      fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2',
+    });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e4', to: 'd5' },
+      { now: 1000 },
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.capturedPiece).toBe('p');
+  });
+
+  it('rejects a geometrically illegal move', () => {
+    const outcome = decideMove(
+      baseGame(),
+      WHITE_ID,
+      { from: 'e2', to: 'e5' },
+      { now: 1000 },
+    );
+
+    expect(outcome).toEqual({ legal: false });
+  });
+
+  it('rejects a move from someone who is not a participant in the game', () => {
+    const outcome = decideMove(
+      baseGame(),
+      OUTSIDER_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
+
+    expect(outcome).toEqual({ legal: false });
+  });
+
+  it('rejects a move from a participant when it is not their turn', () => {
+    const outcome = decideMove(
+      baseGame(),
+      BLACK_ID,
+      { from: 'e7', to: 'e5' },
+      { now: 1000 },
+    );
+
+    expect(outcome).toEqual({ legal: false });
+  });
+
+  it('rejects any move on a game that is not active, even a legal-looking one', () => {
+    for (const status of ['waiting', 'completed', 'abandoned'] as const) {
+      const outcome = decideMove(
+        baseGame({ status }),
+        WHITE_ID,
+        { from: 'e2', to: 'e4' },
+        { now: 1000 },
+      );
+
+      expect(outcome).toEqual({ legal: false });
+    }
+  });
+
+  it('a rejection is identical in shape regardless of which of the above reasons caused it', () => {
+    const illegalMove = decideMove(baseGame(), WHITE_ID, { from: 'e2', to: 'e5' }, { now: 1000 });
+    const notParticipant = decideMove(baseGame(), OUTSIDER_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
+    const notYourTurn = decideMove(baseGame(), BLACK_ID, { from: 'e7', to: 'e5' }, { now: 1000 });
+    const inactiveGame = decideMove(baseGame({ status: 'waiting' }), WHITE_ID, { from: 'e2', to: 'e4' }, { now: 1000 });
+
+    expect(illegalMove).toEqual(notParticipant);
+    expect(notParticipant).toEqual(notYourTurn);
+    expect(notYourTurn).toEqual(inactiveGame);
+  });
+
+  it('detects checkmate and assigns the mover as winner', () => {
+    const game = baseGame({
+      fen: '6k1/5ppp/8/8/8/8/8/R6K w - - 0 1',
+      white_player_id: WHITE_ID,
+      black_player_id: BLACK_ID,
+    });
+
+    const outcome = decideMove(game, WHITE_ID, { from: 'a1', to: 'a8' }, { now: 1000 });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.status).toBe('completed');
+    expect(outcome.result).toBe('checkmate');
+    expect(outcome.winnerId).toBe(WHITE_ID);
+    expect(outcome.isCheck).toBe(true);
+  });
+
+  it('detects stalemate as a completed draw with no winner', () => {
+    const game = baseGame({
+      fen: 'k7/8/1K6/8/8/8/8/7Q w - - 0 1',
+    });
+
+    const outcome = decideMove(game, WHITE_ID, { from: 'h1', to: 'h2' }, { now: 1000 });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.status).toBe('completed');
+    expect(outcome.result).toBe('stalemate');
+    expect(outcome.winnerId).toBeNull();
+  });
+
+  it('detects insufficient-material draw as a completed draw with no winner', () => {
+    const game = baseGame({
+      fen: '4k3/8/8/8/4b3/3K4/8/8 w - - 0 1',
+    });
+
+    const outcome = decideMove(game, WHITE_ID, { from: 'd3', to: 'e4' }, { now: 1000 });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.status).toBe('completed');
+    expect(outcome.result).toBe('draw');
+    expect(outcome.winnerId).toBeNull();
+  });
+
+  it('deducts elapsed time from only the mover\'s clock', () => {
+    const game = baseGame({ updated_at: new Date(1000).toISOString() });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 + 15_000 }, // 15 seconds later
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.whiteTimeRemaining).toBe(585);
+    expect(outcome.blackTimeRemaining).toBe(600);
+  });
+
+  it('clamps a mover\'s clock at 0 rather than going negative', () => {
+    const game = baseGame({
+      updated_at: new Date(1000).toISOString(),
+      white_time_remaining: 5,
+    });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 + 15_000 },
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.whiteTimeRemaining).toBe(0);
+  });
+
+  it('rejects malformed square input without throwing', () => {
+    expect(() =>
+      decideMove(baseGame(), WHITE_ID, { from: 'z9', to: 'e4' }, { now: 1000 }),
+    ).not.toThrow();
+
+    const outcome = decideMove(
+      baseGame(),
+      WHITE_ID,
+      { from: 'z9', to: 'e4' },
+      { now: 1000 },
+    );
+    expect(outcome).toEqual({ legal: false });
+  });
+});
