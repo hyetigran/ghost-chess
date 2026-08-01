@@ -1,8 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { View } from 'react-native';
+import { type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
+import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { GameControls } from '~/components/game/controls/game-controls';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
@@ -12,6 +14,7 @@ import { gameQueries } from '~/lib/state/game/queries';
 import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
+import { useCaptureFlash } from '~/lib/hooks/use-capture-flash';
 import { useAuth } from '~/context/auth-context';
 
 export default function GameScreen() {
@@ -28,6 +31,10 @@ export default function GameScreen() {
   const endGame = useEndGame({ gameId });
   const timer = useGameTimer(gameId);
   useGameSubscription(gameId);
+  const { flashSquare, reportOwnMove } = useCaptureFlash(
+    game,
+    game?.white_player_id === userId ? 'white' : 'black',
+  );
 
   const [showGameOver, setShowGameOver] = React.useState(false);
 
@@ -90,6 +97,13 @@ export default function GameScreen() {
           onMove={(from, to) => {
             if (!userId) return;
 
+            // Whether this move is a capture isn't knowable here — the
+            // target square's occupant is exactly as hidden from the
+            // mover as everything else about the opponent's pieces.
+            // useCaptureFlash finds out reactively once the server's
+            // response confirms it (src/lib/hooks/use-capture-flash.ts).
+            reportOwnMove(to as Square);
+
             // ChessBoard doesn't have a promotion-piece picker yet (a
             // separate UI feature) — default to auto-queen, the standard
             // convention when no picker is available, rather than let
@@ -97,6 +111,13 @@ export default function GameScreen() {
             makeMove.mutate({ from, to, promotion: 'q' });
           }}
           orientation={isWhitePlayer ? 'white' : 'black'}
+          flashSquare={flashSquare}
+        />
+
+        {/* Captured pieces */}
+        <CapturedPieces
+          capturedByWhite={game.captured_by_white}
+          capturedByBlack={game.captured_by_black}
         />
 
         {/* Player info and timer for white */}

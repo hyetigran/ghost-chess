@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Chess, Square } from 'chess.js';
 import type { Orientation } from '~/lib/game/board-geometry';
 import { decideSelectionAction } from '~/lib/game/selection';
+import { pawnCaptureCandidates } from '~/lib/game/pawn-capture-candidates';
 
 type SquareSelection = {
   selectedSquare: Square | null;
@@ -25,12 +26,23 @@ export function useSquareSelection(
 
   const legalTargets = React.useMemo(() => {
     if (!selectedSquare) return new Set<Square>();
-    return new Set(
+    const targets = new Set(
       chess
         .moves({ square: selectedSquare, verbose: true })
         .map((move) => move.to as Square),
     );
-  }, [chess, selectedSquare]);
+    // chess.js omits a pawn's diagonal capture squares whenever it can't
+    // see a piece there — which, against a redacted board, is every real
+    // hidden-piece capture. See pawn-capture-candidates.ts.
+    for (const candidate of pawnCaptureCandidates(
+      chess,
+      selectedSquare,
+      ownColor,
+    )) {
+      targets.add(candidate);
+    }
+    return targets;
+  }, [chess, selectedSquare, ownColor]);
 
   const handleSquarePress = (square: Square): void => {
     const action = decideSelectionAction(

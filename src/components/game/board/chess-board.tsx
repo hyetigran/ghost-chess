@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import { Chess } from 'chess.js';
+import { type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
 import { squareAt, type Orientation } from '~/lib/game/board-geometry';
 import { pieceSymbol } from '~/lib/game/piece-symbol';
+import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 type Props = {
@@ -20,14 +21,20 @@ type Props = {
   redactedFen: string;
   onMove: (from: string, to: string) => void;
   orientation: Orientation;
+  /** Briefly highlighted on a capture (src/lib/hooks/use-capture-flash.ts, #18). */
+  flashSquare?: Square | null;
 };
 
 export function ChessBoard({
   redactedFen,
   onMove,
   orientation,
+  flashSquare,
 }: Props): React.JSX.Element {
-  const chess = React.useMemo(() => new Chess(redactedFen), [redactedFen]);
+  const chess = React.useMemo(
+    () => chessFromRedactedFen(redactedFen),
+    [redactedFen],
+  );
   const { selectedSquare, legalTargets, handleSquarePress } =
     useSquareSelection(chess, orientation, onMove);
 
@@ -41,6 +48,7 @@ export function ChessBoard({
             const piece = chess.get(square);
             const isSelected = selectedSquare === square;
             const isLegalTarget = legalTargets.has(square);
+            const isFlashing = flashSquare === square;
 
             return (
               <View
@@ -49,7 +57,7 @@ export function ChessBoard({
                   isLight ? 'bg-amber-100' : 'bg-amber-800'
                 } ${isSelected ? 'bg-blue-500' : ''} ${
                   isLegalTarget ? 'bg-green-400' : ''
-                }`}
+                } ${isFlashing ? 'bg-red-400' : ''}`}
                 onTouchEnd={() => handleSquarePress(square)}
               >
                 {piece && (
