@@ -10,18 +10,11 @@
 
 name: Expo Doctor (expo)
 
+# Disabled while in development: this workflow calls `pnpm run prebuild`,
+# a script that doesn't exist in package.json yet. Re-enable (restore the
+# push/pull_request triggers below) once a prebuild script is added.
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-  pull_request:
-    paths:
-      - 'package.json'
-      - 'pnpm-lock.yaml'
+  workflow_dispatch:
 
 permissions:
   contents: read
