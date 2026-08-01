@@ -214,6 +214,113 @@ begin
 end;
 $$ language plpgsql immutable set search_path = '';
 
+-- Lets the moves INSERT policy check game participancy without needing
+-- direct SELECT access to games. A raw `exists (select 1 from games
+-- where ...)` inside another table's RLS policy is still subject to
+-- games' own RLS — which denies 'active' rows to participants entirely
+-- (#12) — so that check would always fail for exactly the status moves
+-- are normally inserted under. Security definer lets it read games
+-- regardless of the caller's RLS, but it only ever returns a boolean,
+-- never row data, so it doesn't reopen the leak that restriction exists
+-- to close.
+create or replace function public.is_game_participant(p_game_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+    select exists (
+        select 1 from public.games
+        where id = p_game_id
+        and (white_player_id = p_user_id or black_player_id = p_user_id)
+    );
+$$;
+
+-- Persists a client-already-validated move: inserts the moves row and
+-- updates games' live state (fen/turn/clocks) in the same transaction.
+-- This is *not* server-side move legality validation — the client (via
+-- chess.js) is still the only thing checking the move is legal, exactly
+-- as before #12; real server-side validation is #13's job, on a separate
+-- branch. This exists purely because #12's tightened SELECT RLS on games
+-- means a participant's own direct UPDATE against an *active* game can no
+-- longer even locate the row: Postgres requires a row to pass the table's
+-- SELECT policy before UPDATE can see it (independent of the UPDATE
+-- policy's own USING clause), and games' SELECT policy now denies
+-- 'active' rows to everyone but this security-definer path. A useful side
+-- effect: the moves-insert and games-update below, previously two
+-- separate non-transactional client calls, are now atomic.
+create or replace function public.submit_own_move(
+    p_game_id uuid,
+    p_move_number int,
+    p_move_text text,
+    p_fen text,
+    p_captured_piece text,
+    p_current_turn text,
+    p_white_time_remaining numeric,
+    p_black_time_remaining numeric
+)
+returns public.moves
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_move public.moves;
+begin
+    if not public.is_game_participant(p_game_id, auth.uid()) then
+        raise exception 'not a participant in this game';
+    end if;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
+    returning * into v_move;
+
+    update public.games
+    set fen = p_fen,
+        current_turn = p_current_turn,
+        white_time_remaining = p_white_time_remaining,
+        black_time_remaining = p_black_time_remaining
+    where id = p_game_id;
+
+    return v_move;
+end;
+$$;
+
+-- Ends a game a participant is resigning or otherwise concluding. Same
+-- reasoning as submit_own_move: games' SELECT RLS denies 'active' rows,
+-- so a direct client UPDATE transitioning status away from 'active'
+-- (resignation always targets an active game) can no longer locate the
+-- row either.
+create or replace function public.end_own_game(
+    p_game_id uuid,
+    p_status text,
+    p_result text,
+    p_winner_id uuid
+)
+returns public.games
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_game public.games;
+begin
+    if not public.is_game_participant(p_game_id, auth.uid()) then
+        raise exception 'not a participant in this game';
+    end if;
+
+    update public.games
+    set status = p_status,
+        result = p_result,
+        winner_id = p_winner_id
+    where id = p_game_id
+    returning * into v_game;
+
+    return v_game;
+end;
+$$;
+
 -- Keeps player_views in sync with games in the same transaction as every
 -- move (docs/adr/0002). While a game is active (or waiting for an opponent),
 -- each player's row holds a FEN redacted to their own pieces; once a game

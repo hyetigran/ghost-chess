@@ -50,15 +50,14 @@ create policy "Users can view moves in their non-active games" on public.moves
         )
     );
 
+-- Uses is_game_participant() rather than a raw EXISTS against games: a
+-- move is always inserted while its game is 'active', and a plain
+-- subquery here would be silently gated by games' own SELECT RLS (which
+-- denies 'active' rows to participants, #12), making every real insert
+-- fail. See that function's comment in 06_functions.sql.
 create policy "Users can insert moves in their games" on public.moves
     for insert to authenticated
-    with check (
-        exists (
-            select 1 from public.games
-            where games.id = moves.game_id
-            and (games.white_player_id = auth.uid() or games.black_player_id = auth.uid())
-        )
-    );
+    with check (public.is_game_participant(moves.game_id, auth.uid()));
 
 -- Player view policies
 -- No insert/update/delete policy: rows are written only by the

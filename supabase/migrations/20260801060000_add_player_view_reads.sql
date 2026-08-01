@@ -12,6 +12,75 @@ alter table "public"."player_views" validate constraint "player_views_black_play
 
 set check_function_bodies = off;
 
+CREATE OR REPLACE FUNCTION public.is_game_participant(p_game_id uuid, p_user_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SECURITY DEFINER
+ SET search_path = ''
+AS $function$
+    select exists (
+        select 1 from public.games
+        where id = p_game_id
+        and (white_player_id = p_user_id or black_player_id = p_user_id)
+    );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.submit_own_move(p_game_id uuid, p_move_number int, p_move_text text, p_fen text, p_captured_piece text, p_current_turn text, p_white_time_remaining numeric, p_black_time_remaining numeric)
+ RETURNS public.moves
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path = ''
+AS $function$
+declare
+    v_move public.moves;
+begin
+    if not public.is_game_participant(p_game_id, auth.uid()) then
+        raise exception 'not a participant in this game';
+    end if;
+
+    insert into public.moves (game_id, player_id, move_number, move_text, fen, captured_piece)
+    values (p_game_id, auth.uid(), p_move_number, p_move_text, p_fen, p_captured_piece)
+    returning * into v_move;
+
+    update public.games
+    set fen = p_fen,
+        current_turn = p_current_turn,
+        white_time_remaining = p_white_time_remaining,
+        black_time_remaining = p_black_time_remaining
+    where id = p_game_id;
+
+    return v_move;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.end_own_game(p_game_id uuid, p_status text, p_result text, p_winner_id uuid)
+ RETURNS public.games
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path = ''
+AS $function$
+declare
+    v_game public.games;
+begin
+    if not public.is_game_participant(p_game_id, auth.uid()) then
+        raise exception 'not a participant in this game';
+    end if;
+
+    update public.games
+    set status = p_status,
+        result = p_result,
+        winner_id = p_winner_id
+    where id = p_game_id
+    returning * into v_game;
+
+    return v_game;
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.sync_player_views()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -128,4 +197,15 @@ using (
         WHERE ((games.id = moves.game_id)
             AND ((games.white_player_id = auth.uid()) OR (games.black_player_id = auth.uid()))
             AND (games.status <> 'active'))))
+);
+
+drop policy "Users can insert moves in their games" on "public"."moves";
+
+create policy "Users can insert moves in their games"
+on "public"."moves"
+as permissive
+for insert
+to authenticated
+with check (
+    public.is_game_participant(moves.game_id, auth.uid())
 );
