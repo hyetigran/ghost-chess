@@ -52,11 +52,18 @@ export default function HomeScreen() {
               <Text>Local Play</Text>
             </Button>
           </Link>
-          <Link href='/settings' asChild>
-            <Button variant='ghost'>
-              <Text>Settings</Text>
-            </Button>
-          </Link>
+          <View className='flex-row justify-center gap-4'>
+            <Link href='/settings' asChild>
+              <Button variant='ghost'>
+                <Text>Settings</Text>
+              </Button>
+            </Link>
+            <Link href='/how-to-play' asChild>
+              <Button variant='ghost'>
+                <Text>How to Play</Text>
+              </Button>
+            </Link>
+          </View>
         </CardContent>
       </Card>
 

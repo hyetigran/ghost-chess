@@ -144,6 +144,13 @@ export default function RootLayout() {
             headerShown: true,
           }}
         />
+        <Stack.Screen
+          name='how-to-play'
+          options={{
+            title: 'How to Play',
+            headerShown: true,
+          }}
+        />
       </Stack>
     </Providers>
   );
