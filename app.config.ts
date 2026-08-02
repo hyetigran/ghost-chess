@@ -58,6 +58,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-router',
     ['react-native-edge-to-edge'],
+    'expo-notifications',
   ],
   extra: {
     ...ClientEnv,

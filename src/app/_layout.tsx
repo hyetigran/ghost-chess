@@ -26,6 +26,7 @@ import { NAV_THEME } from '~/lib/style/constants';
 import { useColorScheme } from '~/lib/style/useColorScheme';
 import { AuthProvider } from '~/context/auth-context';
 import { SettingsProvider } from '~/context/settings-context';
+import { usePushNotifications } from '~/lib/hooks/use-push-notifications';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -187,6 +188,11 @@ export function APIProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PushNotificationsRegistrar(): null {
+  usePushNotifications();
+  return null;
+}
+
 function Providers({ children }: { children: React.ReactNode }) {
   const { isDarkColorScheme } = useColorScheme();
 
@@ -202,6 +208,7 @@ function Providers({ children }: { children: React.ReactNode }) {
               <APIProvider>
                 <BottomSheetModalProvider>
                   <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+                  <PushNotificationsRegistrar />
                   {children}
                   <FlashMessage position='top' />
                   <PortalHost />

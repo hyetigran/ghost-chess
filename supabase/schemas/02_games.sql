@@ -17,6 +17,12 @@ create table "public"."games" (
     "pgn" text not null,
     "is_check" boolean not null default false,
     "winner_id" uuid references public.users(id) default null,
+    -- Set once send_time_warnings() (06_functions.sql, #29) sends a
+    -- deadline-approaching push for the *current* turn, so it doesn't
+    -- re-send on every cron tick; cleared back to null by apply_move
+    -- whenever a move actually lands, so the next turn gets its own fresh
+    -- warning eligibility.
+    "time_warning_sent_at" timestamp with time zone default null,
     "created_at" timestamp with time zone not null default timezone('utc'::text, now()),
     "updated_at" timestamp with time zone not null default timezone('utc'::text, now()),
     constraint "games_pkey" primary key ("id")
