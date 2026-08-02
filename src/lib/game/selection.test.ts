@@ -14,7 +14,7 @@ describe('decideSelectionAction', () => {
     ).toEqual({ type: 'noop' });
   });
 
-  it('does nothing when tapping the opponent\'s piece with nothing selected', () => {
+  it("does nothing when tapping the opponent's piece with nothing selected", () => {
     expect(decideSelectionAction(null, 'e7', 'b', new Set(), 'w')).toEqual({
       type: 'noop',
     });

@@ -47,9 +47,11 @@ export function useCaptureFlash(
     if (!previous || !game) return;
 
     const becameOpponentTurn =
-      game.current_turn !== viewerColor && previous.current_turn === viewerColor;
+      game.current_turn !== viewerColor &&
+      previous.current_turn === viewerColor;
     const becameViewerTurn =
-      game.current_turn === viewerColor && previous.current_turn !== viewerColor;
+      game.current_turn === viewerColor &&
+      previous.current_turn !== viewerColor;
 
     if (becameOpponentTurn) {
       // The viewer's own pending move (if any) just settled — find out

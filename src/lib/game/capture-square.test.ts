@@ -5,13 +5,12 @@ describe('findCapturedOwnSquare', () => {
     // White's pawn on e4 is gone in the new FEN — black just captured it.
     const previous =
       'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
-    const next =
-      'rnbqkbnr/pppp1ppp/8/8/4p3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
+    const next = 'rnbqkbnr/pppp1ppp/8/8/4p3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
 
     expect(findCapturedOwnSquare(previous, next, 'w')).toBe('e4');
   });
 
-  it('returns null when nothing of the viewer\'s own color vanished', () => {
+  it("returns null when nothing of the viewer's own color vanished", () => {
     // Same position, nothing changed.
     const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     expect(findCapturedOwnSquare(fen, fen, 'w')).toBeNull();
@@ -33,8 +32,7 @@ describe('findCapturedOwnSquare', () => {
   it('finds the first vanished own square when checked for black', () => {
     const previous =
       'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2';
-    const next =
-      'rnbqkbnr/pppp1ppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
+    const next = 'rnbqkbnr/pppp1ppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
 
     expect(findCapturedOwnSquare(previous, next, 'b')).toBe('e5');
   });

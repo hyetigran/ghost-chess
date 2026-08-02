@@ -1,6 +1,12 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import { Card, CardContent, CardHeader, CardTitle, Text } from '~/components/ui';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Text,
+} from '~/components/ui';
 
 type Props = {
   title: string;

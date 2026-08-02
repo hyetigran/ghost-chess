@@ -30,9 +30,7 @@ export function describeGameResult(
         ? 'You won — your opponent ran out of time!'
         : 'You lost — you ran out of time.';
     case 'abandoned':
-      return won
-        ? 'You won — your opponent resigned!'
-        : 'You resigned.';
+      return won ? 'You won — your opponent resigned!' : 'You resigned.';
     case 'stalemate':
       return 'Draw by stalemate.';
     case 'draw':

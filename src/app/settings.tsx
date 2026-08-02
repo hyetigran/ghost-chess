@@ -1,11 +1,6 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '~/components/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui';
 import { SettingsToggleRow } from '~/components/settings/settings-toggle-row';
 import { useSettings } from '~/context/settings-context';
 
