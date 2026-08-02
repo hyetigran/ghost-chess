@@ -131,6 +131,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name='ai-game'
+          options={{
+            title: 'vs. AI',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name='(game)/[id]'
           options={{
             title: 'Game',
