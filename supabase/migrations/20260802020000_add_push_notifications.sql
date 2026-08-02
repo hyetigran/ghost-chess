@@ -116,6 +116,31 @@ $$;
 
 revoke execute on function public.send_push_notification from public;
 
+-- Looks up a user's push token and sends to it in one call — every caller
+-- below (notify_game_change's three branches, send_time_warnings) was
+-- repeating the same "select push_token into ...; perform
+-- send_push_notification(...)" pair with its own null-token guard.
+create or replace function public.send_push_to_user(
+    p_user_id uuid,
+    p_title text,
+    p_body text,
+    p_data jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_push_token text;
+begin
+    select push_token into v_push_token from public.users where id = p_user_id;
+    perform public.send_push_notification(v_push_token, p_title, p_body, p_data);
+end;
+$$;
+
+revoke execute on function public.send_push_to_user from public;
+
 -- Mirrors src/lib/notifications/decide-notification.ts's
 -- decideGameChangeNotifications (#29, dual-implementation pattern) — this
 -- trigger is the actual enforcement point, the TS function is the
@@ -138,17 +163,21 @@ declare
     v_became_terminal boolean;
     v_creator_id uuid;
     v_mover_id uuid;
-    v_recipient_token text;
 begin
     v_became_active := old.status = 'waiting' and new.status = 'active';
     v_became_terminal := new.status in ('completed', 'abandoned') and old.status <> new.status;
 
+    -- The creator receiving both this and a "your turn" push below when
+    -- they also happen to be the first mover (i.e. they were assigned
+    -- white) is a known, accepted overlap, not a bug — both are genuinely
+    -- true, distinct events, and merging them into one combined
+    -- notification isn't worth the added type/copy surface for two
+    -- pushes that only ever co-occur once, at game start.
     if v_became_active then
         v_creator_id := coalesce(old.white_player_id, old.black_player_id);
         if v_creator_id is not null then
-            select push_token into v_recipient_token from public.users where id = v_creator_id;
-            perform public.send_push_notification(
-                v_recipient_token,
+            perform public.send_push_to_user(
+                v_creator_id,
                 'Opponent found!',
                 'Someone joined your game — it starts now.',
                 jsonb_build_object('gameId', new.id)
@@ -159,9 +188,8 @@ begin
     if v_became_terminal then
         for v_mover_id in select unnest(array[new.white_player_id, new.black_player_id]) loop
             if v_mover_id is not null then
-                select push_token into v_recipient_token from public.users where id = v_mover_id;
-                perform public.send_push_notification(
-                    v_recipient_token,
+                perform public.send_push_to_user(
+                    v_mover_id,
                     'Game over',
                     'Your game has ended — tap to see how it finished.',
                     jsonb_build_object('gameId', new.id)
@@ -171,9 +199,8 @@ begin
     elsif new.status = 'active' and (v_became_active or old.current_turn <> new.current_turn) then
         v_mover_id := case when new.current_turn = 'white' then new.white_player_id else new.black_player_id end;
         if v_mover_id is not null then
-            select push_token into v_recipient_token from public.users where id = v_mover_id;
-            perform public.send_push_notification(
-                v_recipient_token,
+            perform public.send_push_to_user(
+                v_mover_id,
                 'Your turn',
                 'It''s your move.',
                 jsonb_build_object('gameId', new.id)
@@ -206,7 +233,6 @@ declare
     v_mover_id uuid;
     v_deadline timestamptz;
     v_window interval;
-    v_recipient_token text;
 begin
     for v_game in
         select * from public.games
@@ -220,9 +246,8 @@ begin
             v_mover_id := case when v_game.current_turn = 'white' then v_game.white_player_id else v_game.black_player_id end;
 
             if v_mover_id is not null then
-                select push_token into v_recipient_token from public.users where id = v_mover_id;
-                perform public.send_push_notification(
-                    v_recipient_token,
+                perform public.send_push_to_user(
+                    v_mover_id,
                     'Time is running out',
                     'You''re close to your move deadline in an active game.',
                     jsonb_build_object('gameId', v_game.id)

@@ -5,7 +5,9 @@ const WHITE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const BLACK_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const GAME_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 
-function snapshot(overrides: Partial<GameChangeSnapshot> = {}): GameChangeSnapshot {
+function snapshot(
+  overrides: Partial<GameChangeSnapshot> = {},
+): GameChangeSnapshot {
   return {
     id: GAME_ID,
     status: 'active',

@@ -13,7 +13,7 @@ describe('isApproachingDeadline', () => {
     expect(isApproachingDeadline(deadline, now, 12)).toBe(true);
   });
 
-  it('is false once the deadline has already passed — that is forfeit_lapsed_games\' job, not a warning', () => {
+  it("is false once the deadline has already passed — that is forfeit_lapsed_games' job, not a warning", () => {
     const deadline = new Date('2026-01-01T12:00:00.000Z');
     const now = new Date('2026-01-01T13:00:00.000Z');
     expect(isApproachingDeadline(deadline, now, 12)).toBe(false);

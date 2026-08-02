@@ -32,7 +32,8 @@ export function decideGameChangeNotifications(
 ): NotificationEvent[] {
   const events: NotificationEvent[] = [];
 
-  const becameActive = previous.status === 'waiting' && next.status === 'active';
+  const becameActive =
+    previous.status === 'waiting' && next.status === 'active';
   if (becameActive) {
     const creatorId = previous.white_player_id ?? previous.black_player_id;
     if (creatorId) {
@@ -59,7 +60,9 @@ export function decideGameChangeNotifications(
     (becameActive || previous.current_turn !== next.current_turn)
   ) {
     const recipientId =
-      next.current_turn === 'white' ? next.white_player_id : next.black_player_id;
+      next.current_turn === 'white'
+        ? next.white_player_id
+        : next.black_player_id;
     if (recipientId) {
       events.push({ type: 'your_turn', recipientId, gameId: next.id });
     }
