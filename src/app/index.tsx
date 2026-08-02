@@ -75,6 +75,11 @@ export default function HomeScreen() {
                 <Text>How to Play</Text>
               </Button>
             </Link>
+            <Link href='/onboarding' asChild>
+              <Button variant='ghost'>
+                <Text>Tutorial</Text>
+              </Button>
+            </Link>
           </View>
         </CardContent>
       </Card>

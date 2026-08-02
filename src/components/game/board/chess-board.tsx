@@ -31,6 +31,8 @@ type Props = {
    * them.
    */
   interactive?: boolean;
+  /** Label shown over the board while `interactive` is false. */
+  inactiveLabel?: string;
 };
 
 export function ChessBoard({
@@ -39,6 +41,7 @@ export function ChessBoard({
   orientation,
   flashSquare,
   interactive = true,
+  inactiveLabel = 'Final position',
 }: Props): React.JSX.Element {
   const chess = React.useMemo(
     () => chessFromRedactedFen(redactedFen),
@@ -48,13 +51,11 @@ export function ChessBoard({
     useSquareSelection(chess, orientation, onMove);
 
   return (
-    <View
-      className={`w-full aspect-square ${interactive ? '' : 'opacity-70'}`}
-    >
+    <View className={`w-full aspect-square ${interactive ? '' : 'opacity-70'}`}>
       {!interactive && (
         <View className='absolute inset-x-0 z-10 items-center -top-7'>
           <Text className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
-            Final position
+            {inactiveLabel}
           </Text>
         </View>
       )}
