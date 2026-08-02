@@ -1,5 +1,8 @@
 import * as React from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { showMessage } from 'react-native-flash-message';
+import { z } from 'zod';
 import {
   Card,
   CardContent,
@@ -9,9 +12,40 @@ import {
   Input,
   Button,
 } from '~/components/ui';
+import { useJoinGame } from '~/lib/state/game/actions';
+import { gameRoute } from '~/lib/navigation/game-route';
 
 export default function JoinGameScreen() {
-  const [gameId, setGameId] = React.useState('');
+  const [gameIdInput, setGameIdInput] = React.useState('');
+  const router = useRouter();
+  const { mutate: joinGame, isPending } = useJoinGame();
+
+  const trimmedGameId = gameIdInput.trim();
+  const isValidGameId = z.string().uuid().safeParse(trimmedGameId).success;
+
+  const handleJoinGame = () => {
+    if (!isValidGameId) {
+      showMessage({
+        message: 'Could not join game',
+        description: "That doesn't look like a valid game ID.",
+        type: 'danger',
+      });
+      return;
+    }
+
+    joinGame(trimmedGameId, {
+      onSuccess: () => {
+        router.push(gameRoute(trimmedGameId));
+      },
+      onError: (error) => {
+        showMessage({
+          message: 'Could not join game',
+          description: error.message,
+          type: 'danger',
+        });
+      },
+    });
+  };
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
@@ -25,11 +59,14 @@ export default function JoinGameScreen() {
           </Text>
           <Input
             placeholder='Game ID'
-            value={gameId}
-            onChangeText={setGameId}
+            value={gameIdInput}
+            onChangeText={setGameIdInput}
             className='text-center'
           />
-          <Button>
+          <Button
+            disabled={!trimmedGameId || isPending}
+            onPress={handleJoinGame}
+          >
             <Text>Join Game</Text>
           </Button>
         </CardContent>

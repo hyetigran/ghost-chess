@@ -28,9 +28,32 @@ export async function createGame(
       status: 'waiting',
       current_turn: 'white',
       fen: initialFen,
+      // games.pgn is NOT NULL with no default (supabase/schemas/02_games.sql)
+      // — omitting it here made every real game-creation attempt fail with
+      // a not-null constraint violation, found while testing #25's join
+      // flow against a live local instance. A fresh game with zero moves
+      // has an empty PGN, not a null one.
+      pgn: '',
     })
     .select()
     .single();
+
+  if (error) throw error;
+  return gameSchema.parse(data);
+}
+
+/**
+ * Join a game that's waiting for a second player (#25) — the
+ * game-ID-based invite accept, per ADR-0005: identifies the game only by
+ * its uuid, never by the inviter's identity. join_game (security definer,
+ * supabase/schemas/06_functions.sql) does the actual atomic slot-fill and
+ * status transition; RLS has no UPDATE policy on games at all, so this
+ * can't be a plain client update.
+ */
+export async function joinGame(gameId: string): Promise<Game> {
+  const { data, error } = await supabase.rpc('join_game', {
+    p_game_id: gameId,
+  });
 
   if (error) throw error;
   return gameSchema.parse(data);

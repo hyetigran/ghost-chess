@@ -9,6 +9,7 @@ import {
   Text,
   Button,
 } from '~/components/ui';
+import { GameCreatedCard } from '~/components/new-game/game-created-card';
 import { timeControlLabel } from '~/lib/game/time-control-label';
 import { useCreateGame } from '~/lib/state/game/actions';
 import type { GameSettings } from '~/types/database';
@@ -16,7 +17,7 @@ import type { GameSettings } from '~/types/database';
 const TIME_CONTROL_OPTIONS: GameSettings['timeControlHours'][] = [1, 12, 24];
 
 export default function NewGameScreen() {
-  const { mutate: createGame, isPending } = useCreateGame();
+  const { mutate: createGame, isPending, data: createdGame } = useCreateGame();
   const [timeControlHours, setTimeControlHours] =
     React.useState<GameSettings['timeControlHours']>(24);
 
@@ -31,7 +32,6 @@ export default function NewGameScreen() {
       },
       {
         onError: (error) => {
-          console.error(error);
           showMessage({
             message: 'Something went wrong',
             description: `${error.message}`,
@@ -41,6 +41,10 @@ export default function NewGameScreen() {
       },
     );
   };
+
+  if (createdGame) {
+    return <GameCreatedCard gameId={createdGame.id} />;
+  }
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
