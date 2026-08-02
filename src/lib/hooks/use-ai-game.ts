@@ -7,7 +7,7 @@ import {
   type LocalGameResult,
   type LocalMoveOutcome,
 } from '~/lib/game/local-move';
-import { chooseAiMove, type Difficulty } from '~/lib/game/ai-move';
+import { chooseAiMoveFromTrueFen, type Difficulty } from '~/lib/game/ai-move';
 
 const START_FEN = new Chess().fen();
 const MAX_AI_ATTEMPTS = 8;
@@ -22,15 +22,16 @@ type UseAiGameResult = {
   reset: () => void;
 };
 
-// Thin state wrapper — the actual rules logic is applyLocalMove (#20) and
-// the AI's move selection is chooseAiMove (#21), both pure and tested.
-// The one thing that lives here is the retry loop: a candidate chooseAiMove
-// offers can turn out illegal against the true board (the same structural
-// reason a human's own legalTargets highlighting can — occlusion can make
-// a slide-through square look clear when a hidden piece actually blocks
-// it, exactly #18's pawn-diagonal problem generalized to any piece), so
-// this retries with fresh candidates the same number of times a human
-// effectively gets by just tapping again, capped defensively.
+// Thin state wrapper — the actual rules logic is applyLocalMove (#20), and
+// the AI's move selection, redaction included, is chooseAiMoveFromTrueFen
+// (#21) — both pure and tested. The one thing that lives here is the
+// retry loop: a candidate chooseAiMove offers can turn out illegal
+// against the true board (the same structural reason a human's own
+// legalTargets highlighting can — occlusion can make a slide-through
+// square look clear when a hidden piece actually blocks it, exactly
+// #18's pawn-diagonal problem generalized to any piece), so this retries
+// with fresh candidates the same number of times a human effectively
+// gets by just tapping again, capped defensively.
 export function useAiGame(
   humanColor: Color,
   difficulty: Difficulty,
@@ -52,9 +53,8 @@ export function useAiGame(
   };
 
   const playAiTurn = (currentFen: string): void => {
-    const aiRedactedFen = redactFen(currentFen, aiColor);
     for (let attempt = 0; attempt < MAX_AI_ATTEMPTS; attempt++) {
-      const move = chooseAiMove(aiRedactedFen, difficulty);
+      const move = chooseAiMoveFromTrueFen(currentFen, aiColor, difficulty);
       if (!move) return;
       const outcome = applyLocalMove(currentFen, move);
       if (outcome.legal) {

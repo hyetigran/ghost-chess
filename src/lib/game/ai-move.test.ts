@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { chooseAiMove } from '~/lib/game/ai-move';
+import { chooseAiMove, chooseAiMoveFromTrueFen } from '~/lib/game/ai-move';
 
 describe('chooseAiMove', () => {
   it('returns null when the side to move has no legal moves (stalemate)', () => {
@@ -24,7 +24,7 @@ describe('chooseAiMove', () => {
     }
   });
 
-  it('easy: always returns one of the position\'s real legal moves, and the injected random function actually drives which one', () => {
+  it("easy: always returns one of the position's real legal moves, and the injected random function actually drives which one", () => {
     const fen = '8/8/8/8/8/2N5/8/K6k w - - 0 1';
     const chess = new Chess(fen);
     const legalMoves = new Set(
@@ -86,5 +86,36 @@ describe('chooseAiMove', () => {
       }
     }
     expect(sawHiddenCaptureCandidate).toBe(true);
+  });
+});
+
+describe('chooseAiMoveFromTrueFen', () => {
+  it('actually redacts the true fen before choosing — a caller that skipped redaction would pick a different move', () => {
+    // Black rook a8 can slide all the way to a1, where a white rook
+    // really sits (a genuine capture) — reachable either way, since
+    // redaction hides identity, not connectivity, so this isn't about
+    // whether the move is offered, only how it scores. Black knight d7
+    // can reach e5, a center square, unaffected by redaction either way.
+    const trueFen = 'r6k/3n4/8/8/8/8/6K1/R7 b - - 0 1';
+
+    // Fed the true fen directly (the bug this composition exists to
+    // prevent, per its own doc comment): chess.js sees the real capture
+    // on a1 (scores 3, uniquely highest — knight-e5's center bonus is
+    // only 2), so 'hard' always picks it.
+    const buggyMove = chooseAiMove(trueFen, 'hard', () => 0.5);
+    expect(buggyMove).toEqual({ from: 'a8', to: 'a1' });
+
+    // Fed through the real composition: a1 is invisible to black, so
+    // that same move now scores 0 (an ordinary quiet move, no capture
+    // flag) — knight-e5's center bonus (2) is uniquely highest instead.
+    const correctMove = chooseAiMoveFromTrueFen(
+      trueFen,
+      'black',
+      'hard',
+      () => 0.5,
+    );
+    expect(correctMove).toEqual({ from: 'd7', to: 'e5' });
+
+    expect(correctMove).not.toEqual(buggyMove);
   });
 });

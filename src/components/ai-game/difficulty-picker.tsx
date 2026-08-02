@@ -29,8 +29,8 @@ export function DifficultyPicker({ onSelect }: Props): React.JSX.Element {
         </CardHeader>
         <CardContent className='gap-4'>
           <Text className='text-center text-muted-foreground'>
-            Choose a difficulty. The AI plays under the same occlusion rules
-            you do — it never sees your hidden pieces.
+            Choose a difficulty. The AI plays under the same occlusion rules you
+            do — it never sees your hidden pieces.
           </Text>
           <View className='gap-2'>
             {OPTIONS.map((option) => (

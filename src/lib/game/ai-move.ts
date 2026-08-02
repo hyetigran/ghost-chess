@@ -1,6 +1,7 @@
 import { Chess, type Square } from 'chess.js';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { pawnCaptureCandidates } from '~/lib/game/pawn-capture-candidates';
+import { redactFen, type PieceColor } from '~/lib/game/redact-fen';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -14,6 +15,22 @@ const CENTER_SQUARES = new Set(['d4', 'd5', 'e4', 'e5']);
 
 type Candidate = AiMoveAttempt & { score: number };
 
+// Composes redaction with move selection so the "redact, then choose"
+// step is one tested unit rather than duplicated/hand-rolled at each call
+// site — a caller that skipped redaction (passed the true fen straight to
+// chooseAiMove) would be a real occlusion leak, and nothing short of a
+// dedicated test (see ai-move.test.ts's differential test) would catch
+// it, since chooseAiMove's own signature can't tell a redacted fen from
+// an unredacted one.
+export function chooseAiMoveFromTrueFen(
+  trueFen: string,
+  aiColor: PieceColor,
+  difficulty: Difficulty,
+  random: () => number = Math.random,
+): AiMoveAttempt | null {
+  return chooseAiMove(redactFen(trueFen, aiColor), difficulty, random);
+}
+
 // Chooses the AI's move from ONLY its own redacted view (#21, ADR-0004) —
 // this function's signature is the enforcement point: it takes a FEN
 // string and has no other way to learn anything about the game, so it
@@ -23,6 +40,14 @@ type Candidate = AiMoveAttempt & { score: number };
 // with pawnCaptureCandidates for hidden-piece diagonal captures) — the
 // AI has no more information or capability than a human looking at the
 // same screen would.
+//
+// Deliberately no check-awareness: scoring a move by whether it delivers
+// check would need to know where the opponent's king is, which is
+// exactly the information occlusion hides — there's no way to compute
+// "does this look like check" from a redacted view any more honestly
+// than guessing. Scoring is limited to what's actually knowable: whether
+// a target square might hold a piece (capture-shaped candidates), board
+// geography (central control), and promotion.
 export function chooseAiMove(
   redactedFen: string,
   difficulty: Difficulty,
@@ -100,7 +125,10 @@ function pickRandom(candidates: Candidate[], random: () => number): Candidate {
   return candidates[index];
 }
 
-function pickWeighted(candidates: Candidate[], random: () => number): Candidate {
+function pickWeighted(
+  candidates: Candidate[],
+  random: () => number,
+): Candidate {
   const weights = candidates.map((c) => c.score + 1);
   const total = weights.reduce((sum, w) => sum + w, 0);
   let target = random() * total;
