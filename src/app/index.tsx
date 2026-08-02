@@ -47,11 +47,18 @@ export default function HomeScreen() {
               </Button>
             </Link>
           </View>
-          <Link href='/local-game' asChild>
-            <Button variant='secondary'>
-              <Text>Local Play</Text>
-            </Button>
-          </Link>
+          <View className='flex-row justify-center gap-4'>
+            <Link href='/local-game' asChild>
+              <Button variant='secondary'>
+                <Text>Local Play</Text>
+              </Button>
+            </Link>
+            <Link href='/ai-game' asChild>
+              <Button variant='secondary'>
+                <Text>vs. AI</Text>
+              </Button>
+            </Link>
+          </View>
           <View className='flex-row justify-center gap-4'>
             <Link href='/profile' asChild>
               <Button variant='ghost'>
