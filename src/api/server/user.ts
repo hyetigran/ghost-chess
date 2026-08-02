@@ -48,6 +48,24 @@ export async function updateUserProfile(
 }
 
 /**
+ * Register (or clear, with null) this device's Expo push token (#29).
+ * A plain client update is fine here — unlike `games`, `users` RLS grants
+ * an authenticated user UPDATE on their own row with no column
+ * restriction, so no security-definer function is needed.
+ */
+export async function updatePushToken(
+  userId: string,
+  token: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('users')
+    .update({ push_token: token })
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
+/**
  * Get user statistics
  */
 export async function getUserStats(

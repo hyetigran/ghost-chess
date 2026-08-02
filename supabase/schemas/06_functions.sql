@@ -538,7 +538,12 @@ begin
         status = p_status,
         result = p_result,
         winner_id = coalesce(p_winner_id, winner_id),
-        updated_at = now()
+        updated_at = now(),
+        -- A new turn just started (or the game just ended, where this is
+        -- moot) — reset so send_time_warnings() (#29) evaluates the fresh
+        -- deadline on its own terms rather than skipping it as
+        -- already-warned from the previous turn.
+        time_warning_sent_at = null
     where id = p_game_id
       and fen = p_expected_fen;
 
@@ -557,6 +562,171 @@ $$ language plpgsql security definer set search_path = '';
 -- function) — anon/authenticated must never be able to call this directly.
 revoke execute on function public.apply_move from public;
 grant execute on function public.apply_move to service_role;
+
+-- Shared push-send primitive for notify_game_change() and
+-- send_time_warnings() below (#29) — calls Expo's push API directly via
+-- pg_net rather than through an intermediate edge function, since there's
+-- no business logic left to run once the notification has already been
+-- decided; keeping it in SQL avoids the URL-bootstrapping problem of a
+-- Postgres function needing to know its own project's edge function URL.
+-- Fire-and-forget (net.http_post is async) and silently no-ops for a
+-- recipient with no token (permission never granted, or never registered)
+-- rather than erroring — a missing token is an expected, common case, not
+-- a failure.
+create or replace function public.send_push_notification(
+    p_push_token text,
+    p_title text,
+    p_body text,
+    p_data jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+    if p_push_token is null then
+        return;
+    end if;
+
+    perform net.http_post(
+        url := 'https://exp.host/--/api/v2/push/send',
+        headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'Accept', 'application/json'
+        ),
+        body := jsonb_build_object(
+            'to', p_push_token,
+            'title', p_title,
+            'body', p_body,
+            'data', p_data
+        )
+    );
+end;
+$$;
+
+revoke execute on function public.send_push_notification from public;
+
+-- Mirrors src/lib/notifications/decide-notification.ts's
+-- decideGameChangeNotifications (#29, dual-implementation pattern) — this
+-- trigger is the actual enforcement point, the TS function is the
+-- tested reference. "Game invitations" (PRD §4.4) has no invitee to
+-- notify in this app's model (game-ID shares, ADR-0005, not records
+-- naming a recipient) — this notifies the *creator* that their invite
+-- was accepted instead, the only side of "invitation" this data model
+-- can actually name a recipient for. Push copy is deliberately generic
+-- (src/lib/notifications/notification-copy.ts's mirror) — never names an
+-- opponent, color, or result, since push payloads can surface on a lock
+-- screen and occlusion-sensitive content has no business there.
+create or replace function public.notify_game_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_became_active boolean;
+    v_became_terminal boolean;
+    v_creator_id uuid;
+    v_mover_id uuid;
+    v_recipient_token text;
+begin
+    v_became_active := old.status = 'waiting' and new.status = 'active';
+    v_became_terminal := new.status in ('completed', 'abandoned') and old.status <> new.status;
+
+    if v_became_active then
+        v_creator_id := coalesce(old.white_player_id, old.black_player_id);
+        if v_creator_id is not null then
+            select push_token into v_recipient_token from public.users where id = v_creator_id;
+            perform public.send_push_notification(
+                v_recipient_token,
+                'Opponent found!',
+                'Someone joined your game — it starts now.',
+                jsonb_build_object('gameId', new.id)
+            );
+        end if;
+    end if;
+
+    if v_became_terminal then
+        for v_mover_id in select unnest(array[new.white_player_id, new.black_player_id]) loop
+            if v_mover_id is not null then
+                select push_token into v_recipient_token from public.users where id = v_mover_id;
+                perform public.send_push_notification(
+                    v_recipient_token,
+                    'Game over',
+                    'Your game has ended — tap to see how it finished.',
+                    jsonb_build_object('gameId', new.id)
+                );
+            end if;
+        end loop;
+    elsif new.status = 'active' and (v_became_active or old.current_turn <> new.current_turn) then
+        v_mover_id := case when new.current_turn = 'white' then new.white_player_id else new.black_player_id end;
+        if v_mover_id is not null then
+            select push_token into v_recipient_token from public.users where id = v_mover_id;
+            perform public.send_push_notification(
+                v_recipient_token,
+                'Your turn',
+                'It''s your move.',
+                jsonb_build_object('gameId', new.id)
+            );
+        end if;
+    end if;
+
+    return new;
+end;
+$$;
+
+revoke execute on function public.notify_game_change from public;
+
+-- Mirrors src/lib/notifications/deadline-warning.ts's
+-- isApproachingDeadline (#29) — a scheduled job, not a trigger, since
+-- nothing about a row changes when time simply passes. Percentage-based
+-- (20% of the time control remaining), not a fixed lead time: a fixed
+-- "1 hour before" would fire almost immediately on a 1-hour time control
+-- and absurdly early on a 24-hour one. time_warning_sent_at (set here,
+-- cleared by apply_move on the next move) keeps this from re-sending
+-- every cron tick for the same turn.
+create or replace function public.send_time_warnings()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_game record;
+    v_mover_id uuid;
+    v_deadline timestamptz;
+    v_window interval;
+    v_recipient_token text;
+begin
+    for v_game in
+        select * from public.games
+        where status = 'active'
+          and time_warning_sent_at is null
+    loop
+        v_window := make_interval(hours => (v_game.settings->>'timeControlHours')::int);
+        v_deadline := v_game.updated_at + v_window;
+
+        if v_deadline > now() and v_deadline <= now() + (v_window * 0.2) then
+            v_mover_id := case when v_game.current_turn = 'white' then v_game.white_player_id else v_game.black_player_id end;
+
+            if v_mover_id is not null then
+                select push_token into v_recipient_token from public.users where id = v_mover_id;
+                perform public.send_push_notification(
+                    v_recipient_token,
+                    'Time is running out',
+                    'You''re close to your move deadline in an active game.',
+                    jsonb_build_object('gameId', v_game.id)
+                );
+            end if;
+
+            update public.games set time_warning_sent_at = now() where id = v_game.id;
+        end if;
+    end loop;
+end;
+$$;
+
+revoke execute on function public.send_time_warnings from public;
 
 -- Enforces per-move deadlines (docs/adr/0006): scheduled via pg_cron below
 -- to run independent of any client being online — a player can't rely on
@@ -606,6 +776,10 @@ create trigger on_game_change_sync_player_views
     after insert or update on public.games
     for each row execute function public.sync_player_views();
 
+create trigger on_game_change_notify
+    after update on public.games
+    for each row execute function public.notify_game_change();
+
 -- Scheduled job: enforces per-move deadlines independent of any client
 -- being open (docs/adr/0006). Every minute is frequent enough that the
 -- gap between a deadline lapsing and the forfeit actually landing stays
@@ -617,4 +791,13 @@ select cron.schedule(
     'forfeit-lapsed-games',
     '* * * * *',
     $$ select public.forfeit_lapsed_games(); $$
+);
+
+-- Every 5 minutes is frequent enough to land comfortably inside the
+-- tightest warning window (20% of a 1-hour time control = 12 minutes)
+-- without scanning active games unnecessarily often (#29).
+select cron.schedule(
+    'send-time-warnings',
+    '*/5 * * * *',
+    $$ select public.send_time_warnings(); $$
 );
