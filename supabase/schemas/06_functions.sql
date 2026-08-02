@@ -264,6 +264,17 @@ $$ language plpgsql immutable set search_path = '';
 -- actually run can match; the second sees a row that's no longer
 -- 'waiting' and updates zero rows, caught below via v_game being null
 -- after the RETURNING clause matches nothing.
+--
+-- The auth.uid() is null guard exists because the participant check
+-- below (white_player_id = auth.uid() or black_player_id = auth.uid())
+-- would otherwise silently pass for an unauthenticated caller: NULL =
+-- NULL is NULL, not true, in SQL, so neither branch of that OR raises —
+-- execution would fall through into the UPDATE, whose CASE assigns the
+-- empty slot to auth.uid() (NULL, a no-op) while unconditionally
+-- flipping status to 'active' anyway, permanently bricking the game
+-- (an 'active' row is invisible to games' own SELECT RLS, so the
+-- creator could never even see it again). Reproduced and confirmed live
+-- against a local instance before adding this guard.
 create or replace function public.join_game(p_game_id uuid)
 returns public.games
 language plpgsql
@@ -273,6 +284,10 @@ as $$
 declare
     v_game public.games;
 begin
+    if auth.uid() is null then
+        raise exception 'not authenticated';
+    end if;
+
     select * into v_game from public.games where id = p_game_id;
 
     if v_game is null then

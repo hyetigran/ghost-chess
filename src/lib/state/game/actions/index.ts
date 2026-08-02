@@ -119,9 +119,14 @@ export const useCreateGame = () => {
 
 export const useJoinGame = () => {
   const queryClient = useQueryClient();
+  const { session } = useAuth();
+  const userId = session?.user.id;
 
   return useMutation({
-    mutationFn: (gameId: string) => joinGame(gameId),
+    mutationFn: (gameId: string) => {
+      if (!userId) throw new Error('User not authenticated');
+      return joinGame(gameId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game'] });
     },
