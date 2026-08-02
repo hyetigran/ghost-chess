@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createGame, endGame, submitMove } from '~/api/server/game';
+import { createGame, endGame, joinGame, submitMove } from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { GameSettings, PlayerView } from '~/types/database';
@@ -106,12 +106,22 @@ export const useCreateGame = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const userId = session?.user.id;
-  console.log('here', userId);
   return useMutation({
     mutationFn: ({ settings }: { settings: GameSettings }) => {
       if (!userId) throw new Error('User not authenticated');
       return createGame(userId, settings);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+    },
+  });
+};
+
+export const useJoinGame = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (gameId: string) => joinGame(gameId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game'] });
     },

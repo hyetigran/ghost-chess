@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View } from 'react-native';
+import { Link } from 'expo-router';
 import { showMessage } from 'react-native-flash-message';
 import {
   Card,
@@ -11,12 +12,13 @@ import {
 } from '~/components/ui';
 import { timeControlLabel } from '~/lib/game/time-control-label';
 import { useCreateGame } from '~/lib/state/game/actions';
+import { gameRoute } from '~/lib/navigation/game-route';
 import type { GameSettings } from '~/types/database';
 
 const TIME_CONTROL_OPTIONS: GameSettings['timeControlHours'][] = [1, 12, 24];
 
 export default function NewGameScreen() {
-  const { mutate: createGame, isPending } = useCreateGame();
+  const { mutate: createGame, isPending, data: createdGame } = useCreateGame();
   const [timeControlHours, setTimeControlHours] =
     React.useState<GameSettings['timeControlHours']>(24);
 
@@ -31,7 +33,6 @@ export default function NewGameScreen() {
       },
       {
         onError: (error) => {
-          console.error(error);
           showMessage({
             message: 'Something went wrong',
             description: `${error.message}`,
@@ -41,6 +42,33 @@ export default function NewGameScreen() {
       },
     );
   };
+
+  if (createdGame) {
+    // Game-ID-based invite, per ADR-0005 — the id below is the entire
+    // invite, nothing about the creator's identity is shared alongside it.
+    return (
+      <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
+        <Card className='w-full max-w-sm p-6 rounded-2xl'>
+          <CardHeader className='items-center'>
+            <CardTitle className='text-2xl font-bold'>Game created!</CardTitle>
+          </CardHeader>
+          <CardContent className='items-center gap-4'>
+            <Text className='text-center text-muted-foreground'>
+              Share this game ID with your opponent — press and hold to copy.
+            </Text>
+            <Text selectable className='text-lg font-mono text-center'>
+              {createdGame.id}
+            </Text>
+            <Link href={gameRoute(createdGame.id)} asChild>
+              <Button className='w-full'>
+                <Text>Go to game</Text>
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </View>
+    );
+  }
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>

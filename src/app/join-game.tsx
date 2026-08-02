@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { showMessage } from 'react-native-flash-message';
 import {
   Card,
   CardContent,
@@ -9,9 +11,28 @@ import {
   Input,
   Button,
 } from '~/components/ui';
+import { useJoinGame } from '~/lib/state/game/actions';
+import { gameRoute } from '~/lib/navigation/game-route';
 
 export default function JoinGameScreen() {
   const [gameId, setGameId] = React.useState('');
+  const router = useRouter();
+  const { mutate: joinGame, isPending } = useJoinGame();
+
+  const handleJoinGame = () => {
+    joinGame(gameId.trim(), {
+      onSuccess: () => {
+        router.push(gameRoute(gameId.trim()));
+      },
+      onError: (error) => {
+        showMessage({
+          message: 'Could not join game',
+          description: error.message,
+          type: 'danger',
+        });
+      },
+    });
+  };
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
@@ -29,7 +50,10 @@ export default function JoinGameScreen() {
             onChangeText={setGameId}
             className='text-center'
           />
-          <Button>
+          <Button
+            disabled={!gameId.trim() || isPending}
+            onPress={handleJoinGame}
+          >
             <Text>Join Game</Text>
           </Button>
         </CardContent>
