@@ -14,7 +14,8 @@
     "prepare": "husky",
     "type-check": "tsc  --noemit",
     "test": "jest",
-    "test:ci": "mkdir -p coverage && jest --ci --coverage --reporters=default --reporters=jest-junit | tee coverage/coverage.txt"
+    "test:ci": "mkdir -p coverage && jest --ci --coverage --reporters=default --reporters=jest-junit | tee coverage/coverage.txt",
+    "test:db": "npx supabase test db --local supabase/tests/database"
   },
   "jest-junit": {
     "outputDirectory": "coverage",

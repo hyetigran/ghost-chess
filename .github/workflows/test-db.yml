@@ -1,0 +1,40 @@
+# ✍️ Description:
+# Runs the pgTAP test suite (supabase/tests/database/) against a local
+# Supabase stack — direct SQL-level tests of redact_fen(), player_views'
+# redaction/RLS behavior, and reveal-on-completion (#30), as opposed to
+# the TS mirrors in src/lib/game/*.test.ts, which their own doc comments
+# describe as readable references, not substitutes for these.
+
+# 🚨 GITHUB SECRETS REQUIRED: NONE — runs entirely against a local
+# Supabase stack started inside the job, no project credentials needed.
+
+name: Database Tests (pgTAP)
+
+# Manual-dispatch only, matching every other CI workflow in this repo
+# (test.yml, type-check.yml) — see test.yml's comment for the repo-wide
+# rationale. Restore push/pull_request triggers if that stance changes.
+on:
+  workflow_dispatch:
+
+jobs:
+  test-db:
+    name: pgTAP tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout project repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🏃‍♂️ Start local Supabase stack
+        run: supabase start
+
+      - name: 🏃‍♂️ Run pgTAP tests
+        run: supabase test db --local supabase/tests/database
+
+      - name: 🧹 Stop local Supabase stack
+        if: always()
+        run: supabase stop
