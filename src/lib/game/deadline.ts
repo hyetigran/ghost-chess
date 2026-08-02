@@ -28,7 +28,9 @@ export function isDeadlineLapsed(
   timeControlHours: TimeControlHours,
   now: Date = new Date(),
 ): boolean {
-  return now.getTime() >= deadlineFor(turnStartedAt, timeControlHours).getTime();
+  return (
+    now.getTime() >= deadlineFor(turnStartedAt, timeControlHours).getTime()
+  );
 }
 
 export function secondsUntilDeadline(

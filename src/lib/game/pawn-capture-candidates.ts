@@ -32,7 +32,8 @@ export function pawnCaptureCandidates(
     if (targetFile < 0 || targetFile > 7 || targetRank < 1 || targetRank > 8) {
       continue;
     }
-    const targetSquare = `${String.fromCharCode(97 + targetFile)}${targetRank}` as Square;
+    const targetSquare =
+      `${String.fromCharCode(97 + targetFile)}${targetRank}` as Square;
     const occupant = chess.get(targetSquare);
     if (occupant?.color === color) continue;
     candidates.push(targetSquare);

@@ -22,7 +22,10 @@ export function StatsSummary({
       <Stat label='Wins' value={wins} />
       <Stat label='Losses' value={losses} />
       <Stat label='Draws' value={draws} />
-      <Stat label='Win rate' value={`${winRatePercent(wins, losses, draws)}%`} />
+      <Stat
+        label='Win rate'
+        value={`${winRatePercent(wins, losses, draws)}%`}
+      />
     </View>
   );
 }

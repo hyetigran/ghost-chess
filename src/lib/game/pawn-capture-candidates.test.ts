@@ -24,7 +24,7 @@ describe('pawnCaptureCandidates', () => {
     );
   });
 
-  it('excludes a diagonal square occupied by the viewer\'s own piece', () => {
+  it("excludes a diagonal square occupied by the viewer's own piece", () => {
     const chess = new Chess(
       'rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 1',
       { skipValidation: true },
@@ -32,10 +32,9 @@ describe('pawnCaptureCandidates', () => {
     // d4 and e4 are both white pawns — e4 attacking diagonally to d5/f5,
     // but if it were attacking its own d4 that would be excluded. Use a
     // same-rank adjacent own-pawn scenario instead:
-    const chess2 = new Chess(
-      '8/8/8/8/3P1P2/4P3/8/8 w - - 0 1',
-      { skipValidation: true },
-    );
+    const chess2 = new Chess('8/8/8/8/3P1P2/4P3/8/8 w - - 0 1', {
+      skipValidation: true,
+    });
     // e3 pawn's diagonals are d4 and f4 — both occupied by white's own
     // pawns, so neither should be offered.
     expect(pawnCaptureCandidates(chess2, 'e3', 'w')).toEqual([]);

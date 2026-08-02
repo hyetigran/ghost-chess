@@ -1,4 +1,8 @@
-import { deadlineFor, isDeadlineLapsed, secondsUntilDeadline } from '~/lib/game/deadline';
+import {
+  deadlineFor,
+  isDeadlineLapsed,
+  secondsUntilDeadline,
+} from '~/lib/game/deadline';
 
 describe('deadlineFor', () => {
   it('adds the time control window in hours to the turn-start timestamp', () => {
@@ -37,7 +41,9 @@ describe('isDeadlineLapsed', () => {
     const longAgo = '2000-01-01T00:00:00.000Z';
     expect(isDeadlineLapsed(longAgo, 1)).toBe(true);
 
-    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 10).toISOString();
+    const farFuture = new Date(
+      Date.now() + 1000 * 60 * 60 * 24 * 365 * 10,
+    ).toISOString();
     expect(isDeadlineLapsed(farFuture, 24)).toBe(false);
   });
 });

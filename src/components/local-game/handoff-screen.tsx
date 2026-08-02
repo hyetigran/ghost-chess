@@ -20,7 +20,10 @@ type Props = {
 // device has looked away, since a redacted FEN would otherwise render
 // straight into the previous player's still-open eyes (#20's "respecting
 // occlusion" requirement).
-export function HandoffScreen({ nextViewer, onReady }: Props): React.JSX.Element {
+export function HandoffScreen({
+  nextViewer,
+  onReady,
+}: Props): React.JSX.Element {
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
       <Card className='w-full max-w-sm p-6 rounded-2xl'>

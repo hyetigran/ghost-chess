@@ -17,12 +17,16 @@ export type PieceColor = 'white' | 'black';
  */
 export function redactFen(trueFen: string, viewerColor: PieceColor): string {
   if (viewerColor !== 'white' && viewerColor !== 'black') {
-    throw new Error(`viewerColor must be "white" or "black", got "${viewerColor}"`);
+    throw new Error(
+      `viewerColor must be "white" or "black", got "${viewerColor}"`,
+    );
   }
 
   const fields = trueFen.split(' ');
   if (fields.length !== 6) {
-    throw new Error(`trueFen must have 6 space-separated fields, got ${fields.length}: "${trueFen}"`);
+    throw new Error(
+      `trueFen must have 6 space-separated fields, got ${fields.length}: "${trueFen}"`,
+    );
   }
   const [placement, activeColor, castling, , , fullmove] = fields;
 

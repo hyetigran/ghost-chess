@@ -2,8 +2,7 @@ import { redactFen } from '~/lib/game/redact-fen';
 
 describe('redactFen', () => {
   it('hides every opponent piece and keeps every own piece at the start position', () => {
-    const startFen =
-      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const startFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
     expect(redactFen(startFen, 'white')).toBe(
       '8/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1',
@@ -42,12 +41,8 @@ describe('redactFen', () => {
   it('drops the opponent half of castling rights', () => {
     const fen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
 
-    expect(redactFen(fen, 'white')).toBe(
-      '8/8/8/8/8/8/8/R3K2R w KQ - 0 1',
-    );
-    expect(redactFen(fen, 'black')).toBe(
-      'r3k2r/8/8/8/8/8/8/8 w kq - 0 1',
-    );
+    expect(redactFen(fen, 'white')).toBe('8/8/8/8/8/8/8/R3K2R w KQ - 0 1');
+    expect(redactFen(fen, 'black')).toBe('r3k2r/8/8/8/8/8/8/8 w kq - 0 1');
   });
 
   it('always hides the en passant target square, regardless of viewer', () => {

@@ -145,7 +145,11 @@ export function decideMove(
     game.status === 'active' &&
     callerColor !== null &&
     callerColor === game.current_turn &&
-    !isDeadlineLapsed(game.updated_at, game.time_control_hours, new Date(now)) &&
+    !isDeadlineLapsed(
+      game.updated_at,
+      game.time_control_hours,
+      new Date(now),
+    ) &&
     moveResult !== null;
 
   if (!legal || moveResult === null || callerColor === null) {

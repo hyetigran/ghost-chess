@@ -1,4 +1,7 @@
-import { reduceMoveConfirmation, type MoveConfirmationState } from '~/lib/game/move-confirmation';
+import {
+  reduceMoveConfirmation,
+  type MoveConfirmationState,
+} from '~/lib/game/move-confirmation';
 
 const move = { from: 'e2', to: 'e4', promotion: 'q' };
 const otherMove = { from: 'd2', to: 'd4', promotion: 'q' };
