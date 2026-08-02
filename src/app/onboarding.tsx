@@ -10,13 +10,11 @@ import {
   Text,
 } from '~/components/ui';
 import { DemoBoardCard } from '~/components/onboarding/demo-board-card';
-
-const QUICK_START_TIPS = [
-  'You always see your own pieces — your opponent never does either.',
-  'A capture briefly reveals the piece taken before it disappears.',
-  "If you're in check, you're told — but never which piece is delivering it.",
-  'Try Local Play or vs. AI first if you want to practice before an online match.',
-];
+import { TipListCard } from '~/components/onboarding/tip-list-card';
+import {
+  CHESS_BASICS_TIPS,
+  OCCLUSION_TIPS,
+} from '~/lib/onboarding/onboarding-content';
 
 export default function OnboardingScreen(): React.JSX.Element {
   return (
@@ -35,21 +33,11 @@ export default function OnboardingScreen(): React.JSX.Element {
         </CardContent>
       </Card>
 
+      <TipListCard title='New to chess?' tips={CHESS_BASICS_TIPS} />
+
       <DemoBoardCard />
 
-      <Card className='w-full mb-5 rounded-2xl'>
-        <CardHeader>
-          <CardTitle>Quick start</CardTitle>
-        </CardHeader>
-        <CardContent className='gap-2'>
-          {QUICK_START_TIPS.map((tip) => (
-            <View key={tip} className='flex-row gap-2'>
-              <Text className='text-muted-foreground'>•</Text>
-              <Text className='flex-1 text-muted-foreground'>{tip}</Text>
-            </View>
-          ))}
-        </CardContent>
-      </Card>
+      <TipListCard title='The invisible-chess twist' tips={OCCLUSION_TIPS} />
 
       <View className='gap-2 mb-5'>
         <Link href='/how-to-play' asChild>
