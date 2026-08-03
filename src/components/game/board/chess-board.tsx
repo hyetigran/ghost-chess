@@ -91,7 +91,7 @@ export function ChessBoard({
                   <Pressable
                     key={square}
                     className={`w-[12.5%] h-[12.5%] items-center justify-center ${
-                      isLight ? 'bg-amber-100' : 'bg-amber-800'
+                      isLight ? 'bg-[#EEEED2]' : 'bg-[#769656]'
                     } ${isSelected ? 'bg-blue-500' : ''} ${
                       isLegalTarget ? 'bg-green-400' : ''
                     } ${isFlashing ? 'bg-red-400' : ''}`}
