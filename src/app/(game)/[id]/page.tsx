@@ -103,71 +103,75 @@ export default function GameScreen() {
   return (
     <View className='flex-1 bg-background'>
       <View className='flex-1 p-4'>
-        {/* Player info and timer for black */}
-        <View className='flex-row items-center justify-between mb-4'>
-          <Text className='text-lg font-semibold'>
-            {game.black_player_id === userId ? 'You' : 'Opponent'}
-          </Text>
-          <Text className='font-mono text-lg'>
-            {timer?.activeColor === 'black'
-              ? formatTime(timer.secondsRemaining)
-              : '—'}
-          </Text>
+        <View className='lg:flex-row lg:justify-center lg:items-start lg:gap-4'>
+          <View className='w-full lg:w-[560px] lg:shrink-0'>
+            {/* Player info and timer for black */}
+            <View className='flex-row items-center justify-between mb-4'>
+              <Text className='text-lg font-semibold'>
+                {game.black_player_id === userId ? 'You' : 'Opponent'}
+              </Text>
+              <Text className='font-mono text-lg'>
+                {timer?.activeColor === 'black'
+                  ? formatTime(timer.secondsRemaining)
+                  : '—'}
+              </Text>
+            </View>
+
+            {/* Chess board */}
+            <ChessBoard
+              redactedFen={game.redacted_fen}
+              onMove={(from, to) => {
+                if (!userId) return;
+
+                // ChessBoard doesn't have a promotion-piece picker yet (a
+                // separate UI feature) — default to auto-queen, the standard
+                // convention when no picker is available, rather than let
+                // every promotion attempt fail as an unexplained illegal move.
+                // Routed through attemptMove rather than makeMove directly so
+                // the optional confirm-before-send step (#22) can intercept it;
+                // reportOwnMove/makeMove only run once the move is actually
+                // submitted (see the useMoveConfirmation callback above).
+                attemptMove({ from, to, promotion: 'q' });
+              }}
+              orientation={isWhitePlayer ? 'white' : 'black'}
+              flashSquare={flashSquare}
+              interactive={game.status === 'active'}
+            />
+
+            {/* Captured pieces */}
+            <CapturedPieces
+              capturedByWhite={game.captured_by_white}
+              capturedByBlack={game.captured_by_black}
+            />
+
+            {/* Player info and timer for white */}
+            <View className='flex-row items-center justify-between mt-4'>
+              <Text className='text-lg font-semibold'>
+                {game.white_player_id === userId ? 'You' : 'Opponent'}
+              </Text>
+              <Text className='font-mono text-lg'>
+                {timer?.activeColor === 'white'
+                  ? formatTime(timer.secondsRemaining)
+                  : '—'}
+              </Text>
+            </View>
+
+            {/* Game controls */}
+            <GameControls
+              onResign={() => {
+                if (!userId) return;
+                endGame.mutate();
+              }}
+              onDraw={() => {
+                // Implement draw offer
+              }}
+              isYourTurn={isYourTurn}
+            />
+          </View>
+
+          {/* Move history */}
+          <MoveHistory moves={moveEntries} />
         </View>
-
-        {/* Chess board */}
-        <ChessBoard
-          redactedFen={game.redacted_fen}
-          onMove={(from, to) => {
-            if (!userId) return;
-
-            // ChessBoard doesn't have a promotion-piece picker yet (a
-            // separate UI feature) — default to auto-queen, the standard
-            // convention when no picker is available, rather than let
-            // every promotion attempt fail as an unexplained illegal move.
-            // Routed through attemptMove rather than makeMove directly so
-            // the optional confirm-before-send step (#22) can intercept it;
-            // reportOwnMove/makeMove only run once the move is actually
-            // submitted (see the useMoveConfirmation callback above).
-            attemptMove({ from, to, promotion: 'q' });
-          }}
-          orientation={isWhitePlayer ? 'white' : 'black'}
-          flashSquare={flashSquare}
-          interactive={game.status === 'active'}
-        />
-
-        {/* Captured pieces */}
-        <CapturedPieces
-          capturedByWhite={game.captured_by_white}
-          capturedByBlack={game.captured_by_black}
-        />
-
-        {/* Move history */}
-        <MoveHistory moves={moveEntries} />
-
-        {/* Player info and timer for white */}
-        <View className='flex-row items-center justify-between mt-4'>
-          <Text className='text-lg font-semibold'>
-            {game.white_player_id === userId ? 'You' : 'Opponent'}
-          </Text>
-          <Text className='font-mono text-lg'>
-            {timer?.activeColor === 'white'
-              ? formatTime(timer.secondsRemaining)
-              : '—'}
-          </Text>
-        </View>
-
-        {/* Game controls */}
-        <GameControls
-          onResign={() => {
-            if (!userId) return;
-            endGame.mutate();
-          }}
-          onDraw={() => {
-            // Implement draw offer
-          }}
-          isYourTurn={isYourTurn}
-        />
       </View>
 
       {/* Move confirmation prompt (#22) */}

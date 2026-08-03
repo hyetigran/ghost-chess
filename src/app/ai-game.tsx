@@ -90,16 +90,20 @@ function AiGameBoard({
         enabled={showFullBoard}
         onToggle={() => setShowFullBoard((current) => !current)}
       />
-      <ChessBoard
-        redactedFen={showFullBoard ? fen : redactedFen}
-        onMove={(from, to) => makeMove(from, to)}
-        orientation={humanColor}
-      />
-      <CapturedPieces
-        capturedByWhite={capturedByWhite}
-        capturedByBlack={capturedByBlack}
-      />
-      <MoveHistory moves={moves} />
+      <View className='lg:flex-row lg:justify-center lg:items-start lg:gap-4'>
+        <View className='w-full lg:w-[560px] lg:shrink-0'>
+          <ChessBoard
+            redactedFen={showFullBoard ? fen : redactedFen}
+            onMove={(from, to) => makeMove(from, to)}
+            orientation={humanColor}
+          />
+          <CapturedPieces
+            capturedByWhite={capturedByWhite}
+            capturedByBlack={capturedByBlack}
+          />
+        </View>
+        <MoveHistory moves={moves} />
+      </View>
     </View>
   );
 }
