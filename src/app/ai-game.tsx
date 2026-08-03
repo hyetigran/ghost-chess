@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { MoveHistory } from '~/components/game/move-history/move-history';
 import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { ColorPicker } from '~/components/ai-game/color-picker';
 import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
@@ -62,6 +63,7 @@ function AiGameBoard({
     gameOver,
     capturedByWhite,
     capturedByBlack,
+    moves,
     makeMove,
     reset,
   } = useAiGame(humanColor, difficulty);
@@ -97,6 +99,7 @@ function AiGameBoard({
         capturedByWhite={capturedByWhite}
         capturedByBlack={capturedByBlack}
       />
+      <MoveHistory moves={moves} />
     </View>
   );
 }

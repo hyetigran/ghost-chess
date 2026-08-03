@@ -5,6 +5,7 @@ import {
   nextPhaseAfterMove,
   type LocalGamePhase,
 } from '~/lib/game/local-move';
+import type { MoveEntry } from '~/lib/game/pair-moves';
 
 const START_FEN = new Chess().fen();
 
@@ -14,6 +15,7 @@ type UseLocalGameResult = {
   isCheck: boolean;
   capturedByWhite: string[];
   capturedByBlack: string[];
+  moves: MoveEntry[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   confirmHandoff: () => void;
   reset: () => void;
@@ -31,6 +33,7 @@ export function useLocalGame(): UseLocalGameResult {
   const [isCheck, setIsCheck] = React.useState(false);
   const [capturedByWhite, setCapturedByWhite] = React.useState<string[]>([]);
   const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>([]);
+  const [moves, setMoves] = React.useState<MoveEntry[]>([]);
 
   const makeMove = (from: string, to: string, promotion = 'q'): void => {
     const outcome = applyLocalMove(fen, { from, to, promotion });
@@ -39,6 +42,7 @@ export function useLocalGame(): UseLocalGameResult {
     setFen(outcome.newFen);
     setIsCheck(outcome.isCheck);
     setPhase(nextPhaseAfterMove(outcome));
+    setMoves((current) => [...current, { san: outcome.san, color: outcome.mover }]);
 
     if (outcome.captured) {
       const { by, pieceType } = outcome.captured;
@@ -64,6 +68,7 @@ export function useLocalGame(): UseLocalGameResult {
     setIsCheck(false);
     setCapturedByWhite([]);
     setCapturedByBlack([]);
+    setMoves([]);
   };
 
   return {
@@ -72,6 +77,7 @@ export function useLocalGame(): UseLocalGameResult {
     isCheck,
     capturedByWhite,
     capturedByBlack,
+    moves,
     makeMove,
     confirmHandoff,
     reset,

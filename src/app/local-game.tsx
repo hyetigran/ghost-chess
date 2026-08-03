@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { MoveHistory } from '~/components/game/move-history/move-history';
 import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { HandoffScreen } from '~/components/local-game/handoff-screen';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
@@ -16,6 +17,7 @@ export default function LocalGameScreen(): React.JSX.Element {
     isCheck,
     capturedByWhite,
     capturedByBlack,
+    moves,
     makeMove,
     confirmHandoff,
     reset,
@@ -57,6 +59,7 @@ export default function LocalGameScreen(): React.JSX.Element {
         capturedByWhite={capturedByWhite}
         capturedByBlack={capturedByBlack}
       />
+      <MoveHistory moves={moves} />
     </View>
   );
 }

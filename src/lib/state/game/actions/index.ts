@@ -87,6 +87,9 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
     onSettled: () => {
       // Refetch the game to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ['game', gameId] });
+      // Also the move list (MoveHistory) - a separate query key from the
+      // game object itself, so it doesn't get refreshed by the line above.
+      queryClient.invalidateQueries({ queryKey: ['game', 'moves', gameId] });
     },
   });
 };

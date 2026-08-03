@@ -35,6 +35,13 @@ export function useGameSubscription(gameId: string): void {
           if (payload.eventType === 'DELETE') return;
           const parsed = playerViewSchema.parse(payload.new);
           queryClient.setQueryData<PlayerView>(['game', gameId], parsed);
+          // player_views doesn't carry move history itself, so a live move
+          // from the *other* player (this client's own moves are already
+          // covered by useMakeMove's onSettled) needs an explicit
+          // invalidation for MoveHistory to pick it up.
+          queryClient.invalidateQueries({
+            queryKey: ['game', 'moves', gameId],
+          });
         },
       )
       .subscribe();

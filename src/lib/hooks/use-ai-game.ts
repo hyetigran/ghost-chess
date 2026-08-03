@@ -8,6 +8,7 @@ import {
   type LocalMoveOutcome,
 } from '~/lib/game/local-move';
 import { chooseAiMoveFromTrueFen, type Difficulty } from '~/lib/game/ai-move';
+import type { MoveEntry } from '~/lib/game/pair-moves';
 
 const START_FEN = new Chess().fen();
 const MAX_AI_ATTEMPTS = 8;
@@ -21,6 +22,7 @@ type UseAiGameResult = {
   gameOver: GameOverState | null;
   capturedByWhite: string[];
   capturedByBlack: string[];
+  moves: MoveEntry[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   reset: () => void;
 };
@@ -85,6 +87,9 @@ export function useAiGame(
   const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>(
     initial?.captured?.by === 'black' ? [initial.captured.pieceType] : [],
   );
+  const [moves, setMoves] = React.useState<MoveEntry[]>(
+    initial ? [{ san: initial.san, color: initial.mover }] : [],
+  );
 
   const applyOutcome = (
     outcome: Extract<LocalMoveOutcome, { legal: true }>,
@@ -94,6 +99,10 @@ export function useAiGame(
     if (outcome.isGameOver && outcome.result) {
       setGameOver({ result: outcome.result, winner: outcome.winner });
     }
+    setMoves((current) => [
+      ...current,
+      { san: outcome.san, color: outcome.mover },
+    ]);
     if (outcome.captured) {
       const { by, pieceType } = outcome.captured;
       if (by === 'white') {
@@ -134,6 +143,7 @@ export function useAiGame(
     setCapturedByBlack(
       fresh?.captured?.by === 'black' ? [fresh.captured.pieceType] : [],
     );
+    setMoves(fresh ? [{ san: fresh.san, color: fresh.mover }] : []);
   };
 
   return {
@@ -143,6 +153,7 @@ export function useAiGame(
     gameOver,
     capturedByWhite,
     capturedByBlack,
+    moves,
     makeMove,
     reset,
   };

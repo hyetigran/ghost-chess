@@ -5,7 +5,9 @@ import { type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { MoveHistory } from '~/components/game/move-history/move-history';
 import { GameControls } from '~/components/game/controls/game-controls';
+import type { MoveEntry } from '~/lib/game/pair-moves';
 import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-move-dialog';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
@@ -30,6 +32,7 @@ export default function GameScreen() {
     isLoading,
     error,
   } = useQuery(gameQueries.gameById(gameId));
+  const { data: movesData } = useQuery(gameQueries.gameMovesByGameId(gameId));
   const makeMove = useMakeMove({ gameId });
   const endGame = useEndGame({ gameId });
   const timer = useGameTimer(gameId);
@@ -92,6 +95,11 @@ export default function GameScreen() {
     (isWhitePlayer && game.current_turn === 'white') ||
     (isBlackPlayer && game.current_turn === 'black');
 
+  const moveEntries: MoveEntry[] = (movesData ?? []).map((move) => ({
+    san: move.move_text,
+    color: move.player_id === game.white_player_id ? 'white' : 'black',
+  }));
+
   return (
     <View className='flex-1 bg-background'>
       <View className='flex-1 p-4'>
@@ -133,6 +141,9 @@ export default function GameScreen() {
           capturedByWhite={game.captured_by_white}
           capturedByBlack={game.captured_by_black}
         />
+
+        {/* Move history */}
+        <MoveHistory moves={moveEntries} />
 
         {/* Player info and timer for white */}
         <View className='flex-row items-center justify-between mt-4'>

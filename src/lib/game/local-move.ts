@@ -21,6 +21,9 @@ export type LocalMoveOutcome =
       winner: Color | null;
       /** The mover's color and the captured piece's type, or null on a non-capture. */
       captured: { by: Color; pieceType: string } | null;
+      /** Standard algebraic notation for the move just applied, e.g. "Nf3", "exd5". */
+      san: string;
+      mover: Color;
     };
 
 export type LocalGamePhase =
@@ -81,6 +84,8 @@ export function applyLocalMove(
           pieceType: moveResult.captured,
         }
       : null,
+    san: moveResult.san,
+    mover: moveResult.color === 'w' ? 'white' : 'black',
   };
 }
 
