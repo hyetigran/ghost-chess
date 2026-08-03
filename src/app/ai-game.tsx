@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
+import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
 import { Text } from '~/components/ui';
@@ -28,10 +29,15 @@ function AiGameBoard({
   difficulty: Difficulty;
   onDone: () => void;
 }): React.JSX.Element {
-  const { redactedFen, isCheck, gameOver, makeMove, reset } = useAiGame(
-    HUMAN_COLOR,
-    difficulty,
-  );
+  const {
+    redactedFen,
+    isCheck,
+    gameOver,
+    capturedByWhite,
+    capturedByBlack,
+    makeMove,
+    reset,
+  } = useAiGame(HUMAN_COLOR, difficulty);
 
   if (gameOver) {
     return (
@@ -55,6 +61,10 @@ function AiGameBoard({
         redactedFen={redactedFen}
         onMove={(from, to) => makeMove(from, to)}
         orientation={HUMAN_COLOR}
+      />
+      <CapturedPieces
+        capturedByWhite={capturedByWhite}
+        capturedByBlack={capturedByBlack}
       />
     </View>
   );

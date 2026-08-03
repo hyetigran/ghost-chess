@@ -12,6 +12,8 @@ type UseLocalGameResult = {
   fen: string;
   phase: LocalGamePhase;
   isCheck: boolean;
+  capturedByWhite: string[];
+  capturedByBlack: string[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   confirmHandoff: () => void;
   reset: () => void;
@@ -27,6 +29,8 @@ export function useLocalGame(): UseLocalGameResult {
     viewer: 'white',
   });
   const [isCheck, setIsCheck] = React.useState(false);
+  const [capturedByWhite, setCapturedByWhite] = React.useState<string[]>([]);
+  const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>([]);
 
   const makeMove = (from: string, to: string, promotion = 'q'): void => {
     const outcome = applyLocalMove(fen, { from, to, promotion });
@@ -35,6 +39,15 @@ export function useLocalGame(): UseLocalGameResult {
     setFen(outcome.newFen);
     setIsCheck(outcome.isCheck);
     setPhase(nextPhaseAfterMove(outcome));
+
+    if (outcome.captured) {
+      const { by, pieceType } = outcome.captured;
+      if (by === 'white') {
+        setCapturedByWhite((current) => [...current, pieceType]);
+      } else {
+        setCapturedByBlack((current) => [...current, pieceType]);
+      }
+    }
   };
 
   const confirmHandoff = (): void => {
@@ -49,7 +62,18 @@ export function useLocalGame(): UseLocalGameResult {
     setFen(START_FEN);
     setPhase({ type: 'playing', viewer: 'white' });
     setIsCheck(false);
+    setCapturedByWhite([]);
+    setCapturedByBlack([]);
   };
 
-  return { fen, phase, isCheck, makeMove, confirmHandoff, reset };
+  return {
+    fen,
+    phase,
+    isCheck,
+    capturedByWhite,
+    capturedByBlack,
+    makeMove,
+    confirmHandoff,
+    reset,
+  };
 }

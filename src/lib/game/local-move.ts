@@ -19,6 +19,8 @@ export type LocalMoveOutcome =
       isGameOver: boolean;
       result: LocalGameResult | null;
       winner: Color | null;
+      /** The mover's color and the captured piece's type, or null on a non-capture. */
+      captured: { by: Color; pieceType: string } | null;
     };
 
 export type LocalGamePhase =
@@ -73,6 +75,12 @@ export function applyLocalMove(
     isGameOver: result !== null,
     result,
     winner,
+    captured: moveResult.captured
+      ? {
+          by: moveResult.color === 'w' ? 'white' : 'black',
+          pieceType: moveResult.captured,
+        }
+      : null,
   };
 }
 

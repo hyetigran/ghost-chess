@@ -18,6 +18,8 @@ type UseAiGameResult = {
   redactedFen: string;
   isCheck: boolean;
   gameOver: GameOverState | null;
+  capturedByWhite: string[];
+  capturedByBlack: string[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   reset: () => void;
 };
@@ -39,6 +41,8 @@ export function useAiGame(
   const [fen, setFen] = React.useState(START_FEN);
   const [isCheck, setIsCheck] = React.useState(false);
   const [gameOver, setGameOver] = React.useState<GameOverState | null>(null);
+  const [capturedByWhite, setCapturedByWhite] = React.useState<string[]>([]);
+  const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>([]);
 
   const aiColor: Color = humanColor === 'white' ? 'black' : 'white';
 
@@ -49,6 +53,14 @@ export function useAiGame(
     setIsCheck(outcome.isCheck);
     if (outcome.isGameOver && outcome.result) {
       setGameOver({ result: outcome.result, winner: outcome.winner });
+    }
+    if (outcome.captured) {
+      const { by, pieceType } = outcome.captured;
+      if (by === 'white') {
+        setCapturedByWhite((current) => [...current, pieceType]);
+      } else {
+        setCapturedByBlack((current) => [...current, pieceType]);
+      }
     }
   };
 
@@ -78,12 +90,16 @@ export function useAiGame(
     setFen(START_FEN);
     setIsCheck(false);
     setGameOver(null);
+    setCapturedByWhite([]);
+    setCapturedByBlack([]);
   };
 
   return {
     redactedFen: redactFen(fen, humanColor),
     isCheck,
     gameOver,
+    capturedByWhite,
+    capturedByBlack,
     makeMove,
     reset,
   };

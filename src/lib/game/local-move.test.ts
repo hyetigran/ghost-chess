@@ -22,6 +22,19 @@ describe('applyLocalMove', () => {
     expect(outcome.isGameOver).toBe(false);
     expect(outcome.result).toBeNull();
     expect(outcome.winner).toBeNull();
+    expect(outcome.captured).toBeNull();
+  });
+
+  it('reports the captured piece and the capturing color', () => {
+    // 1. e4 d5 2. exd5 - white's pawn captures black's pawn on d5.
+    const beforeCapture =
+      'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+
+    const outcome = applyLocalMove(beforeCapture, { from: 'e4', to: 'd5' });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.captured).toEqual({ by: 'white', pieceType: 'p' });
   });
 
   it('rejects a geometrically illegal move rather than throwing', () => {
