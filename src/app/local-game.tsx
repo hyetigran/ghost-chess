@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { HandoffScreen } from '~/components/local-game/handoff-screen';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
 import { Text } from '~/components/ui';
@@ -19,6 +20,7 @@ export default function LocalGameScreen(): React.JSX.Element {
     confirmHandoff,
     reset,
   } = useLocalGame();
+  const [showFullBoard, setShowFullBoard] = React.useState(false);
 
   if (phase.type === 'handoff') {
     return (
@@ -42,8 +44,12 @@ export default function LocalGameScreen(): React.JSX.Element {
         {phase.viewer === 'white' ? 'White' : 'Black'} to move
         {isCheck ? ' — Check!' : ''}
       </Text>
+      <DevFullBoardToggle
+        enabled={showFullBoard}
+        onToggle={() => setShowFullBoard((current) => !current)}
+      />
       <ChessBoard
-        redactedFen={redactFen(fen, phase.viewer)}
+        redactedFen={showFullBoard ? fen : redactFen(fen, phase.viewer)}
         onMove={(from, to) => makeMove(from, to)}
         orientation={phase.viewer}
       />

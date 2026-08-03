@@ -15,6 +15,7 @@ const MAX_AI_ATTEMPTS = 8;
 type GameOverState = { result: LocalGameResult; winner: Color | null };
 
 type UseAiGameResult = {
+  fen: string;
   redactedFen: string;
   isCheck: boolean;
   gameOver: GameOverState | null;
@@ -136,6 +137,7 @@ export function useAiGame(
   };
 
   return {
+    fen,
     redactedFen: redactFen(fen, humanColor),
     isCheck,
     gameOver,

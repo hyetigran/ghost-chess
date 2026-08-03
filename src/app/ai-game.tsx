@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { ColorPicker } from '~/components/ai-game/color-picker';
 import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
@@ -52,8 +53,10 @@ function AiGameBoard({
   // re-roll on every re-render — only a fresh game (back through the
   // pickers, remounting this component) rolls again.
   const [humanColor] = React.useState(() => resolveHumanColor(colorChoice));
+  const [showFullBoard, setShowFullBoard] = React.useState(false);
 
   const {
+    fen,
     redactedFen,
     isCheck,
     gameOver,
@@ -81,8 +84,12 @@ function AiGameBoard({
       <Text className='mb-4 text-lg font-semibold text-center'>
         Your move{isCheck ? ' — Check!' : ''}
       </Text>
+      <DevFullBoardToggle
+        enabled={showFullBoard}
+        onToggle={() => setShowFullBoard((current) => !current)}
+      />
       <ChessBoard
-        redactedFen={redactedFen}
+        redactedFen={showFullBoard ? fen : redactedFen}
         onMove={(from, to) => makeMove(from, to)}
         orientation={humanColor}
       />
