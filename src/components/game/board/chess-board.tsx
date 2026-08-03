@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
 import { squareAt, type Orientation } from '~/lib/game/board-geometry';
@@ -70,21 +70,21 @@ export function ChessBoard({
             const isFlashing = flashSquare === square;
 
             return (
-              <View
+              <Pressable
                 key={square}
                 className={`w-[12.5%] h-[12.5%] items-center justify-center ${
                   isLight ? 'bg-amber-100' : 'bg-amber-800'
                 } ${isSelected ? 'bg-blue-500' : ''} ${
                   isLegalTarget ? 'bg-green-400' : ''
                 } ${isFlashing ? 'bg-red-400' : ''}`}
-                onTouchEnd={() => interactive && handleSquarePress(square)}
+                onPress={() => interactive && handleSquarePress(square)}
               >
                 {piece && (
                   <Text className='text-4xl text-center'>
                     {pieceSymbol(piece)}
                   </Text>
                 )}
-              </View>
+              </Pressable>
             );
           }),
         )}
