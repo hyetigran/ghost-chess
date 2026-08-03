@@ -51,7 +51,9 @@ export function ChessBoard({
     useSquareSelection(chess, orientation, onMove);
 
   return (
-    <View className={`w-full aspect-square ${interactive ? '' : 'opacity-70'}`}>
+    <View
+      className={`w-full max-w-[560px] self-center aspect-square ${interactive ? '' : 'opacity-70'}`}
+    >
       {!interactive && (
         <View className='absolute inset-x-0 z-10 items-center -top-7'>
           <Text className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
