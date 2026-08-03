@@ -1,7 +1,11 @@
 import type { Color } from '~/lib/game/local-move';
 
-export type MoveEntry = { san: string; color: Color };
-export type MoveRow = { number: number; white?: string; black?: string };
+export type MoveEntry = { san: string; color: Color; fen: string };
+/** ply is this move's 0-based index in the original chronological list — the
+ * stable identifier MoveHistory reports back on selection, since row/color
+ * position alone doesn't uniquely address a move. */
+export type MoveCell = { san: string; fen: string; ply: number };
+export type MoveRow = { number: number; white?: MoveCell; black?: MoveCell };
 
 // Pairs a flat, chronological move list into numbered White/Black rows for
 // display (standard PGN-style layout: "1. e4 e5"). Handles a game that
@@ -12,17 +16,18 @@ export type MoveRow = { number: number; white?: string; black?: string };
 export function pairMoves(entries: MoveEntry[]): MoveRow[] {
   const rows: MoveRow[] = [];
 
-  for (const entry of entries) {
+  entries.forEach((entry, ply) => {
     const last = rows[rows.length - 1];
+    const cell: MoveCell = { san: entry.san, fen: entry.fen, ply };
 
     if (entry.color === 'white') {
-      rows.push({ number: rows.length + 1, white: entry.san });
+      rows.push({ number: rows.length + 1, white: cell });
     } else if (last && last.black === undefined) {
-      last.black = entry.san;
+      last.black = cell;
     } else {
-      rows.push({ number: rows.length + 1, black: entry.san });
+      rows.push({ number: rows.length + 1, black: cell });
     }
-  }
+  });
 
   return rows;
 }

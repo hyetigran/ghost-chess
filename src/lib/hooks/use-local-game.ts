@@ -42,7 +42,10 @@ export function useLocalGame(): UseLocalGameResult {
     setFen(outcome.newFen);
     setIsCheck(outcome.isCheck);
     setPhase(nextPhaseAfterMove(outcome));
-    setMoves((current) => [...current, { san: outcome.san, color: outcome.mover }]);
+    setMoves((current) => [
+      ...current,
+      { san: outcome.san, color: outcome.mover, fen: outcome.newFen },
+    ]);
 
     if (outcome.captured) {
       const { by, pieceType } = outcome.captured;

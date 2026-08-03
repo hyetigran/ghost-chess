@@ -88,7 +88,9 @@ export function useAiGame(
     initial?.captured?.by === 'black' ? [initial.captured.pieceType] : [],
   );
   const [moves, setMoves] = React.useState<MoveEntry[]>(
-    initial ? [{ san: initial.san, color: initial.mover }] : [],
+    initial
+      ? [{ san: initial.san, color: initial.mover, fen: initial.newFen }]
+      : [],
   );
 
   const applyOutcome = (
@@ -101,7 +103,7 @@ export function useAiGame(
     }
     setMoves((current) => [
       ...current,
-      { san: outcome.san, color: outcome.mover },
+      { san: outcome.san, color: outcome.mover, fen: outcome.newFen },
     ]);
     if (outcome.captured) {
       const { by, pieceType } = outcome.captured;
@@ -143,7 +145,9 @@ export function useAiGame(
     setCapturedByBlack(
       fresh?.captured?.by === 'black' ? [fresh.captured.pieceType] : [],
     );
-    setMoves(fresh ? [{ san: fresh.san, color: fresh.mover }] : []);
+    setMoves(
+      fresh ? [{ san: fresh.san, color: fresh.mover, fen: fresh.newFen }] : [],
+    );
   };
 
   return {

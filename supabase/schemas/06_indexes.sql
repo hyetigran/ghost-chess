@@ -17,8 +17,8 @@ create index "idx_moves_player" on public.moves using btree ("player_id");
 create index "idx_moves_created_at" on public.moves using btree ("created_at");
 create index "idx_moves_game_move_number" on public.moves using btree ("game_id", "move_number");
 
--- Player view indexes
-create index "idx_player_views_player" on public.player_views using btree ("player_id");
-
--- Move attempt indexes (rate limiting)
-create index "idx_move_attempts_player_created_at" on public.move_attempts using btree ("player_id", "created_at");
+-- Player view and move attempt indexes live with their table definitions
+-- (07_player_views.sql, 08_move_attempts.sql) rather than here: both tables
+-- are created in files that sort after this one, and the declarative
+-- schema pipeline applies files in filename order, so an index here would
+-- run before its own table exists.

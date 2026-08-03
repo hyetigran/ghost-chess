@@ -9,3 +9,5 @@ create table "public"."move_attempts" (
     "created_at" timestamp with time zone not null default timezone('utc'::text, now()),
     constraint "move_attempts_pkey" primary key ("id")
 );
+
+create index "idx_move_attempts_player_created_at" on public.move_attempts using btree ("player_id", "created_at");

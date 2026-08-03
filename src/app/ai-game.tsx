@@ -9,6 +9,7 @@ import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
 import { Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
+import { redactFen } from '~/lib/game/redact-fen';
 import type { Difficulty } from '~/lib/game/ai-move';
 import {
   resolveHumanColor,
@@ -55,6 +56,7 @@ function AiGameBoard({
   // pickers, remounting this component) rolls again.
   const [humanColor] = React.useState(() => resolveHumanColor(colorChoice));
   const [showFullBoard, setShowFullBoard] = React.useState(false);
+  const [viewingPly, setViewingPly] = React.useState<number | null>(null);
 
   const {
     fen,
@@ -81,6 +83,11 @@ function AiGameBoard({
     );
   }
 
+  const viewingFen = viewingPly !== null ? moves[viewingPly].fen : fen;
+  const displayFen = showFullBoard
+    ? viewingFen
+    : redactFen(viewingFen, humanColor);
+
   return (
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
@@ -93,16 +100,25 @@ function AiGameBoard({
       <View className='lg:flex-row lg:justify-center lg:items-start lg:gap-4'>
         <View className='w-full lg:w-[560px] lg:shrink-0'>
           <ChessBoard
-            redactedFen={showFullBoard ? fen : redactedFen}
-            onMove={(from, to) => makeMove(from, to)}
+            redactedFen={displayFen}
+            onMove={(from, to) => {
+              setViewingPly(null);
+              makeMove(from, to);
+            }}
             orientation={humanColor}
+            interactive={viewingPly === null}
+            inactiveLabel='Reviewing a past move'
           />
           <CapturedPieces
             capturedByWhite={capturedByWhite}
             capturedByBlack={capturedByBlack}
           />
         </View>
-        <MoveHistory moves={moves} />
+        <MoveHistory
+          moves={moves}
+          viewingPly={viewingPly}
+          onSelectPly={setViewingPly}
+        />
       </View>
     </View>
   );

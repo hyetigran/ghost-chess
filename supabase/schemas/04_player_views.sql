@@ -13,6 +13,15 @@ create table "public"."player_views" (
     -- in-progress game.
     "white_player_id" uuid references public.users(id) on delete set null,
     "black_player_id" uuid references public.users(id) on delete set null,
+    -- Same "not secret" reasoning as white_player_id/black_player_id above
+    -- — a username and rating are public identity, not hidden-information
+    -- board state — denormalized here (rather than a client-side lookup
+    -- against public.users, whose RLS is own-row-only) so a player card
+    -- can show the opponent's name/ELO while a game is active.
+    "white_username" text,
+    "white_elo_rating" integer,
+    "black_username" text,
+    "black_elo_rating" integer,
     "redacted_fen" text not null,
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
@@ -36,3 +45,5 @@ create table "public"."player_views" (
     "updated_at" timestamp with time zone not null default timezone('utc'::text, now()),
     constraint "player_views_pkey" primary key ("game_id", "player_id")
 );
+
+create index "idx_player_views_player" on public.player_views using btree ("player_id");

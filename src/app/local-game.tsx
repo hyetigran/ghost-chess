@@ -23,6 +23,7 @@ export default function LocalGameScreen(): React.JSX.Element {
     reset,
   } = useLocalGame();
   const [showFullBoard, setShowFullBoard] = React.useState(false);
+  const [viewingPly, setViewingPly] = React.useState<number | null>(null);
 
   if (phase.type === 'handoff') {
     return (
@@ -53,16 +54,33 @@ export default function LocalGameScreen(): React.JSX.Element {
       <View className='lg:flex-row lg:justify-center lg:items-start lg:gap-4'>
         <View className='w-full lg:w-[560px] lg:shrink-0'>
           <ChessBoard
-            redactedFen={showFullBoard ? fen : redactFen(fen, phase.viewer)}
-            onMove={(from, to) => makeMove(from, to)}
+            redactedFen={
+              viewingPly !== null
+                ? showFullBoard
+                  ? moves[viewingPly].fen
+                  : redactFen(moves[viewingPly].fen, phase.viewer)
+                : showFullBoard
+                  ? fen
+                  : redactFen(fen, phase.viewer)
+            }
+            onMove={(from, to) => {
+              setViewingPly(null);
+              makeMove(from, to);
+            }}
             orientation={phase.viewer}
+            interactive={viewingPly === null}
+            inactiveLabel='Reviewing a past move'
           />
           <CapturedPieces
             capturedByWhite={capturedByWhite}
             capturedByBlack={capturedByBlack}
           />
         </View>
-        <MoveHistory moves={moves} />
+        <MoveHistory
+          moves={moves}
+          viewingPly={viewingPly}
+          onSelectPly={setViewingPly}
+        />
       </View>
     </View>
   );

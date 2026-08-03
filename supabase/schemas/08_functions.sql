@@ -405,6 +405,10 @@ declare
     black_fen text;
     captured_by_white text[];
     captured_by_black text[];
+    white_username text;
+    white_elo integer;
+    black_username text;
+    black_elo integer;
 begin
     reveal := (new.status in ('completed', 'abandoned'));
 
@@ -423,15 +427,23 @@ begin
     from public.moves m
     where m.game_id = new.id;
 
+    select username, elo_rating into white_username, white_elo
+    from public.users where id = new.white_player_id;
+
+    select username, elo_rating into black_username, black_elo
+    from public.users where id = new.black_player_id;
+
     if new.white_player_id is not null then
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
+            white_username, white_elo_rating, black_username, black_elo_rating,
             redacted_fen, current_turn, status, result, winner_id,
             time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.white_player_id, new.white_player_id, new.black_player_id,
+            white_username, white_elo, black_username, black_elo,
             white_fen, new.current_turn, new.status, new.result, new.winner_id,
             (new.settings->>'timeControlHours')::integer, new.is_check,
             captured_by_white, captured_by_black, new.updated_at
@@ -439,6 +451,10 @@ begin
         on conflict (game_id, player_id) do update set
             white_player_id = excluded.white_player_id,
             black_player_id = excluded.black_player_id,
+            white_username = excluded.white_username,
+            white_elo_rating = excluded.white_elo_rating,
+            black_username = excluded.black_username,
+            black_elo_rating = excluded.black_elo_rating,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
@@ -454,12 +470,14 @@ begin
     if new.black_player_id is not null then
         insert into public.player_views (
             game_id, player_id, white_player_id, black_player_id,
+            white_username, white_elo_rating, black_username, black_elo_rating,
             redacted_fen, current_turn, status, result, winner_id,
             time_control_hours, is_check,
             captured_by_white, captured_by_black, updated_at
         )
         values (
             new.id, new.black_player_id, new.white_player_id, new.black_player_id,
+            white_username, white_elo, black_username, black_elo,
             black_fen, new.current_turn, new.status, new.result, new.winner_id,
             (new.settings->>'timeControlHours')::integer, new.is_check,
             captured_by_white, captured_by_black, new.updated_at
@@ -467,6 +485,10 @@ begin
         on conflict (game_id, player_id) do update set
             white_player_id = excluded.white_player_id,
             black_player_id = excluded.black_player_id,
+            white_username = excluded.white_username,
+            white_elo_rating = excluded.white_elo_rating,
+            black_username = excluded.black_username,
+            black_elo_rating = excluded.black_elo_rating,
             redacted_fen = excluded.redacted_fen,
             current_turn = excluded.current_turn,
             status = excluded.status,
