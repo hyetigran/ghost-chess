@@ -2,33 +2,57 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
+import { ColorPicker } from '~/components/ai-game/color-picker';
 import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
 import { Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
 import type { Difficulty } from '~/lib/game/ai-move';
-
-const HUMAN_COLOR = 'white';
+import {
+  resolveHumanColor,
+  type ColorChoice,
+} from '~/lib/game/resolve-human-color';
 
 export default function AiGameScreen(): React.JSX.Element {
+  const [colorChoice, setColorChoice] = React.useState<ColorChoice | null>(
+    null,
+  );
   const [difficulty, setDifficulty] = React.useState<Difficulty | null>(null);
+
+  if (!colorChoice) {
+    return <ColorPicker onSelect={setColorChoice} />;
+  }
 
   if (!difficulty) {
     return <DifficultyPicker onSelect={setDifficulty} />;
   }
 
   return (
-    <AiGameBoard difficulty={difficulty} onDone={() => setDifficulty(null)} />
+    <AiGameBoard
+      colorChoice={colorChoice}
+      difficulty={difficulty}
+      onDone={() => {
+        setColorChoice(null);
+        setDifficulty(null);
+      }}
+    />
   );
 }
 
 function AiGameBoard({
+  colorChoice,
   difficulty,
   onDone,
 }: {
+  colorChoice: ColorChoice;
   difficulty: Difficulty;
   onDone: () => void;
 }): React.JSX.Element {
+  // Resolved once per mount (lazy initializer) so a 'random' pick doesn't
+  // re-roll on every re-render — only a fresh game (back through the
+  // pickers, remounting this component) rolls again.
+  const [humanColor] = React.useState(() => resolveHumanColor(colorChoice));
+
   const {
     redactedFen,
     isCheck,
@@ -37,7 +61,7 @@ function AiGameBoard({
     capturedByBlack,
     makeMove,
     reset,
-  } = useAiGame(HUMAN_COLOR, difficulty);
+  } = useAiGame(humanColor, difficulty);
 
   if (gameOver) {
     return (
@@ -60,7 +84,7 @@ function AiGameBoard({
       <ChessBoard
         redactedFen={redactedFen}
         onMove={(from, to) => makeMove(from, to)}
-        orientation={HUMAN_COLOR}
+        orientation={humanColor}
       />
       <CapturedPieces
         capturedByWhite={capturedByWhite}
