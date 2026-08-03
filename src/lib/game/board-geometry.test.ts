@@ -1,4 +1,4 @@
-import { squareAt } from '~/lib/game/board-geometry';
+import { fileLabels, rankLabels, squareAt } from '~/lib/game/board-geometry';
 
 describe('squareAt', () => {
   it("renders a8 at the top-left and h1 at the bottom-right from white's perspective", () => {
@@ -25,5 +25,29 @@ describe('squareAt', () => {
       }
       expect(seen.size).toBe(64);
     }
+  });
+});
+
+describe('fileLabels', () => {
+  it('runs a-h left to right for white', () => {
+    expect(fileLabels('white')).toEqual([
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+    ]);
+  });
+
+  it('runs h-a left to right for black, matching squareAt\'s mirror', () => {
+    expect(fileLabels('black')).toEqual([
+      'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a',
+    ]);
+  });
+});
+
+describe('rankLabels', () => {
+  it('runs 8-1 top to bottom for white', () => {
+    expect(rankLabels('white')).toEqual([8, 7, 6, 5, 4, 3, 2, 1]);
+  });
+
+  it('runs 1-8 top to bottom for black, matching squareAt\'s mirror', () => {
+    expect(rankLabels('black')).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 });
