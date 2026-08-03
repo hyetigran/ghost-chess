@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { View } from 'react-native';
-import { Text } from '~/components/ui/text';
-import { pieceSymbol } from '~/lib/game/piece-symbol';
+import { Image, View } from 'react-native';
+import { pieceImage } from '~/lib/game/piece-image';
 
 type Props = {
   /** Piece types white has captured — always black's pieces. */
@@ -18,16 +17,22 @@ export function CapturedPieces({
     <View className='flex-row justify-between p-4'>
       <View className='flex-row gap-1'>
         {capturedByWhite.map((type, index) => (
-          <Text key={`white-${index}`} className='text-2xl'>
-            {pieceSymbol({ type, color: 'b' })}
-          </Text>
+          <Image
+            key={`white-${index}`}
+            source={pieceImage({ type, color: 'b' })}
+            style={{ width: 24, height: 24 }}
+            resizeMode='contain'
+          />
         ))}
       </View>
       <View className='flex-row gap-1'>
         {capturedByBlack.map((type, index) => (
-          <Text key={`black-${index}`} className='text-2xl'>
-            {pieceSymbol({ type, color: 'w' })}
-          </Text>
+          <Image
+            key={`black-${index}`}
+            source={pieceImage({ type, color: 'w' })}
+            style={{ width: 24, height: 24 }}
+            resizeMode='contain'
+          />
         ))}
       </View>
     </View>

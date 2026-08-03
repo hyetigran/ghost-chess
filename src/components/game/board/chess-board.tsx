@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
 import {
@@ -8,7 +8,7 @@ import {
   squareAt,
   type Orientation,
 } from '~/lib/game/board-geometry';
-import { pieceSymbol } from '~/lib/game/piece-symbol';
+import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
@@ -98,9 +98,11 @@ export function ChessBoard({
                     onPress={() => interactive && handleSquarePress(square)}
                   >
                     {piece && (
-                      <Text className='text-4xl text-center'>
-                        {pieceSymbol(piece)}
-                      </Text>
+                      <Image
+                        source={pieceImage(piece)}
+                        style={{ width: '80%', height: '80%' }}
+                        resizeMode='contain'
+                      />
                     )}
                   </Pressable>
                 );
