@@ -166,13 +166,6 @@ export default function RootLayout() {
             headerShown: true,
           }}
         />
-        <Stack.Screen
-          name='onboarding'
-          options={{
-            title: 'Welcome',
-            headerShown: true,
-          }}
-        />
       </Stack>
     </Providers>
   );
