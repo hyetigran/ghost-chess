@@ -7,11 +7,13 @@ import {
   type LocalGameResult,
   type LocalMoveOutcome,
 } from '~/lib/game/local-move';
-import { chooseAiMoveFromTrueFen, type Difficulty } from '~/lib/game/ai-move';
+import {
+  chooseAiMoveOrderFromTrueFen,
+  type Difficulty,
+} from '~/lib/game/ai-move';
 import type { MoveEntry } from '~/lib/game/pair-moves';
 
 const START_FEN = new Chess().fen();
-const MAX_AI_ATTEMPTS = 8;
 
 type GameOverState = { result: LocalGameResult; winner: Color | null };
 
@@ -27,24 +29,27 @@ type UseAiGameResult = {
   reset: () => void;
 };
 
-// Retries with fresh candidates the same number of times a human
-// effectively gets by just tapping again: a candidate chooseAiMove offers
-// can turn out illegal against the true board (the same structural reason
-// a human's own legalTargets highlighting can — occlusion can make a
-// slide-through square look clear when a hidden piece actually blocks it,
-// exactly #18's pawn-diagonal problem generalized to any piece), capped
-// defensively. Pure and synchronous so it can run both from an event
-// handler and from a useState lazy initializer (playing as Black means
-// the AI's opening move has to be decided before the first render, not
-// triggered by an effect after it).
+// Walks chooseAiMoveOrderFromTrueFen's full candidate list until one
+// validates against the true board, rather than a small number of blind
+// retries: occlusion can make a candidate that looks legal on the AI's
+// own redacted view turn out illegal on the true board — not just via
+// #18's pawn-diagonal problem, but also when the AI's own king is in
+// check from a piece it can't see at all, which the redacted view has no
+// way to even register as a check. A capped-retry approach could
+// exhaust itself doing the same fixed thing over and over there (a real
+// bug this used to have); the full ordered list can't run out of
+// something new to try short of genuine checkmate/stalemate. Pure and
+// synchronous so it can run both from an event handler and from a
+// useState lazy initializer (playing as Black means the AI's opening
+// move has to be decided before the first render, not triggered by an
+// effect after it).
 function attemptAiTurn(
   fen: string,
   aiColor: Color,
   difficulty: Difficulty,
 ): Extract<LocalMoveOutcome, { legal: true }> | null {
-  for (let attempt = 0; attempt < MAX_AI_ATTEMPTS; attempt++) {
-    const move = chooseAiMoveFromTrueFen(fen, aiColor, difficulty);
-    if (!move) return null;
+  const order = chooseAiMoveOrderFromTrueFen(fen, aiColor, difficulty);
+  for (const move of order) {
     const outcome = applyLocalMove(fen, move);
     if (outcome.legal) return outcome;
   }
