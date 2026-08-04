@@ -91,10 +91,10 @@ export function ChessBoard({
                   <Pressable
                     key={square}
                     className={`w-[12.5%] h-[12.5%] items-center justify-center ${
-                      isLight ? 'bg-[#EEEED2]' : 'bg-[#769656]'
-                    } ${isSelected ? 'bg-blue-500' : ''} ${
-                      isLegalTarget ? 'bg-green-400' : ''
-                    } ${isFlashing ? 'bg-red-400' : ''}`}
+                      isLight ? 'bg-squareLight' : 'bg-squareDark'
+                    } ${isSelected ? 'bg-highlight' : ''} ${
+                      isLegalTarget ? 'bg-accent' : ''
+                    } ${isFlashing ? 'bg-danger' : ''}`}
                     onPress={() => interactive && handleSquarePress(square)}
                   >
                     {piece && (

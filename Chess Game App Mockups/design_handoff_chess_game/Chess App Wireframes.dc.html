@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#f0eee9;font-family:'Architects Daughter',system-ui,sans-serif}a{color:#3d6b4f}a:hover{color:#2a4a37}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:700 10px 'Space Mono',ui-monospace,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:400 15px/1.2 'Architects Daughter',sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:700 10.5px 'Space Mono',ui-monospace,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 13px/1.3 'Architects Daughter',sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.14);border-radius:26px;box-shadow:0 2px 0 rgba(0,0,0,.1),0 10px 24px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#3d6b4f;color:#fff}.dv-next{margin:22px 0 0;font:400 13px/1.5 'Architects Daughter',sans-serif;color:rgba(0,0,0,.5)}.note{font:400 10px/1.35 'Space Mono',ui-monospace,monospace;color:rgba(0,0,0,.42);letter-spacing:-.2px}</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Full flow around the live game &mdash; light and dark</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Light &mdash; new game → pairing → live → game over → review</div>
+<div style="display:flex;gap:14px;align-items:flex-start">
+
+<div class="dv-card" style="width:280px;background:#fbfaf7;display:flex;flex-direction:column">
+  <div style="height:24px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>‹</span><span>NEW GAME</span><span>&nbsp;</span></div>
+  <div style="padding:14px 14px 0;display:flex;flex-direction:column;gap:10px">
+    <div class="note">TIME CONTROL</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">1+0</div>
+      <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">3+0</div>
+      <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">5+0</div>
+      <div style="border:2px solid #3d6b4f;background:rgba(61,107,79,.1);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">10+0</div>
+      <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">15+10</div>
+      <div style="border:1.5px dashed rgba(0,0,0,.2);border-radius:12px;padding:12px 0;text-align:center;font-size:14px;color:rgba(0,0,0,.45)">custom</div>
+    </div>
+    <div class="note">OPPONENT</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;border:2px solid #3d6b4f;background:rgba(61,107,79,.08);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.12)"></div><div style="flex:1;font-size:14px">Random online</div><div class="note">✓</div></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.1)"></div><div style="flex:1;font-size:14px">Friend</div><div class="note">›</div></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.1)"></div><div style="flex:1;font-size:14px">Computer · lvl 4</div><div class="note">›</div></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1.5px solid rgba(0,0,0,.08);padding-top:12px"><div style="font-size:14px">Rated</div><div style="width:40px;height:22px;border-radius:11px;background:#3d6b4f;display:flex;align-items:center;justify-content:flex-end;padding:2px"><div style="width:18px;height:18px;border-radius:50%;background:#fff"></div></div></div>
+  </div>
+  <div style="padding:14px;margin-top:auto"><div style="background:#3d6b4f;color:#fff;border-radius:12px;padding:13px;text-align:center;font-size:16px">Find opponent</div></div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#fbfaf7;display:flex;flex-direction:column">
+  <div style="height:24px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)">PAIRING</div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:44px 20px">
+    <div style="width:96px;height:96px;border-radius:50%;border:2px dashed rgba(0,0,0,.2);display:grid;place-items:center;font-size:36px">♞</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:18px">Looking for a match</div><div class="note">10+0 RATED · 1240–1330</div></div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+      <div style="height:8px;border-radius:4px;background:rgba(0,0,0,.08);overflow:hidden"><div style="width:45%;height:100%;background:#3d6b4f"></div></div>
+      <div style="display:flex;justify-content:space-between"><span class="note">0:07</span><span class="note">WIDENING RANGE…</span></div>
+    </div>
+  </div>
+  <div style="padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:12px;text-align:center;font-size:15px">Cancel</div>
+    <div class="note" style="text-align:center">OR PLAY THE COMPUTER WHILE WAITING</div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#f4f2ed;display:flex;flex-direction:column">
+  <div style="height:24px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>‹</span><span>LIVE · 10+0</span><span>⋯</span></div>
+  <div style="display:flex;align-items:center;gap:9px;padding:11px 13px 7px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(0,0,0,.12)"></div><div style="flex:1;font-size:13px">m_petrov <span class="note">1310</span></div><div style="background:rgba(0,0,0,.1);border-radius:8px;padding:5px 10px;font:700 14px 'Space Mono',monospace">4:12</div></div>
+  <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:22px;line-height:1;position:relative">
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♜</span><span></span><span></span><span></span><span>♚</span><span></span><span></span><span>♜</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♟</span><span>♟</span><span>♟</span><span></span><span></span><span>♟</span><span>♟</span><span>♟</span></div>
+    <div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span></span><span>♟</span><span></span><span></span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span>♗</span><span>♙</span><span></span><span></span><span></span><span></span></div>
+    <div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♙</span><span>♙</span><span>♙</span><span></span><span></span><span>♙</span><span>♙</span><span>♙</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♖</span><span></span><span>♗</span><span>♕</span><span>♔</span><span></span><span></span><span>♖</span></div>
+    <div style="position:absolute;left:25%;top:50%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 3px #3d6b4f"></div>
+    <div style="position:absolute;left:37.5%;top:25%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:#3d6b4f;opacity:.55"></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:9px;padding:7px 13px 9px"><div style="width:30px;height:30px;border-radius:8px;background:repeating-linear-gradient(135deg,#e6e2d8 0 4px,#f6f4ef 4px 8px)"></div><div style="flex:1;font-size:13px">yourhandle <span class="note">1284</span></div><div style="background:#3d6b4f;color:#fff;border-radius:8px;padding:5px 10px;font:700 14px 'Space Mono',monospace">3:58</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 12px 16px">
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:11px;padding:9px 0;text-align:center" class="note">DRAW</div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:11px;padding:9px 0;text-align:center" class="note">RESIGN</div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:11px;padding:9px 0;text-align:center" class="note">FLIP</div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:11px;padding:9px 0;text-align:center" class="note">CHAT</div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#f4f2ed;display:flex;flex-direction:column;position:relative">
+  <div style="height:24px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)">GAME OVER SHEET</div>
+  <div style="opacity:.35;padding:11px 13px 0;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(0,0,0,.12)"></div><div style="flex:1;font-size:13px">m_petrov</div><div class="note">0:44</div></div>
+    <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%"></div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1.5px solid rgba(0,0,0,.12);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.12);padding:16px 16px 18px;display:flex;flex-direction:column;gap:12px">
+    <div style="width:40px;height:4px;border-radius:2px;background:rgba(0,0,0,.15);align-self:center"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:20px">You won</div><div class="note">BY RESIGNATION · +8 → 1292</div></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;border:1.5px solid rgba(0,0,0,.1);border-radius:12px;padding:10px">
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="font-size:16px;color:#3d6b4f">86</div><div class="note">YOU</div></div>
+      <div class="note">ACCURACY</div>
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="font-size:16px;color:rgba(0,0,0,.45)">71</div><div class="note">THEM</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#3d6b4f;color:#fff;border-radius:12px;padding:12px;text-align:center;font-size:15px">Game review</div>
+      <div style="display:flex;gap:8px"><div style="flex:1;border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:11px;text-align:center;font-size:14px">Rematch</div><div style="flex:1;border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:11px;text-align:center;font-size:14px">New game</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#fbfaf7;display:flex;flex-direction:column">
+  <div style="height:24px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>✕</span><span>REVIEW</span><span>share</span></div>
+  <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:22px;line-height:1;position:relative">
+    <div></div><div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span></span><span></span><span>♛</span><span></span><span></span><span></span></div>
+    <div></div><div></div><div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♙</span><span>♙</span><span></span><span></span><span></span><span>♙</span><span>♙</span><span>♙</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♖</span><span></span><span></span><span></span><span>♔</span><span></span><span></span><span>♖</span></div>
+    <div style="position:absolute;left:50%;top:25%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 3px #3d6b4f"></div>
+    <div style="position:absolute;right:8px;top:8px;background:#fff;border:1.5px solid rgba(0,0,0,.14);border-radius:8px;padding:4px 8px;font:700 10px 'Space Mono',monospace">+5.1 BEST</div>
+  </div>
+  <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:34px;height:34px;border:1.5px solid rgba(0,0,0,.16);border-radius:10px;display:grid;place-items:center" class="note">‹</div>
+      <div style="flex:1;height:8px;border-radius:4px;background:rgba(0,0,0,.08);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:63%;background:#3d6b4f;border-radius:4px"></div><div style="position:absolute;left:63%;top:-4px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #3d6b4f"></div></div>
+      <div style="width:34px;height:34px;border:1.5px solid rgba(0,0,0,.16);border-radius:10px;display:grid;place-items:center" class="note">›</div>
+    </div>
+    <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px"><div style="font-size:14px">24. Qh5 — brilliant</div><div class="note">FORCED MATE IN 6. THE ENGINE AGREES.</div></div>
+    <div style="display:flex;gap:8px"><div style="flex:1;border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:10px;text-align:center;font-size:13px">Key moments</div><div style="flex:1;border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:10px;text-align:center;font-size:13px">Move list</div></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Dark &mdash; same screens, inverted surfaces</div>
+<div style="display:flex;gap:14px;align-items:flex-start">
+
+<div class="dv-card" style="width:280px;background:#16181a;border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;color:#ecebe8">
+  <div style="height:24px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(255,255,255,.4)"><span>‹</span><span>NEW GAME</span><span>&nbsp;</span></div>
+  <div style="padding:14px 14px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">TIME CONTROL</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">1+0</div>
+      <div style="border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">3+0</div>
+      <div style="border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">5+0</div>
+      <div style="border:2px solid #6f9d80;background:rgba(111,157,128,.18);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">10+0</div>
+      <div style="border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 0;text-align:center;font-size:14px">15+10</div>
+      <div style="border:1.5px dashed rgba(255,255,255,.2);border-radius:12px;padding:12px 0;text-align:center;font-size:14px;color:rgba(255,255,255,.45)">custom</div>
+    </div>
+    <div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">OPPONENT</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;border:2px solid #6f9d80;background:rgba(111,157,128,.14);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.14)"></div><div style="flex:1;font-size:14px">Random online</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.5)">✓</div></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.1)"></div><div style="flex:1;font-size:14px">Friend</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">›</div></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 12px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.1)"></div><div style="flex:1;font-size:14px">Computer · lvl 4</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">›</div></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1.5px solid rgba(255,255,255,.1);padding-top:12px"><div style="font-size:14px">Rated</div><div style="width:40px;height:22px;border-radius:11px;background:#6f9d80;display:flex;align-items:center;justify-content:flex-end;padding:2px"><div style="width:18px;height:18px;border-radius:50%;background:#16181a"></div></div></div>
+  </div>
+  <div style="padding:14px;margin-top:auto"><div style="background:#6f9d80;color:#0f1112;border-radius:12px;padding:13px;text-align:center;font-size:16px">Find opponent</div></div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#16181a;border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;color:#ecebe8">
+  <div style="height:24px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font:400 9px 'Space Mono',monospace;color:rgba(255,255,255,.4)">PAIRING</div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:44px 20px">
+    <div style="width:96px;height:96px;border-radius:50%;border:2px dashed rgba(255,255,255,.22);display:grid;place-items:center;font-size:36px">♞</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:18px">Looking for a match</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">10+0 RATED · 1240–1330</div></div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden"><div style="width:45%;height:100%;background:#6f9d80"></div></div>
+      <div style="display:flex;justify-content:space-between;font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)"><span>0:07</span><span>WIDENING RANGE…</span></div>
+    </div>
+  </div>
+  <div style="padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:12px;text-align:center;font-size:15px">Cancel</div>
+    <div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.35);text-align:center">OR PLAY THE COMPUTER WHILE WAITING</div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#111315;border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;color:#ecebe8">
+  <div style="height:24px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(255,255,255,.4)"><span>‹</span><span>LIVE · 10+0</span><span>⋯</span></div>
+  <div style="display:flex;align-items:center;gap:9px;padding:11px 13px 7px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.14)"></div><div style="flex:1;font-size:13px">m_petrov <span style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">1310</span></div><div style="background:rgba(255,255,255,.12);border-radius:8px;padding:5px 10px;font:700 14px 'Space Mono',monospace">4:12</div></div>
+  <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#4a5a52 0% 25%,#7d8f85 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:22px;line-height:1;position:relative;color:#12140f">
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♜</span><span></span><span></span><span></span><span>♚</span><span></span><span></span><span>♜</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♟</span><span>♟</span><span>♟</span><span></span><span></span><span>♟</span><span>♟</span><span>♟</span></div>
+    <div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span></span><span>♟</span><span></span><span></span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span></span><span></span><span>♗</span><span>♙</span><span></span><span></span><span></span><span></span></div>
+    <div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span>♙</span><span>♙</span><span>♙</span><span></span><span></span><span>♙</span><span>♙</span><span>♙</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span>♖</span><span></span><span>♗</span><span>♕</span><span>♔</span><span></span><span></span><span>♖</span></div>
+    <div style="position:absolute;left:25%;top:50%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 3px #a8d8b9"></div>
+    <div style="position:absolute;left:37.5%;top:25%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:#a8d8b9;opacity:.7"></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:9px;padding:7px 13px 9px"><div style="width:30px;height:30px;border-radius:8px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 4px,rgba(255,255,255,.06) 4px 8px)"></div><div style="flex:1;font-size:13px">yourhandle <span style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">1284</span></div><div style="background:#6f9d80;color:#0f1112;border-radius:8px;padding:5px 10px;font:700 14px 'Space Mono',monospace">3:58</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 12px 16px;font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.5)">
+    <div style="border:1.5px solid rgba(255,255,255,.16);border-radius:11px;padding:9px 0;text-align:center">DRAW</div>
+    <div style="border:1.5px solid rgba(255,255,255,.16);border-radius:11px;padding:9px 0;text-align:center">RESIGN</div>
+    <div style="border:1.5px solid rgba(255,255,255,.16);border-radius:11px;padding:9px 0;text-align:center">FLIP</div>
+    <div style="border:1.5px solid rgba(255,255,255,.16);border-radius:11px;padding:9px 0;text-align:center">CHAT</div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#111315;border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;position:relative;color:#ecebe8">
+  <div style="height:24px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font:400 9px 'Space Mono',monospace;color:rgba(255,255,255,.4)">GAME OVER SHEET</div>
+  <div style="opacity:.3;padding:11px 13px 0;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.14)"></div><div style="flex:1;font-size:13px">m_petrov</div><div style="font:400 10px 'Space Mono',monospace">0:44</div></div>
+    <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#4a5a52 0% 25%,#7d8f85 0% 50%) 0 0/25% 25%"></div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:#1d2023;border-top:1.5px solid rgba(255,255,255,.14);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.5);padding:16px 16px 18px;display:flex;flex-direction:column;gap:12px">
+    <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);align-self:center"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:20px">You won</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.45)">BY RESIGNATION · +8 → 1292</div></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.45)">
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="font:400 16px 'Architects Daughter',sans-serif;color:#a8d8b9">86</div><div>YOU</div></div>
+      <div>ACCURACY</div>
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="font:400 16px 'Architects Daughter',sans-serif;color:rgba(255,255,255,.5)">71</div><div>THEM</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#6f9d80;color:#0f1112;border-radius:12px;padding:12px;text-align:center;font-size:15px">Game review</div>
+      <div style="display:flex;gap:8px"><div style="flex:1;border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:11px;text-align:center;font-size:14px">Rematch</div><div style="flex:1;border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:11px;text-align:center;font-size:14px">New game</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:280px;background:#16181a;border-color:rgba(255,255,255,.14);display:flex;flex-direction:column;color:#ecebe8">
+  <div style="height:24px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:400 9px 'Space Mono',monospace;color:rgba(255,255,255,.4)"><span>✕</span><span>REVIEW</span><span>share</span></div>
+  <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#4a5a52 0% 25%,#7d8f85 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:22px;line-height:1;position:relative;color:#12140f">
+    <div></div><div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span></span><span></span><span></span><span></span><span>♛</span><span></span><span></span><span></span></div>
+    <div></div><div></div><div></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span>♙</span><span>♙</span><span></span><span></span><span></span><span>♙</span><span>♙</span><span>♙</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;color:#f4f2ed"><span>♖</span><span></span><span></span><span></span><span>♔</span><span></span><span></span><span>♖</span></div>
+    <div style="position:absolute;left:50%;top:25%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 3px #a8d8b9"></div>
+    <div style="position:absolute;right:8px;top:8px;background:#1d2023;border:1.5px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 8px;font:700 10px 'Space Mono',monospace;color:#a8d8b9">+5.1 BEST</div>
+  </div>
+  <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:34px;height:34px;border:1.5px solid rgba(255,255,255,.2);border-radius:10px;display:grid;place-items:center;font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.5)">‹</div>
+      <div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.1);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:63%;background:#6f9d80;border-radius:4px"></div><div style="position:absolute;left:63%;top:-4px;width:16px;height:16px;border-radius:50%;background:#16181a;border:2px solid #a8d8b9"></div></div>
+      <div style="width:34px;height:34px;border:1.5px solid rgba(255,255,255,.2);border-radius:10px;display:grid;place-items:center;font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.5)">›</div>
+    </div>
+    <div style="border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px"><div style="font-size:14px">24. Qh5 — brilliant</div><div style="font:400 10px 'Space Mono',monospace;color:rgba(255,255,255,.4)">FORCED MATE IN 6. THE ENGINE AGREES.</div></div>
+    <div style="display:flex;gap:8px"><div style="flex:1;border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:10px;text-align:center;font-size:13px">Key moments</div><div style="flex:1;border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:10px;text-align:center;font-size:13px">Move list</div></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#2b">2b</a> an interactive prototype" &middot; "add the puzzles + profile tabs to the flow" &middot; "web/desktop layout for this flow"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Chess app &mdash; three low-fi screens (mobile-first, web scales up)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home / play hub &mdash; one big CTA, modes below</div>
+<div style="display:flex;gap:16px;align-items:flex-start">
+<div class="dv-card" style="width:{{frameW}}px;display:flex;flex-direction:column;background:#fbfaf7">
+  <div style="height:26px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>9:41</span><span>▮▮▮ ▲ ■</span></div>
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 10px">
+    <div style="width:38px;height:38px;border-radius:50%;background:repeating-linear-gradient(135deg,#e6e2d8 0 4px,#f6f4ef 4px 8px);border:1px solid rgba(0,0,0,.15)"></div>
+    <div style="display:flex;flex-direction:column;gap:3px;flex:1">
+      <div style="font-size:15px;color:#1a1a1a">yourhandle</div>
+      <div class="note">1284 · rapid</div>
+    </div>
+    <div style="width:26px;height:26px;border:1.5px solid rgba(0,0,0,.2);border-radius:8px"></div>
+    <div style="width:26px;height:26px;border:1.5px solid rgba(0,0,0,.2);border-radius:8px"></div>
+  </div>
+  <div style="padding:4px 16px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="border:1.5px solid rgba(0,0,0,.15);border-radius:14px;overflow:hidden;background:#fff">
+      <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:19px;line-height:1;color:#1a1a1a">
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♜</span><span>♞</span><span>♝</span><span>♛</span><span>♚</span><span>♝</span><span>♞</span><span>♜</span></div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♟</span><span>♟</span><span>♟</span><span>♟</span><span>♟</span><span>♟</span><span>♟</span><span>♟</span></div>
+        <div></div><div></div><div></div><div></div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♙</span><span>♙</span><span>♙</span><span>♙</span><span>♙</span><span>♙</span><span>♙</span><span>♙</span></div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♖</span><span>♘</span><span>♗</span><span>♕</span><span>♔</span><span>♗</span><span>♘</span><span>♖</span></div>
+      </div>
+    </div>
+    <div style="background:{{accent}};border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#fff">
+      <div style="font-size:22px">Play</div>
+      <div style="font:400 9px 'Space Mono',monospace;opacity:.8">10 MIN · RAPID</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px">
+        <div style="width:24px;height:24px;border-radius:6px;background:rgba(0,0,0,.08)"></div><div style="flex:1;font-size:14px">New game</div><div class="note">›</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px">
+        <div style="width:24px;height:24px;border-radius:6px;background:rgba(0,0,0,.08)"></div><div style="flex:1;font-size:14px">Play a friend</div><div class="note">›</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px">
+        <div style="width:24px;height:24px;border-radius:6px;background:rgba(0,0,0,.08)"></div><div style="flex:1;font-size:14px">Vs. computer</div><div class="note">›</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px dashed rgba(0,0,0,.18);border-radius:12px;padding:11px 12px">
+        <div style="flex:1;font-size:14px;color:rgba(0,0,0,.5)">Resume · vs. m_petrov</div><div class="note">2:14</div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:14px;border-top:1.5px solid rgba(0,0,0,.1);display:grid;grid-template-columns:repeat(5,1fr);padding:9px 4px 14px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:6px;background:{{accent}}"></div><div class="note">Play</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.14)"></div><div class="note">Puzzles</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.14)"></div><div class="note">Learn</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.14)"></div><div class="note">Watch</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.14)"></div><div class="note">More</div></div>
+  </div>
+</div>
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<div style="width:150px;display:flex;flex-direction:column;gap:14px;padding-top:60px">
+  <div class="note">BOARD PREVIEW doubles as "resume last game" — tap opens it</div>
+  <div class="note">PRIMARY CTA remembers last time control; long-press to change</div>
+  <div class="note">5-TAB BAR, 44px+ targets. On web this becomes a left sidebar.</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Live game &mdash; clocks sandwiching the board</div>
+<div style="display:flex;gap:16px;align-items:flex-start">
+<div class="dv-card" style="width:{{frameW}}px;display:flex;flex-direction:column;background:#f4f2ed">
+  <div style="height:26px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>‹ back</span><span>10 MIN · RATED</span><span>⋯</span></div>
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px 8px">
+    <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,0,0,.12)"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:14px">m_petrov <span class="note">1310</span></div><div style="display:flex;gap:3px;font-size:12px;color:rgba(0,0,0,.45)">♟♟♝</div></div>
+    <div style="background:rgba(0,0,0,.1);border-radius:8px;padding:6px 11px;font:700 15px 'Space Mono',monospace">4:12</div>
+  </div>
+  <div style="width:100%;aspect-ratio:1;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%;display:grid;grid-template-rows:repeat(8,1fr);font-size:26px;line-height:1;color:#1a1a1a;position:relative">
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♜</span><span></span><span></span><span></span><span>♚</span><span></span><span></span><span>♜</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♟</span><span>♟</span><span>♟</span><span></span><span></span><span>♟</span><span>♟</span><span>♟</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span>♞</span><span></span><span></span><span>♞</span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span></span><span>♟</span><span></span><span></span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span>♗</span><span>♙</span><span></span><span></span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span></span><span></span><span></span><span></span><span>♘</span><span></span><span></span><span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♙</span><span>♙</span><span>♙</span><span></span><span></span><span>♙</span><span>♙</span><span>♙</span></div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center"><span>♖</span><span></span><span>♗</span><span>♕</span><span>♔</span><span></span><span></span><span>♖</span></div>
+    <div style="position:absolute;left:50%;top:62.5%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 3px {{accent}}"></div>
+    <div style="position:absolute;left:50%;top:37.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:{{accent}};opacity:.55"></div></div>
+    <div style="position:absolute;left:62.5%;top:25%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:{{accent}};opacity:.55"></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 10px">
+    <div style="width:32px;height:32px;border-radius:8px;background:repeating-linear-gradient(135deg,#e6e2d8 0 4px,#f6f4ef 4px 8px)"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:14px">yourhandle <span class="note">1284</span></div><div style="display:flex;gap:3px;font-size:12px;color:rgba(0,0,0,.45)">♙♙</div></div>
+    <div style="background:{{accent}};color:#fff;border-radius:8px;padding:6px 11px;font:700 15px 'Space Mono',monospace">3:58</div>
+  </div>
+  <div style="margin:0 12px;background:#fff;border:1.5px solid rgba(0,0,0,.1);border-radius:10px;padding:8px 10px;display:flex;gap:12px;overflow:hidden;font:400 11px 'Space Mono',monospace;color:rgba(0,0,0,.6)">
+    <span>1. e4 e5</span><span>2. Nf3 Nc6</span><span style="color:#1a1a1a;font-weight:700">3. Bc4 Nf6</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 12px 16px">
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.12)"></div><div class="note">Draw</div></div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.12)"></div><div class="note">Resign</div></div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.12)"></div><div class="note">Flip</div></div>
+    <div style="border:1.5px solid rgba(0,0,0,.14);border-radius:12px;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:18px;height:18px;border-radius:5px;background:rgba(0,0,0,.12)"></div><div class="note">Chat</div></div>
+  </div>
+</div>
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<div style="width:150px;display:flex;flex-direction:column;gap:14px;padding:60px 0 0">
+  <div class="note">Board is the only fixed element; everything else can compress on short screens</div>
+  <div class="note">ACTIVE CLOCK takes accent fill — readable at a glance</div>
+  <div class="note">Selected square + legal-move dots = the whole interaction model</div>
+  <div class="note">Move strip scrolls horizontally; tap to scrub history</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Game review &mdash; result, graph, key moments</div>
+<div style="display:flex;gap:16px;align-items:flex-start">
+<div class="dv-card" style="width:{{frameW}}px;display:flex;flex-direction:column;background:#fbfaf7">
+  <div style="height:26px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:400 9px 'Space Mono',monospace;color:rgba(0,0,0,.4)"><span>✕</span><span>GAME REVIEW</span><span>share</span></div>
+  <div style="padding:16px 16px 10px;display:flex;flex-direction:column;gap:3px;align-items:center">
+    <div style="font-size:22px">You won</div>
+    <div class="note">BY RESIGNATION · 38 MOVES · +8 RATING</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 12px">
+    <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px"><div class="note">YOU</div><div style="font-size:20px;color:{{accent}}">86</div><div class="note">ACCURACY</div></div>
+    <div style="border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px"><div class="note">M_PETROV</div><div style="font-size:20px;color:rgba(0,0,0,.45)">71</div><div class="note">ACCURACY</div></div>
+  </div>
+  <div style="margin:0 16px 12px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:10px 10px 8px;display:flex;flex-direction:column;gap:6px">
+    <div class="note">EVALUATION</div>
+    <div style="height:64px;background:linear-gradient(to bottom,rgba(0,0,0,.05) 0 50%,rgba(0,0,0,.12) 50% 100%);position:relative;border-radius:4px;overflow:hidden">
+      <div style="position:absolute;left:0;right:0;top:50%;height:1.5px;background:rgba(0,0,0,.25)"></div>
+      <div style="position:absolute;inset:0;clip-path:polygon(0 50%,12% 46%,24% 54%,38% 40%,50% 44%,62% 30%,74% 34%,86% 14%,100% 8%,100% 0,0 0);background:{{accent}};opacity:.35"></div>
+      <div style="position:absolute;left:74%;top:0;bottom:0;width:1.5px;background:#1a1a1a"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between"><span class="note">1</span><span class="note">MOVE 24 — TAP TO JUMP</span><span class="note">38</span></div>
+  </div>
+  <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px">
+    <div class="note">KEY MOMENTS</div>
+    <div style="display:flex;gap:10px;align-items:center;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:9px 10px">
+      <div style="width:40px;height:40px;border-radius:6px;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px">14. Nxe5 — blunder</div><div class="note">MISSED Bxf7+ · −2.4</div></div>
+      <div class="note">›</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:9px 10px">
+      <div style="width:40px;height:40px;border-radius:6px;background:repeating-conic-gradient(#dcd7cb 0% 25%,#f6f4ef 0% 50%) 0 0/25% 25%"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:13px">24. Qh5 — brilliant</div><div class="note">FORCED MATE IN 6 · +5.1</div></div>
+      <div class="note">›</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;border:1.5px dashed rgba(0,0,0,.16);border-radius:12px;padding:9px 10px">
+      <div style="flex:1;font-size:13px;color:rgba(0,0,0,.5)">3 more inaccuracies</div><div class="note">SHOW ALL</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;padding:14px 16px 18px">
+    <div style="flex:1;background:{{accent}};color:#fff;border-radius:12px;padding:12px;text-align:center;font-size:15px">Rematch</div>
+    <div style="flex:1;border:1.5px solid rgba(0,0,0,.16);border-radius:12px;padding:12px;text-align:center;font-size:15px">Analyse</div>
+  </div>
+</div>
+<sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+<div style="width:150px;display:flex;flex-direction:column;gap:14px;padding:60px 0 0">
+  <div class="note">Result → numbers → moments → next action. Scrolls as one sheet.</div>
+  <div class="note">Eval graph is the navigation: tap a point to open the board at that move</div>
+  <div class="note">Same list component as the puzzle feed — reuse</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "flesh out <a class="dv-oid" href="#1b">1b</a> as an interactive prototype" &middot; "show <a class="dv-oid" href="#1a">1a</a> as the web/desktop layout" &middot; "new directions for the home screen"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#3d6b4f&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#3d6b4f&quot;,&quot;#1a1a1a&quot;,&quot;#8a5a2b&quot;,&quot;#2a5d8f&quot;]},&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:340,&quot;min&quot;:300,&quot;max&quot;:430,&quot;step&quot;:10,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#3d6b4f',
+      frameW: this.props.frameWidth ?? 340,
+      showNotes: this.props.showNotes ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>body{margin:0;background:#e8e6e1;font-family:Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased}a{color:#4F7A3B;text-decoration:none}a:hover{color:#3C612C}</style></helmet>
+
+<section style="padding:44px 48px 40px;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;align-items:baseline;gap:10px">
+    <span style="font:700 10px 'IBM Plex Mono',monospace;background:#1B1A17;color:#fff;padding:3px 7px;border-radius:4px">3a</span>
+    <span style="font:600 15px Manrope,sans-serif;color:#1B1A17">Hi-fi &mdash; light mode · 390&times;844 · Manrope + IBM Plex Mono</span>
+  </div>
+  <div style="display:flex;gap:22px;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">NEW GAME</div>
+      <div style="width:390px;height:844px;background:#F7F6F3;border-radius:38px;box-shadow:0 24px 60px rgba(27,26,23,.16);overflow:hidden;display:flex;flex-direction:column;color:#1B1A17">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#6E6A62">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;gap:14px;padding:6px 20px 14px">
+          <div style="width:36px;height:36px;border-radius:12px;background:#FFF;box-shadow:0 1px 2px rgba(27,26,23,.12);display:grid;place-items:center;font-size:18px;color:#1B1A17">‹</div>
+          <div style="font:800 22px Manrope,sans-serif;letter-spacing:-.02em">New game</div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">TIME CONTROL</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+              <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:16px;padding:14px 0;text-align:center;box-shadow:0 1px 2px rgba(27,26,23,.06)"><div style="font:700 17px Manrope,sans-serif">1+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C;margin-top:2px">BULLET</div></div>
+              <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:16px;padding:14px 0;text-align:center;box-shadow:0 1px 2px rgba(27,26,23,.06)"><div style="font:700 17px Manrope,sans-serif">3+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C;margin-top:2px">BLITZ</div></div>
+              <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:16px;padding:14px 0;text-align:center;box-shadow:0 1px 2px rgba(27,26,23,.06)"><div style="font:700 17px Manrope,sans-serif">5+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C;margin-top:2px">BLITZ</div></div>
+              <div style="background:#EDF3E7;border:2px solid #4F7A3B;border-radius:16px;padding:13px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif;color:#33521F">10+0</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#4F7A3B;margin-top:2px">RAPID</div></div>
+              <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:16px;padding:14px 0;text-align:center;box-shadow:0 1px 2px rgba(27,26,23,.06)"><div style="font:700 17px Manrope,sans-serif">15+10</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C;margin-top:2px">RAPID</div></div>
+              <div style="background:transparent;border:1px dashed #C9C4B8;border-radius:16px;padding:14px 0;text-align:center"><div style="font:600 15px Manrope,sans-serif;color:#6E6A62">Custom</div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">OPPONENT</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px;background:#EDF3E7;border:2px solid #4F7A3B;border-radius:18px;padding:15px 16px">
+                <div style="width:38px;height:38px;border-radius:12px;background:#4F7A3B;display:grid;place-items:center;font-size:20px;color:#FCFBF8">♟</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Random online</div><div style="font:500 12px Manrope,sans-serif;color:#6E6A62">Similar rating · ~10s wait</div></div>
+                <div style="width:22px;height:22px;border-radius:11px;background:#4F7A3B;display:grid;place-items:center;font:700 12px Manrope,sans-serif;color:#fff">✓</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+                <div style="width:38px;height:38px;border-radius:12px;background:#F1EFE9;display:grid;place-items:center;font-size:19px">♞</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Invite a friend</div><div style="font:500 12px Manrope,sans-serif;color:#6E6A62">Share a link or pick from list</div></div>
+                <div style="font:400 18px Manrope,sans-serif;color:#B4AFA4">›</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+                <div style="width:38px;height:38px;border-radius:12px;background:#F1EFE9;display:grid;place-items:center;font-size:19px">♜</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Computer</div><div style="font:500 12px Manrope,sans-serif;color:#6E6A62">Level 4 · ~1300</div></div>
+                <div style="font:400 18px Manrope,sans-serif;color:#B4AFA4">›</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Rated</div><div style="font:500 12px Manrope,sans-serif;color:#6E6A62">Affects your 1284 rapid rating</div></div>
+            <div style="width:52px;height:31px;border-radius:16px;background:#4F7A3B;display:flex;align-items:center;justify-content:flex-end;padding:3px;box-shadow:inset 0 1px 2px rgba(0,0,0,.15)"><div style="width:25px;height:25px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div></div>
+          </div>
+        </div>
+        <div style="padding:16px 20px 34px;background:linear-gradient(to top,#F7F6F3 60%,rgba(247,246,243,0))">
+          <div style="background:#4F7A3B;border-radius:18px;padding:17px;text-align:center;font:800 18px Manrope,sans-serif;color:#fff;letter-spacing:-.01em;box-shadow:0 6px 16px rgba(79,122,59,.35)">Find opponent</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">PAIRING</div>
+      <div style="width:390px;height:844px;background:#F7F6F3;border-radius:38px;box-shadow:0 24px 60px rgba(27,26,23,.16);overflow:hidden;display:flex;flex-direction:column;color:#1B1A17">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#6E6A62">▮▮▮ ⌁ ▰</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:0 32px">
+          <div style="width:132px;height:132px;border-radius:50%;background:#FFF;box-shadow:0 8px 28px rgba(27,26,23,.1),inset 0 0 0 2px #EDF3E7;display:grid;place-items:center;font-size:54px;color:#4F7A3B">♞</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="font:800 26px Manrope,sans-serif;letter-spacing:-.02em">Finding a match</div>
+            <div style="font:500 15px Manrope,sans-serif;color:#6E6A62;text-align:center;text-wrap:pretty">Rapid 10+0 · rated<br>Searching 1240–1330</div>
+          </div>
+          <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+            <div style="height:6px;border-radius:3px;background:#E3E0D8;overflow:hidden"><div style="width:46%;height:100%;background:#4F7A3B;border-radius:3px"></div></div>
+            <div style="display:flex;justify-content:space-between;font:500 12px 'IBM Plex Mono',monospace;color:#8A857C"><span>0:07</span><span>WIDENING RANGE</span></div>
+          </div>
+        </div>
+        <div style="padding:0 20px 34px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:14px;background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+            <div style="width:38px;height:38px;border-radius:12px;background:#F1EFE9;display:grid;place-items:center;font-size:19px">♜</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Play the computer instead</div><div style="font:500 12px Manrope,sans-serif;color:#6E6A62">Keeps searching in the background</div></div>
+          </div>
+          <div style="border:1.5px solid #D8D4CA;border-radius:18px;padding:16px;text-align:center;font:700 17px Manrope,sans-serif;color:#1B1A17">Cancel search</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">LIVE GAME · YOUR MOVE</div>
+      <div style="width:390px;height:844px;background:#F1EFE9;border-radius:38px;box-shadow:0 24px 60px rgba(27,26,23,.16);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;color:#1B1A17">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#6E6A62">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px">
+          <div style="font:600 20px Manrope,sans-serif;color:#6E6A62">‹</div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">RAPID 10+0 · RATED</div>
+          <div style="font:700 18px Manrope,sans-serif;color:#6E6A62">⋯</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:0 16px 10px">
+          <div style="width:40px;height:40px;border-radius:12px;background:#2B2A27;display:grid;place-items:center;font:700 15px Manrope,sans-serif;color:#F1EFE9">MP</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="font:700 16px Manrope,sans-serif">m_petrov</span><span style="font:500 13px 'IBM Plex Mono',monospace;color:#8A857C">1310</span></div>
+            <div style="display:flex;gap:2px;font-size:14px;color:#8A857C">♟♟♝</div>
+          </div>
+          <div style="background:#E3E0D8;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#6E6A62;letter-spacing:-.02em">4:12</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);position:relative;font-size:38px;line-height:1;box-shadow:0 2px 12px rgba(27,26,23,.12)">
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span style="color:#2B2A27">♜</span><span></span><span style="color:#2B2A27">♝</span><span style="color:#2B2A27">♛</span><span style="color:#2B2A27">♚</span><span></span><span></span><span style="color:#2B2A27">♜</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span style="color:#2B2A27">♟</span><span style="color:#2B2A27">♟</span><span style="color:#2B2A27">♟</span><span></span><span></span><span style="color:#2B2A27">♟</span><span style="color:#2B2A27">♟</span><span style="color:#2B2A27">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span></span><span></span><span style="color:#2B2A27">♞</span><span></span><span></span><span style="color:#2B2A27">♞</span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span></span><span></span><span></span><span style="color:#2B2A27">♟</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♝</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♞</span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♜</span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♝</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♛</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♚</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♜</span></div>
+          <div style="position:absolute;left:25%;top:50%;width:12.5%;height:12.5%;background:rgba(240,214,86,.45)"></div>
+          <div style="position:absolute;left:62.5%;top:87.5%;width:12.5%;height:12.5%;background:rgba(240,214,86,.28)"></div>
+          <div style="position:absolute;left:12.5%;top:37.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(27,26,23,.28)"></div></div>
+          <div style="position:absolute;left:12.5%;top:62.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(27,26,23,.28)"></div></div>
+          <div style="position:absolute;left:37.5%;top:62.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(27,26,23,.28)"></div></div>
+          <div style="position:absolute;left:37.5%;top:37.5%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 4px rgba(198,63,49,.75)"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 16px 8px">
+          <div style="width:40px;height:40px;border-radius:12px;background:#FCFBF8;box-shadow:0 1px 3px rgba(27,26,23,.16);display:grid;place-items:center;font:700 15px Manrope,sans-serif;color:#1B1A17">YH</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="font:700 16px Manrope,sans-serif">yourhandle</span><span style="font:500 13px 'IBM Plex Mono',monospace;color:#8A857C">1284</span></div>
+            <div style="display:flex;gap:2px;font-size:14px;color:#8A857C">♙♙</div>
+          </div>
+          <div style="background:#4F7A3B;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#fff;letter-spacing:-.02em;box-shadow:0 4px 12px rgba(79,122,59,.3)">3:58</div>
+        </div>
+        <div style="margin:0 16px;background:#FCFBF8;border-radius:14px;padding:10px 12px;display:flex;gap:14px;overflow:hidden;font:500 13px 'IBM Plex Mono',monospace;color:#6E6A62;box-shadow:0 1px 2px rgba(27,26,23,.07)">
+          <span>1. e4 e5</span><span>2. Nf3 Nc6</span><span style="color:#1B1A17;font-weight:600">3. Bc4 Nf6</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 16px 34px">
+          <div style="background:#FCFBF8;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 1px 2px rgba(27,26,23,.08)"><div style="font-size:17px;color:#4F7A3B">½</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#6E6A62">DRAW</div></div>
+          <div style="background:#FCFBF8;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 1px 2px rgba(27,26,23,.08)"><div style="font-size:17px;color:#C63F31">⚑</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#6E6A62">RESIGN</div></div>
+          <div style="background:#FCFBF8;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 1px 2px rgba(27,26,23,.08)"><div style="font-size:17px;color:#6E6A62">⇅</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#6E6A62">FLIP</div></div>
+          <div style="background:#FCFBF8;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 1px 2px rgba(27,26,23,.08);position:relative"><div style="font-size:17px;color:#6E6A62">✦</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#6E6A62">CHAT</div><div style="position:absolute;top:8px;right:14px;width:8px;height:8px;border-radius:4px;background:#C63F31"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">GAME OVER SHEET</div>
+      <div style="width:390px;height:844px;background:#F1EFE9;border-radius:38px;box-shadow:0 24px 60px rgba(27,26,23,.16);overflow:hidden;display:flex;flex-direction:column;position:relative;color:#1B1A17">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#6E6A62">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px 10px;opacity:.5">
+          <div style="width:40px;height:40px;border-radius:12px;background:#2B2A27;display:grid;place-items:center;font:700 15px Manrope,sans-serif;color:#F1EFE9">MP</div>
+          <div style="flex:1;font:700 16px Manrope,sans-serif">m_petrov</div>
+          <div style="background:#E3E0D8;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#6E6A62">0:44</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);opacity:.45;filter:saturate(.7)">
+          <div style="background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(27,26,23,.28)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:#F7F6F3;border-radius:30px 30px 38px 38px;box-shadow:0 -12px 40px rgba(27,26,23,.28);padding:12px 20px 34px;display:flex;flex-direction:column;gap:18px">
+          <div style="width:44px;height:5px;border-radius:3px;background:#D8D4CA;align-self:center"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:56px;height:56px;border-radius:18px;background:#EDF3E7;display:grid;place-items:center;font-size:26px;color:#4F7A3B">♔</div>
+            <div style="font:800 30px Manrope,sans-serif;letter-spacing:-.03em">You won</div>
+            <div style="font:500 14px Manrope,sans-serif;color:#6E6A62">By resignation · 38 moves</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#EDF3E7;border-radius:99px;padding:6px 14px"><span style="font:700 13px 'IBM Plex Mono',monospace;color:#33521F">+8</span><span style="font:600 13px Manrope,sans-serif;color:#33521F">1284 → 1292 rapid</span></div>
+          </div>
+          <div style="display:flex;background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:14px 0;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font:800 22px Manrope,sans-serif;color:#4F7A3B">86</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#8A857C">YOUR ACCURACY</div></div>
+            <div style="width:1px;background:#EDEBE4"></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font:800 22px Manrope,sans-serif;color:#6E6A62">71</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#8A857C">M_PETROV</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#4F7A3B;border-radius:18px;padding:17px;text-align:center;font:800 18px Manrope,sans-serif;color:#fff;box-shadow:0 6px 16px rgba(79,122,59,.35)">Game review</div>
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;border:1.5px solid #D8D4CA;border-radius:18px;padding:15px;text-align:center;font:700 16px Manrope,sans-serif">Rematch</div>
+              <div style="flex:1;border:1.5px solid #D8D4CA;border-radius:18px;padding:15px;text-align:center;font:700 16px Manrope,sans-serif">New game</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">GAME REVIEW</div>
+      <div style="width:390px;height:844px;background:#F7F6F3;border-radius:38px;box-shadow:0 24px 60px rgba(27,26,23,.16);overflow:hidden;display:flex;flex-direction:column;color:#1B1A17">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#6E6A62">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px">
+          <div style="font:600 18px Manrope,sans-serif;color:#6E6A62">✕</div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">GAME REVIEW</div>
+          <div style="font:600 14px Manrope,sans-serif;color:#4F7A3B">Share</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);position:relative;font-size:38px;line-height:1">
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#2B2A27">♚</span><span></span><span></span><span style="color:#2B2A27">♜</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span style="color:#2B2A27">♟</span><span style="color:#2B2A27">♟</span><span></span><span></span><span></span><span style="color:#2B2A27">♟</span><span></span><span style="color:#2B2A27">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♛</span><span></span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span></span><span></span><span></span><span style="color:#2B2A27">♞</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♗</span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#EDE3CB 0 12.5%,#6C8F4E 12.5% 25%,#EDE3CB 25% 37.5%,#6C8F4E 37.5% 50%,#EDE3CB 50% 62.5%,#6C8F4E 62.5% 75%,#EDE3CB 75% 87.5%,#6C8F4E 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#6C8F4E 0 12.5%,#EDE3CB 12.5% 25%,#6C8F4E 25% 37.5%,#EDE3CB 37.5% 50%,#6C8F4E 50% 62.5%,#EDE3CB 62.5% 75%,#6C8F4E 75% 87.5%,#EDE3CB 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♜</span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♚</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(27,26,23,.4)">♜</span></div>
+          <div style="position:absolute;left:25%;top:25%;width:12.5%;height:12.5%;background:rgba(240,214,86,.45)"></div>
+          <div style="position:absolute;left:12px;top:12px;background:#1B1A17;border-radius:12px;padding:7px 12px;display:flex;align-items:center;gap:8px"><span style="font:700 13px 'IBM Plex Mono',monospace;color:#9FCC7E">+5.1</span><span style="font:700 11px Manrope,sans-serif;color:#F7F6F3;letter-spacing:.04em">BRILLIANT</span></div>
+        </div>
+        <div style="padding:6px 20px 34px;display:flex;flex-direction:column;gap:9px">
+          <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px Manrope,sans-serif">24. Qh5</span><span style="background:#EDF3E7;border-radius:99px;padding:3px 9px;font:700 10px 'IBM Plex Mono',monospace;color:#33521F">BRILLIANT</span></div>
+            <div style="font:500 14px/1.45 Manrope,sans-serif;color:#6E6A62;text-wrap:pretty">Forced mate in 6. The queen is untouchable — gxh5 loses to Bxf7+.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:14px;background:#FFF;border:1px solid #E3E0D8;display:grid;place-items:center;font:600 18px Manrope,sans-serif;color:#6E6A62">‹</div>
+            <div style="flex:1;height:6px;border-radius:3px;background:#E3E0D8;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:63%;background:#4F7A3B;border-radius:3px"></div><div style="position:absolute;left:63%;top:-7px;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #4F7A3B;box-shadow:0 2px 6px rgba(27,26,23,.2);transform:translateX(-10px)"></div></div>
+            <div style="width:44px;height:44px;border-radius:14px;background:#4F7A3B;display:grid;place-items:center;font:600 18px Manrope,sans-serif;color:#fff">›</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font:500 11px 'IBM Plex Mono',monospace;color:#8A857C"><span>MOVE 24 / 38</span><span>TAP GRAPH TO JUMP</span></div>
+          <div style="background:#FFF;border:1px solid #E3E0D8;border-radius:18px;padding:10px;box-shadow:0 1px 2px rgba(27,26,23,.06)">
+            <div style="height:52px;position:relative;border-radius:8px;overflow:hidden;background:#2B2A27">
+              <div style="position:absolute;inset:0;clip-path:polygon(0 50%,12% 46%,24% 56%,38% 40%,50% 45%,62% 30%,74% 34%,86% 14%,100% 8%,100% 0,0 0);background:#F7F6F3"></div>
+              <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.35)"></div>
+              <div style="position:absolute;left:63%;top:0;bottom:0;width:2px;background:#4F7A3B"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;border:1.5px solid #D8D4CA;border-radius:16px;padding:13px;text-align:center;font:700 15px Manrope,sans-serif">Key moments</div>
+            <div style="flex:1;background:#1B1A17;border-radius:16px;padding:13px;text-align:center;font:700 15px Manrope,sans-serif;color:#F7F6F3">Move list</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">FOUNDATIONS</div>
+      <div style="width:390px;background:#FFF;border-radius:28px;box-shadow:0 24px 60px rgba(27,26,23,.14);padding:24px;display:flex;flex-direction:column;gap:22px;color:#1B1A17">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">COLOR · LIGHT</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font:500 9px 'IBM Plex Mono',monospace;color:#6E6A62">
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#F7F6F3;border:1px solid #E3E0D8"></div><span>bg F7F6F3</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#FFF;border:1px solid #E3E0D8"></div><span>card FFFFFF</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#1B1A17"></div><span>ink 1B1A17</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#6E6A62"></div><span>mut 6E6A62</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#4F7A3B"></div><span>accent 4F7A3B</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#EDF3E7"></div><span>tint EDF3E7</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#C63F31"></div><span>danger C63F31</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#F0D656"></div><span>hl F0D656</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#EDE3CB"></div><span>sq-lt EDE3CB</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#6C8F4E"></div><span>sq-dk 6C8F4E</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#FCFBF8;border:1px solid #E3E0D8"></div><span>pc-w FCFBF8</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#2B2A27"></div><span>pc-b 2B2A27</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">COLOR · DARK</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font:500 9px 'IBM Plex Mono',monospace;color:#6E6A62">
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#14171A"></div><span>bg 14171A</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#1E2328"></div><span>card 1E2328</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#EDEEEC;border:1px solid #E3E0D8"></div><span>ink EDEEEC</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#9AA0A6"></div><span>mut 9AA0A6</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#6FA24C"></div><span>accent 6FA24C</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#26301F"></div><span>tint 26301F</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#E2705F"></div><span>danger E2705F</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#A9B885"></div><span>sq-lt A9B885</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:44px;border-radius:10px;background:#55703C"></div><span>sq-dk 55703C</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">TYPE · MANROPE + IBM PLEX MONO</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:800 30px Manrope,sans-serif;letter-spacing:-.03em">You won</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">800 · 30/34 · −3%</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:800 22px Manrope,sans-serif;letter-spacing:-.02em">Screen title</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">800 · 22/28</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:700 16px Manrope,sans-serif">Row label</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">700 · 16/22</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:500 14px Manrope,sans-serif;color:#6E6A62">Supporting body copy</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">500 · 14/20</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">SECTION LABEL</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">mono 600 · 11 · .08em</span></div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:600 20px 'IBM Plex Mono',monospace">3:58</span><span style="font:500 10px 'IBM Plex Mono',monospace;color:#8A857C">clock · mono 600 · 20</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8A857C">BUTTON STATES · 56px TALL</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#4F7A3B;border-radius:18px;padding:17px;text-align:center;font:800 16px Manrope,sans-serif;color:#fff;box-shadow:0 6px 16px rgba(79,122,59,.35)">Default</div>
+            <div style="background:#3C612C;border-radius:18px;padding:17px;text-align:center;font:800 16px Manrope,sans-serif;color:#fff;transform:scale(.98)">Pressed</div>
+            <div style="background:#C9D6BF;border-radius:18px;padding:17px;text-align:center;font:800 16px Manrope,sans-serif;color:#F0F4EC">Disabled</div>
+            <div style="background:#4F7A3B;border-radius:18px;padding:17px;text-align:center;font:800 16px Manrope,sans-serif;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px"><span style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff"></span>Loading</div>
+          </div>
+          <div style="font:500 12px/1.5 Manrope,sans-serif;color:#6E6A62;text-wrap:pretty">Radii: 12 icon · 16 chip · 18 card/button · 30 sheet · 38 screen. Spacing scale 4/8/10/14/20/26. Shadows: card 0 1px 2px rgba(27,26,23,.06), raised 0 6px 16px accent/35%, sheet 0 −12px 40px rgba(27,26,23,.28). Motion: 180ms ease-out for taps, 260ms cubic-bezier(.2,.8,.2,1) for the sheet, 120ms piece snap.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:8px 48px 56px;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;align-items:baseline;gap:10px">
+    <span style="font:700 10px 'IBM Plex Mono',monospace;background:#1B1A17;color:#fff;padding:3px 7px;border-radius:4px">3b</span>
+    <span style="font:600 15px Manrope,sans-serif;color:#1B1A17">Hi-fi &mdash; dark mode</span>
+  </div>
+  <div style="display:flex;gap:22px;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">NEW GAME</div>
+      <div style="width:390px;height:844px;background:#14171A;border-radius:38px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;color:#EDEEEC">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#9AA0A6">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;gap:14px;padding:6px 20px 14px">
+          <div style="width:36px;height:36px;border-radius:12px;background:#1E2328;display:grid;place-items:center;font-size:18px">‹</div>
+          <div style="font:800 22px Manrope,sans-serif;letter-spacing:-.02em">New game</div>
+        </div>
+        <div style="flex:1;padding:0 20px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#9AA0A6">TIME CONTROL</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+              <div style="background:#1E2328;border:1px solid #2A3037;border-radius:16px;padding:14px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif">1+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#9AA0A6;margin-top:2px">BULLET</div></div>
+              <div style="background:#1E2328;border:1px solid #2A3037;border-radius:16px;padding:14px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif">3+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#9AA0A6;margin-top:2px">BLITZ</div></div>
+              <div style="background:#1E2328;border:1px solid #2A3037;border-radius:16px;padding:14px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif">5+0</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#9AA0A6;margin-top:2px">BLITZ</div></div>
+              <div style="background:#26301F;border:2px solid #6FA24C;border-radius:16px;padding:13px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif;color:#C7E3AC">10+0</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#8FBE6B;margin-top:2px">RAPID</div></div>
+              <div style="background:#1E2328;border:1px solid #2A3037;border-radius:16px;padding:14px 0;text-align:center"><div style="font:700 17px Manrope,sans-serif">15+10</div><div style="font:500 10px 'IBM Plex Mono',monospace;color:#9AA0A6;margin-top:2px">RAPID</div></div>
+              <div style="border:1px dashed #3A4149;border-radius:16px;padding:14px 0;text-align:center"><div style="font:600 15px Manrope,sans-serif;color:#9AA0A6">Custom</div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#9AA0A6">OPPONENT</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:14px;background:#26301F;border:2px solid #6FA24C;border-radius:18px;padding:15px 16px">
+                <div style="width:38px;height:38px;border-radius:12px;background:#6FA24C;display:grid;place-items:center;font-size:20px;color:#14171A">♟</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Random online</div><div style="font:500 12px Manrope,sans-serif;color:#A8B79C">Similar rating · ~10s wait</div></div>
+                <div style="width:22px;height:22px;border-radius:11px;background:#6FA24C;display:grid;place-items:center;font:700 12px Manrope,sans-serif;color:#14171A">✓</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:16px">
+                <div style="width:38px;height:38px;border-radius:12px;background:#252B31;display:grid;place-items:center;font-size:19px">♞</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Invite a friend</div><div style="font:500 12px Manrope,sans-serif;color:#9AA0A6">Share a link or pick from list</div></div>
+                <div style="font:400 18px Manrope,sans-serif;color:#6B7378">›</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:16px">
+                <div style="width:38px;height:38px;border-radius:12px;background:#252B31;display:grid;place-items:center;font-size:19px">♜</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Computer</div><div style="font:500 12px Manrope,sans-serif;color:#9AA0A6">Level 4 · ~1300</div></div>
+                <div style="font:400 18px Manrope,sans-serif;color:#6B7378">›</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:16px">
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Rated</div><div style="font:500 12px Manrope,sans-serif;color:#9AA0A6">Affects your 1284 rapid rating</div></div>
+            <div style="width:52px;height:31px;border-radius:16px;background:#6FA24C;display:flex;align-items:center;justify-content:flex-end;padding:3px"><div style="width:25px;height:25px;border-radius:50%;background:#14171A"></div></div>
+          </div>
+        </div>
+        <div style="padding:16px 20px 34px">
+          <div style="background:#6FA24C;border-radius:18px;padding:17px;text-align:center;font:800 18px Manrope,sans-serif;color:#0F1416;letter-spacing:-.01em;box-shadow:0 6px 18px rgba(111,162,76,.28)">Find opponent</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">PAIRING</div>
+      <div style="width:390px;height:844px;background:#14171A;border-radius:38px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;color:#EDEEEC">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#9AA0A6">▮▮▮ ⌁ ▰</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:0 32px">
+          <div style="width:132px;height:132px;border-radius:50%;background:#1E2328;box-shadow:inset 0 0 0 2px #26301F;display:grid;place-items:center;font-size:54px;color:#6FA24C">♞</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="font:800 26px Manrope,sans-serif;letter-spacing:-.02em">Finding a match</div>
+            <div style="font:500 15px Manrope,sans-serif;color:#9AA0A6;text-align:center">Rapid 10+0 · rated<br>Searching 1240–1330</div>
+          </div>
+          <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+            <div style="height:6px;border-radius:3px;background:#252B31;overflow:hidden"><div style="width:46%;height:100%;background:#6FA24C;border-radius:3px"></div></div>
+            <div style="display:flex;justify-content:space-between;font:500 12px 'IBM Plex Mono',monospace;color:#9AA0A6"><span>0:07</span><span>WIDENING RANGE</span></div>
+          </div>
+        </div>
+        <div style="padding:0 20px 34px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:14px;background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:16px">
+            <div style="width:38px;height:38px;border-radius:12px;background:#252B31;display:grid;place-items:center;font-size:19px">♜</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font:700 16px Manrope,sans-serif">Play the computer instead</div><div style="font:500 12px Manrope,sans-serif;color:#9AA0A6">Keeps searching in the background</div></div>
+          </div>
+          <div style="border:1.5px solid #3A4149;border-radius:18px;padding:16px;text-align:center;font:700 17px Manrope,sans-serif">Cancel search</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">LIVE GAME · YOUR MOVE</div>
+      <div style="width:390px;height:844px;background:#101315;border-radius:38px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;color:#EDEEEC">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#9AA0A6">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px">
+          <div style="font:600 20px Manrope,sans-serif;color:#9AA0A6">‹</div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#9AA0A6">RAPID 10+0 · RATED</div>
+          <div style="font:700 18px Manrope,sans-serif;color:#9AA0A6">⋯</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:0 16px 10px">
+          <div style="width:40px;height:40px;border-radius:12px;background:#2B2A27;border:1px solid #3A4149;display:grid;place-items:center;font:700 15px Manrope,sans-serif;color:#EDEEEC">MP</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="font:700 16px Manrope,sans-serif">m_petrov</span><span style="font:500 13px 'IBM Plex Mono',monospace;color:#9AA0A6">1310</span></div>
+            <div style="display:flex;gap:2px;font-size:14px;color:#6B7378">♟♟♝</div>
+          </div>
+          <div style="background:#252B31;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#9AA0A6;letter-spacing:-.02em">4:12</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);position:relative;font-size:38px;line-height:1">
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span style="color:#191A16">♜</span><span></span><span style="color:#191A16">♝</span><span style="color:#191A16">♛</span><span style="color:#191A16">♚</span><span></span><span></span><span style="color:#191A16">♜</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span style="color:#191A16">♟</span><span style="color:#191A16">♟</span><span style="color:#191A16">♟</span><span></span><span></span><span style="color:#191A16">♟</span><span style="color:#191A16">♟</span><span style="color:#191A16">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span></span><span></span><span style="color:#191A16">♞</span><span></span><span></span><span style="color:#191A16">♞</span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span></span><span></span><span></span><span style="color:#191A16">♟</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♝</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♞</span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♜</span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♝</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♛</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♚</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♜</span></div>
+          <div style="position:absolute;left:25%;top:50%;width:12.5%;height:12.5%;background:rgba(240,214,86,.4)"></div>
+          <div style="position:absolute;left:62.5%;top:87.5%;width:12.5%;height:12.5%;background:rgba(240,214,86,.24)"></div>
+          <div style="position:absolute;left:12.5%;top:37.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(0,0,0,.35)"></div></div>
+          <div style="position:absolute;left:12.5%;top:62.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(0,0,0,.35)"></div></div>
+          <div style="position:absolute;left:37.5%;top:62.5%;width:12.5%;height:12.5%;display:grid;place-items:center"><div style="width:30%;height:30%;border-radius:50%;background:rgba(0,0,0,.35)"></div></div>
+          <div style="position:absolute;left:37.5%;top:37.5%;width:12.5%;height:12.5%;box-shadow:inset 0 0 0 4px rgba(226,112,95,.85)"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 16px 8px">
+          <div style="width:40px;height:40px;border-radius:12px;background:#EDEEEC;display:grid;place-items:center;font:700 15px Manrope,sans-serif;color:#14171A">YH</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="font:700 16px Manrope,sans-serif">yourhandle</span><span style="font:500 13px 'IBM Plex Mono',monospace;color:#9AA0A6">1284</span></div>
+            <div style="display:flex;gap:2px;font-size:14px;color:#6B7378">♙♙</div>
+          </div>
+          <div style="background:#6FA24C;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#0F1416;letter-spacing:-.02em;box-shadow:0 4px 14px rgba(111,162,76,.28)">3:58</div>
+        </div>
+        <div style="margin:0 16px;background:#1E2328;border-radius:14px;padding:10px 12px;display:flex;gap:14px;overflow:hidden;font:500 13px 'IBM Plex Mono',monospace;color:#9AA0A6">
+          <span>1. e4 e5</span><span>2. Nf3 Nc6</span><span style="color:#EDEEEC;font-weight:600">3. Bc4 Nf6</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 16px 34px">
+          <div style="background:#1E2328;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:17px;color:#8FBE6B">½</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">DRAW</div></div>
+          <div style="background:#1E2328;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:17px;color:#E2705F">⚑</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">RESIGN</div></div>
+          <div style="background:#1E2328;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:17px;color:#9AA0A6">⇅</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">FLIP</div></div>
+          <div style="background:#1E2328;border-radius:16px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative"><div style="font-size:17px;color:#9AA0A6">✦</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">CHAT</div><div style="position:absolute;top:8px;right:14px;width:8px;height:8px;border-radius:4px;background:#E2705F"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">GAME OVER SHEET</div>
+      <div style="width:390px;height:844px;background:#101315;border-radius:38px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;position:relative;color:#EDEEEC">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#9AA0A6">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px 10px;opacity:.45">
+          <div style="width:40px;height:40px;border-radius:12px;background:#2B2A27;display:grid;place-items:center;font:700 15px Manrope,sans-serif">MP</div>
+          <div style="flex:1;font:700 16px Manrope,sans-serif">m_petrov</div>
+          <div style="background:#252B31;border-radius:12px;padding:8px 14px;font:600 20px 'IBM Plex Mono',monospace;color:#9AA0A6">0:44</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);opacity:.4">
+          <div style="background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"></div>
+          <div style="background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.5)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:#1B2024;border-radius:30px 30px 38px 38px;box-shadow:0 -12px 40px rgba(0,0,0,.6);padding:12px 20px 34px;display:flex;flex-direction:column;gap:18px">
+          <div style="width:44px;height:5px;border-radius:3px;background:#3A4149;align-self:center"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="width:56px;height:56px;border-radius:18px;background:#26301F;display:grid;place-items:center;font-size:26px;color:#8FBE6B">♔</div>
+            <div style="font:800 30px Manrope,sans-serif;letter-spacing:-.03em">You won</div>
+            <div style="font:500 14px Manrope,sans-serif;color:#9AA0A6">By resignation · 38 moves</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#26301F;border-radius:99px;padding:6px 14px"><span style="font:700 13px 'IBM Plex Mono',monospace;color:#C7E3AC">+8</span><span style="font:600 13px Manrope,sans-serif;color:#C7E3AC">1284 → 1292 rapid</span></div>
+          </div>
+          <div style="display:flex;background:#232A2F;border:1px solid #2A3037;border-radius:18px;padding:14px 0">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font:800 22px Manrope,sans-serif;color:#8FBE6B">86</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">YOUR ACCURACY</div></div>
+            <div style="width:1px;background:#2F363C"></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font:800 22px Manrope,sans-serif;color:#9AA0A6">71</div><div style="font:600 10px 'IBM Plex Mono',monospace;color:#9AA0A6">M_PETROV</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:#6FA24C;border-radius:18px;padding:17px;text-align:center;font:800 18px Manrope,sans-serif;color:#0F1416;box-shadow:0 6px 18px rgba(111,162,76,.28)">Game review</div>
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;border:1.5px solid #3A4149;border-radius:18px;padding:15px;text-align:center;font:700 16px Manrope,sans-serif">Rematch</div>
+              <div style="flex:1;border:1.5px solid #3A4149;border-radius:18px;padding:15px;text-align:center;font:700 16px Manrope,sans-serif">New game</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8A857C">GAME REVIEW</div>
+      <div style="width:390px;height:844px;background:#14171A;border-radius:38px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;color:#EDEEEC">
+        <div style="height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 8px;font:600 14px 'IBM Plex Mono',monospace"><span>9:41</span><span style="font-size:12px;color:#9AA0A6">▮▮▮ ⌁ ▰</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px">
+          <div style="font:600 18px Manrope,sans-serif;color:#9AA0A6">✕</div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#9AA0A6">GAME REVIEW</div>
+          <div style="font:600 14px Manrope,sans-serif;color:#8FBE6B">Share</div>
+        </div>
+        <div style="width:390px;height:390px;flex:none;display:grid;grid-template-rows:repeat(8,1fr);position:relative;font-size:38px;line-height:1">
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#191A16">♚</span><span></span><span></span><span style="color:#191A16">♜</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span style="color:#191A16">♟</span><span style="color:#191A16">♟</span><span></span><span></span><span></span><span style="color:#191A16">♟</span><span></span><span style="color:#191A16">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♛</span><span></span><span></span><span></span><span></span><span></span></div>
+          <div style="background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span></span><span></span><span></span><span style="color:#191A16">♞</span><span></span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span></span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♝</span><span></span><span></span><span></span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#A9B885 0 12.5%,#55703C 12.5% 25%,#A9B885 25% 37.5%,#55703C 37.5% 50%,#A9B885 50% 62.5%,#55703C 62.5% 75%,#A9B885 75% 87.5%,#55703C 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♟</span></div>
+          <div style="display:grid;grid-template-columns:repeat(8,1fr);place-items:center;background:linear-gradient(90deg,#55703C 0 12.5%,#A9B885 12.5% 25%,#55703C 25% 37.5%,#A9B885 37.5% 50%,#55703C 50% 62.5%,#A9B885 62.5% 75%,#55703C 75% 87.5%,#A9B885 87.5% 100%)"><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♜</span><span></span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♚</span><span></span><span></span><span style="color:#FCFBF8;text-shadow:0 1px 2px rgba(0,0,0,.45)">♜</span></div>
+          <div style="position:absolute;left:25%;top:25%;width:12.5%;height:12.5%;background:rgba(240,214,86,.4)"></div>
+          <div style="position:absolute;left:12px;top:12px;background:#0D1012;border-radius:12px;padding:7px 12px;display:flex;align-items:center;gap:8px"><span style="font:700 13px 'IBM Plex Mono',monospace;color:#9FCC7E">+5.1</span><span style="font:700 11px Manrope,sans-serif;color:#EDEEEC;letter-spacing:.04em">BRILLIANT</span></div>
+        </div>
+        <div style="padding:6px 20px 34px;display:flex;flex-direction:column;gap:9px">
+          <div style="background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px Manrope,sans-serif">24. Qh5</span><span style="background:#26301F;border-radius:99px;padding:3px 9px;font:700 10px 'IBM Plex Mono',monospace;color:#C7E3AC">BRILLIANT</span></div>
+            <div style="font:500 14px/1.45 Manrope,sans-serif;color:#9AA0A6;text-wrap:pretty">Forced mate in 6. The queen is untouchable — gxh5 loses to Bxf7+.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:14px;background:#1E2328;border:1px solid #2A3037;display:grid;place-items:center;font:600 18px Manrope,sans-serif;color:#9AA0A6">‹</div>
+            <div style="flex:1;height:6px;border-radius:3px;background:#252B31;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:63%;background:#6FA24C;border-radius:3px"></div><div style="position:absolute;left:63%;top:-7px;width:20px;height:20px;border-radius:50%;background:#14171A;border:3px solid #6FA24C;transform:translateX(-10px)"></div></div>
+            <div style="width:44px;height:44px;border-radius:14px;background:#6FA24C;display:grid;place-items:center;font:600 18px Manrope,sans-serif;color:#0F1416">›</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font:500 11px 'IBM Plex Mono',monospace;color:#9AA0A6"><span>MOVE 24 / 38</span><span>TAP GRAPH TO JUMP</span></div>
+          <div style="background:#1E2328;border:1px solid #2A3037;border-radius:18px;padding:10px">
+            <div style="height:52px;position:relative;border-radius:8px;overflow:hidden;background:#0D1012">
+              <div style="position:absolute;inset:0;clip-path:polygon(0 50%,12% 46%,24% 56%,38% 40%,50% 45%,62% 30%,74% 34%,86% 14%,100% 8%,100% 0,0 0);background:#D7DBD4"></div>
+              <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.25)"></div>
+              <div style="position:absolute;left:63%;top:0;bottom:0;width:2px;background:#6FA24C"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;border:1.5px solid #3A4149;border-radius:16px;padding:13px;text-align:center;font:700 15px Manrope,sans-serif">Key moments</div>
+            <div style="flex:1;background:#EDEEEC;border-radius:16px;padding:13px;text-align:center;font:700 15px Manrope,sans-serif;color:#14171A">Move list</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>
