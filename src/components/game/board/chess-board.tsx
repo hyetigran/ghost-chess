@@ -1,11 +1,18 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
-import { squareAt, type Orientation } from '~/lib/game/board-geometry';
-import { pieceSymbol } from '~/lib/game/piece-symbol';
+import {
+  fileLabels,
+  rankLabels,
+  squareAt,
+  type Orientation,
+} from '~/lib/game/board-geometry';
+import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
+
+const LABEL_GUTTER = 16;
 
 type Props = {
   /**
@@ -51,7 +58,9 @@ export function ChessBoard({
     useSquareSelection(chess, orientation, onMove);
 
   return (
-    <View className={`w-full aspect-square ${interactive ? '' : 'opacity-70'}`}>
+    <View
+      className={`w-full max-w-[560px] self-center ${interactive ? '' : 'opacity-70'}`}
+    >
       {!interactive && (
         <View className='absolute inset-x-0 z-10 items-center -top-7'>
           <Text className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
@@ -59,35 +68,60 @@ export function ChessBoard({
           </Text>
         </View>
       )}
-      <View className='flex-row flex-wrap flex-1'>
-        {Array.from({ length: 8 }).map((_, displayRank) =>
-          Array.from({ length: 8 }).map((_, displayFile) => {
-            const square = squareAt(displayRank, displayFile, orientation);
-            const isLight = (displayRank + displayFile) % 2 === 0;
-            const piece = chess.get(square);
-            const isSelected = selectedSquare === square;
-            const isLegalTarget = legalTargets.has(square);
-            const isFlashing = flashSquare === square;
+      <View className='flex-row'>
+        <View style={{ width: LABEL_GUTTER }}>
+          {rankLabels(orientation).map((rank) => (
+            <View key={rank} className='items-center justify-center flex-1'>
+              <Text className='text-xs text-muted-foreground'>{rank}</Text>
+            </View>
+          ))}
+        </View>
+        <View className='flex-1 aspect-square'>
+          <View className='flex-row flex-wrap flex-1'>
+            {Array.from({ length: 8 }).map((_, displayRank) =>
+              Array.from({ length: 8 }).map((_, displayFile) => {
+                const square = squareAt(displayRank, displayFile, orientation);
+                const isLight = (displayRank + displayFile) % 2 === 0;
+                const piece = chess.get(square);
+                const isSelected = selectedSquare === square;
+                const isLegalTarget = legalTargets.has(square);
+                const isFlashing = flashSquare === square;
 
-            return (
-              <View
-                key={square}
-                className={`w-[12.5%] h-[12.5%] items-center justify-center ${
-                  isLight ? 'bg-amber-100' : 'bg-amber-800'
-                } ${isSelected ? 'bg-blue-500' : ''} ${
-                  isLegalTarget ? 'bg-green-400' : ''
-                } ${isFlashing ? 'bg-red-400' : ''}`}
-                onTouchEnd={() => interactive && handleSquarePress(square)}
-              >
-                {piece && (
-                  <Text className='text-4xl text-center'>
-                    {pieceSymbol(piece)}
-                  </Text>
-                )}
-              </View>
-            );
-          }),
-        )}
+                return (
+                  <Pressable
+                    key={square}
+                    className={`w-[12.5%] h-[12.5%] items-center justify-center ${
+                      isLight ? 'bg-squareLight' : 'bg-squareDark'
+                    } ${isSelected ? 'bg-highlight' : ''} ${
+                      isLegalTarget ? 'bg-accent' : ''
+                    } ${isFlashing ? 'bg-danger' : ''}`}
+                    onPress={() => interactive && handleSquarePress(square)}
+                  >
+                    {piece && (
+                      <Image
+                        source={pieceImage(piece)}
+                        style={{ width: '80%', height: '80%' }}
+                        resizeMode='contain'
+                      />
+                    )}
+                  </Pressable>
+                );
+              }),
+            )}
+          </View>
+        </View>
+      </View>
+      <View className='flex-row'>
+        <View style={{ width: LABEL_GUTTER }} />
+        <View className='flex-row flex-1'>
+          {fileLabels(orientation).map((file) => (
+            <View key={file} className='items-center justify-center flex-1'>
+              <Text className='text-xs text-muted-foreground'>
+                {file.toUpperCase()}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );

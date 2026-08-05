@@ -18,6 +18,17 @@ import { AppState, Platform, StyleSheet } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { useFonts } from 'expo-font';
+import {
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from '@expo-google-fonts/manrope';
+import {
+  IBMPlexMono_500Medium,
+  IBMPlexMono_600SemiBold,
+} from '@expo-google-fonts/ibm-plex-mono';
 
 import { supabase } from '~/api/supabase/client';
 import { ThemeToggle } from '~/components/ThemeToggle';
@@ -69,6 +80,14 @@ export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const { colorScheme, isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
+  const [fontsLoaded] = useFonts({
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+    IBMPlexMono_500Medium,
+    IBMPlexMono_600SemiBold,
+  });
 
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
@@ -84,6 +103,10 @@ export default function RootLayout() {
     hasMounted.current = true;
   }, []);
 
+  // Deliberately not gated on fontsLoaded: custom fonts should swap in
+  // progressively once loaded (standard web font-loading behavior), not
+  // block the whole app — the two states aren't equivalent the way they
+  // are for color scheme, which the layout genuinely can't render without.
   if (!isColorSchemeLoaded) {
     return null;
   }
@@ -163,13 +186,6 @@ export default function RootLayout() {
           name='how-to-play'
           options={{
             title: 'How to Play',
-            headerShown: true,
-          }}
-        />
-        <Stack.Screen
-          name='onboarding'
-          options={{
-            title: 'Welcome',
             headerShown: true,
           }}
         />

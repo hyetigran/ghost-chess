@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const supabase = createClient(
   Env.EXPO_PUBLIC_SUPABASE_URL,
-  Env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  Env.EXPO_PUBLIC_SUPABASE_KEY,
   {
     auth: {
       storage: AsyncStorage,

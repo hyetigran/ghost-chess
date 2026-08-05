@@ -1,5 +1,11 @@
 import { Chess } from 'chess.js';
-import { chooseAiMove, chooseAiMoveFromTrueFen } from '~/lib/game/ai-move';
+import {
+  chooseAiMove,
+  chooseAiMoveFromTrueFen,
+  chooseAiMoveOrder,
+  chooseAiMoveOrderFromTrueFen,
+} from '~/lib/game/ai-move';
+import { applyLocalMove } from '~/lib/game/local-move';
 
 describe('chooseAiMove', () => {
   it('returns null when the side to move has no legal moves (stalemate)', () => {
@@ -117,5 +123,74 @@ describe('chooseAiMoveFromTrueFen', () => {
     expect(correctMove).toEqual({ from: 'd7', to: 'e5' });
 
     expect(correctMove).not.toEqual(buggyMove);
+  });
+});
+
+describe('chooseAiMoveOrder', () => {
+  it('returns every candidate, none lost or duplicated, for any difficulty', () => {
+    const redactedFen = '8/8/8/8/8/2N5/8/K6k w - - 0 1';
+
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      const order = chooseAiMoveOrder(redactedFen, difficulty, () => 0.5);
+      const keys = order.map((m) => `${m.from}-${m.to}`);
+      expect(new Set(keys).size).toBe(keys.length);
+      expect(keys.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('returns an empty list, not null, when there are no legal moves', () => {
+    expect(
+      chooseAiMoveOrder('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', 'easy'),
+    ).toEqual([]);
+  });
+});
+
+describe('chooseAiMoveOrderFromTrueFen', () => {
+  it('always includes a legal check-escaping move, even though the checking piece is invisible to the AI', () => {
+    // White king on e1 is in check from black's rook on e8 down the open
+    // e-file — a check the AI (playing white) structurally can't see on
+    // its own redacted view, since the checking piece belongs to the
+    // opponent (ADR-0004) and redaction hides it (and black's king)
+    // entirely. On the redacted board chess.js has no idea white is in
+    // check, so it offers e1's every adjacent square as equally
+    // "legal-looking" — including e2, which stays on the e-file and
+    // doesn't actually escape check. This is the exact shape of the real
+    // bug report: a single blind pick (or a small number of retries) can
+    // land on e1-e2 and have nothing else queued up to try.
+    const trueFen = '4r2k/8/8/8/8/8/8/4K3 w - - 0 1';
+
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      for (const seed of [0, 0.2, 0.4, 0.6, 0.8, 0.999]) {
+        const order = chooseAiMoveOrderFromTrueFen(
+          trueFen,
+          'white',
+          difficulty,
+          () => seed,
+        );
+
+        const legalMove = order.find(
+          (move) => applyLocalMove(trueFen, move).legal,
+        );
+        expect(legalMove).toBeDefined();
+      }
+    }
+  });
+
+  it('places every generated candidate ahead of one that fails true-board validation, never dropping any', () => {
+    const trueFen = '4r2k/8/8/8/8/8/8/4K3 w - - 0 1';
+    const order = chooseAiMoveOrderFromTrueFen(
+      trueFen,
+      'white',
+      'hard',
+      () => 0.5,
+    );
+
+    // e1-e2 is exactly the redacted-view-plausible, true-illegal
+    // candidate described above — present in the list, just not the
+    // only thing offered.
+    expect(order).toContainEqual({ from: 'e1', to: 'e2' });
+    expect(order.some((move) => applyLocalMove(trueFen, move).legal)).toBe(
+      true,
+    );
   });
 });

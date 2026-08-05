@@ -20,3 +20,16 @@ export function squareAt(
   const file = String.fromCharCode(97 + fileIndex);
   return `${file}${rank}` as Square;
 }
+
+// Display-order labels for the file (a-h) and rank (1-8) gutters, matching
+// squareAt's own mirroring so a label always sits under/beside the square
+// it names regardless of orientation.
+export function fileLabels(orientation: Orientation): string[] {
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  return orientation === 'white' ? files : [...files].reverse();
+}
+
+export function rankLabels(orientation: Orientation): number[] {
+  const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  return orientation === 'white' ? ranks : [...ranks].reverse();
+}

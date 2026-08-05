@@ -10,6 +10,14 @@ export type HowToPlayEntry = {
   body: string;
 };
 
+// General chess literacy for total beginners — deliberately generic, not
+// occlusion-specific (that's HOW_TO_PLAY_SECTIONS below).
+export const CHESS_BASICS_TIPS: string[] = [
+  'Two players take turns moving one piece at a time.',
+  'Pawns move straight ahead but capture diagonally; other pieces each move in their own fixed pattern (rooks in straight lines, bishops diagonally, the knight in an L, the queen any direction, the king one square at a time).',
+  "The goal is checkmate: trapping your opponent's king so it can't escape capture.",
+];
+
 export const HOW_TO_PLAY_SECTIONS: HowToPlayEntry[] = [
   {
     title: 'The twist',

@@ -7,40 +7,96 @@ import {
   type LocalGameResult,
   type LocalMoveOutcome,
 } from '~/lib/game/local-move';
-import { chooseAiMoveFromTrueFen, type Difficulty } from '~/lib/game/ai-move';
+import {
+  chooseAiMoveOrderFromTrueFen,
+  type Difficulty,
+} from '~/lib/game/ai-move';
+import type { MoveEntry } from '~/lib/game/pair-moves';
 
 const START_FEN = new Chess().fen();
-const MAX_AI_ATTEMPTS = 8;
 
 type GameOverState = { result: LocalGameResult; winner: Color | null };
 
 type UseAiGameResult = {
+  fen: string;
   redactedFen: string;
   isCheck: boolean;
   gameOver: GameOverState | null;
+  capturedByWhite: string[];
+  capturedByBlack: string[];
+  moves: MoveEntry[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   reset: () => void;
 };
 
+// Walks chooseAiMoveOrderFromTrueFen's full candidate list until one
+// validates against the true board, rather than a small number of blind
+// retries: occlusion can make a candidate that looks legal on the AI's
+// own redacted view turn out illegal on the true board — not just via
+// #18's pawn-diagonal problem, but also when the AI's own king is in
+// check from a piece it can't see at all, which the redacted view has no
+// way to even register as a check. A capped-retry approach could
+// exhaust itself doing the same fixed thing over and over there (a real
+// bug this used to have); the full ordered list can't run out of
+// something new to try short of genuine checkmate/stalemate. Pure and
+// synchronous so it can run both from an event handler and from a
+// useState lazy initializer (playing as Black means the AI's opening
+// move has to be decided before the first render, not triggered by an
+// effect after it).
+function attemptAiTurn(
+  fen: string,
+  aiColor: Color,
+  difficulty: Difficulty,
+): Extract<LocalMoveOutcome, { legal: true }> | null {
+  const order = chooseAiMoveOrderFromTrueFen(fen, aiColor, difficulty);
+  for (const move of order) {
+    const outcome = applyLocalMove(fen, move);
+    if (outcome.legal) return outcome;
+  }
+  return null;
+}
+
+function initialOutcomeFor(
+  aiColor: Color,
+  difficulty: Difficulty,
+): Extract<LocalMoveOutcome, { legal: true }> | null {
+  // Only Black needs an opening move pre-played — White (human or AI)
+  // always moves from the start position first.
+  if (aiColor !== 'white') return null;
+  return attemptAiTurn(START_FEN, aiColor, difficulty);
+}
+
 // Thin state wrapper — the actual rules logic is applyLocalMove (#20), and
 // the AI's move selection, redaction included, is chooseAiMoveFromTrueFen
-// (#21) — both pure and tested. The one thing that lives here is the
-// retry loop: a candidate chooseAiMove offers can turn out illegal
-// against the true board (the same structural reason a human's own
-// legalTargets highlighting can — occlusion can make a slide-through
-// square look clear when a hidden piece actually blocks it, exactly
-// #18's pawn-diagonal problem generalized to any piece), so this retries
-// with fresh candidates the same number of times a human effectively
-// gets by just tapping again, capped defensively.
+// (#21) — both pure and tested.
 export function useAiGame(
   humanColor: Color,
   difficulty: Difficulty,
 ): UseAiGameResult {
-  const [fen, setFen] = React.useState(START_FEN);
-  const [isCheck, setIsCheck] = React.useState(false);
-  const [gameOver, setGameOver] = React.useState<GameOverState | null>(null);
-
   const aiColor: Color = humanColor === 'white' ? 'black' : 'white';
+
+  const [initial] = React.useState(() =>
+    initialOutcomeFor(aiColor, difficulty),
+  );
+
+  const [fen, setFen] = React.useState(initial?.newFen ?? START_FEN);
+  const [isCheck, setIsCheck] = React.useState(initial?.isCheck ?? false);
+  const [gameOver, setGameOver] = React.useState<GameOverState | null>(
+    initial?.isGameOver && initial.result
+      ? { result: initial.result, winner: initial.winner }
+      : null,
+  );
+  const [capturedByWhite, setCapturedByWhite] = React.useState<string[]>(
+    initial?.captured?.by === 'white' ? [initial.captured.pieceType] : [],
+  );
+  const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>(
+    initial?.captured?.by === 'black' ? [initial.captured.pieceType] : [],
+  );
+  const [moves, setMoves] = React.useState<MoveEntry[]>(
+    initial
+      ? [{ san: initial.san, color: initial.mover, fen: initial.newFen }]
+      : [],
+  );
 
   const applyOutcome = (
     outcome: Extract<LocalMoveOutcome, { legal: true }>,
@@ -50,18 +106,23 @@ export function useAiGame(
     if (outcome.isGameOver && outcome.result) {
       setGameOver({ result: outcome.result, winner: outcome.winner });
     }
+    setMoves((current) => [
+      ...current,
+      { san: outcome.san, color: outcome.mover, fen: outcome.newFen },
+    ]);
+    if (outcome.captured) {
+      const { by, pieceType } = outcome.captured;
+      if (by === 'white') {
+        setCapturedByWhite((current) => [...current, pieceType]);
+      } else {
+        setCapturedByBlack((current) => [...current, pieceType]);
+      }
+    }
   };
 
   const playAiTurn = (currentFen: string): void => {
-    for (let attempt = 0; attempt < MAX_AI_ATTEMPTS; attempt++) {
-      const move = chooseAiMoveFromTrueFen(currentFen, aiColor, difficulty);
-      if (!move) return;
-      const outcome = applyLocalMove(currentFen, move);
-      if (outcome.legal) {
-        applyOutcome(outcome);
-        return;
-      }
-    }
+    const outcome = attemptAiTurn(currentFen, aiColor, difficulty);
+    if (outcome) applyOutcome(outcome);
   };
 
   const makeMove = (from: string, to: string, promotion = 'q'): void => {
@@ -75,15 +136,33 @@ export function useAiGame(
   };
 
   const reset = (): void => {
-    setFen(START_FEN);
-    setIsCheck(false);
-    setGameOver(null);
+    const fresh = initialOutcomeFor(aiColor, difficulty);
+    setFen(fresh?.newFen ?? START_FEN);
+    setIsCheck(fresh?.isCheck ?? false);
+    setGameOver(
+      fresh?.isGameOver && fresh.result
+        ? { result: fresh.result, winner: fresh.winner }
+        : null,
+    );
+    setCapturedByWhite(
+      fresh?.captured?.by === 'white' ? [fresh.captured.pieceType] : [],
+    );
+    setCapturedByBlack(
+      fresh?.captured?.by === 'black' ? [fresh.captured.pieceType] : [],
+    );
+    setMoves(
+      fresh ? [{ san: fresh.san, color: fresh.mover, fen: fresh.newFen }] : [],
+    );
   };
 
   return {
+    fen,
     redactedFen: redactFen(fen, humanColor),
     isCheck,
     gameOver,
+    capturedByWhite,
+    capturedByBlack,
+    moves,
     makeMove,
     reset,
   };

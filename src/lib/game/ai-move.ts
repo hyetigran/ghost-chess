@@ -150,3 +150,89 @@ function toAttempt(candidate: Candidate): AiMoveAttempt {
     ? { from: candidate.from, to: candidate.to, promotion: candidate.promotion }
     : { from: candidate.from, to: candidate.to };
 }
+
+// Exhaustive, difficulty-ordered candidate list — unlike chooseAiMove (a
+// single pick), a caller can walk this in order until one validates
+// against the true board, instead of retrying a small fixed number of
+// blind picks. That matters because occlusion hides more than piece
+// identity: if the AI's own king is in check from a piece it can't see
+// (the checking piece belongs to the opponent), the redacted view doesn't
+// know it's in check at all, so chess.js offers ordinary-looking
+// candidates that don't actually escape it right alongside ones that do,
+// with nothing to tell them apart. A single random pick can land on an
+// illegal one; capped retries can exhaust themselves doing the same
+// (worse for 'hard', which deterministically keeps re-picking from the
+// same tied-for-best group). Walking the full list can't run out of
+// things to try short of genuine checkmate or stalemate: redaction only
+// hides *other* squares, never the mover's own piece geometry, so every
+// true-legal move is guaranteed to already be somewhere in this list.
+export function chooseAiMoveOrder(
+  redactedFen: string,
+  difficulty: Difficulty,
+  random: () => number = Math.random,
+): AiMoveAttempt[] {
+  const chess = chessFromRedactedFen(redactedFen);
+  const candidates = buildCandidates(chess);
+
+  switch (difficulty) {
+    case 'easy':
+      return shuffled(candidates, random).map(toAttempt);
+    case 'medium':
+      return weightedShuffle(candidates, random).map(toAttempt);
+    case 'hard':
+      return bestFirst(candidates, random).map(toAttempt);
+  }
+}
+
+export function chooseAiMoveOrderFromTrueFen(
+  trueFen: string,
+  aiColor: PieceColor,
+  difficulty: Difficulty,
+  random: () => number = Math.random,
+): AiMoveAttempt[] {
+  return chooseAiMoveOrder(redactFen(trueFen, aiColor), difficulty, random);
+}
+
+function shuffled<T>(items: T[], random: () => number): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+// Samples without replacement using the same score+1 weighting as a
+// single pickWeighted pick, so the full order keeps medium's "usually a
+// good move, but not always" character all the way through.
+function weightedShuffle(
+  candidates: Candidate[],
+  random: () => number,
+): Candidate[] {
+  const remaining = [...candidates];
+  const order: Candidate[] = [];
+  while (remaining.length > 0) {
+    const picked = pickWeighted(remaining, random);
+    order.push(picked);
+    remaining.splice(remaining.indexOf(picked), 1);
+  }
+  return order;
+}
+
+// Descending by score (hard's own preference), shuffled within each score
+// band so ties don't always resolve in the same order.
+function bestFirst(
+  candidates: Candidate[],
+  random: () => number,
+): Candidate[] {
+  const byScore = new Map<number, Candidate[]>();
+  for (const candidate of candidates) {
+    const group = byScore.get(candidate.score);
+    if (group) group.push(candidate);
+    else byScore.set(candidate.score, [candidate]);
+  }
+  const scoresDescending = [...byScore.keys()].sort((a, b) => b - a);
+  return scoresDescending.flatMap((score) =>
+    shuffled(byScore.get(score)!, random),
+  );
+}

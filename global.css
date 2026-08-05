@@ -2,48 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens from Chess Game App Mockups/design_handoff_chess_game — see
+ * that README for the authoritative hex/spec values these are converted
+ * from. --dt-* are the raw named tokens; the unprefixed shadcn slots below
+ * (--background, --primary, etc.) are aliases onto them so every existing
+ * component re-themes without per-component changes. */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --dt-bg: 45 20% 96.1%;
+    --dt-board-bg: 45 22% 92.9%;
+    --dt-card: 0 0% 100%;
+    --dt-card-alt: 45 40% 98%;
+    --dt-border: 44 16% 86.9%;
+    --dt-border-strong: 43 15% 82%;
+    --dt-ink: 45 8% 9.8%;
+    --dt-muted: 40 6% 40.8%;
+    --dt-faint: 39 6% 51.4%;
+    --dt-accent: 101 35% 35.5%;
+    --dt-accent-pressed: 102 38% 27.6%;
+    --dt-accent-tint: 90 33% 92.9%;
+    --dt-accent-ink: 96 45% 22.2%;
+    --dt-accent-disabled: 94 22% 79.4%;
+    --dt-danger: 6 60% 48.4%;
+    --dt-highlight: 50 84% 63.9%;
+    --dt-square-light: 42 49% 86.3%;
+    --dt-square-dark: 92 29% 43.3%;
+    --dt-piece-white: 45 40% 98%;
+    --dt-piece-black: 45 5% 16.1%;
+
+    --background: var(--dt-bg);
+    --foreground: var(--dt-ink);
+    --card: var(--dt-card);
+    --card-foreground: var(--dt-ink);
+    --popover: var(--dt-card);
+    --popover-foreground: var(--dt-ink);
+    --primary: var(--dt-accent);
+    --primary-foreground: var(--dt-card-alt);
+    --secondary: var(--dt-board-bg);
+    --secondary-foreground: var(--dt-ink);
+    --muted: var(--dt-border);
+    --muted-foreground: var(--dt-muted);
+    --accent: var(--dt-accent-tint);
+    --accent-foreground: var(--dt-accent-ink);
+    --destructive: var(--dt-danger);
+    --destructive-foreground: var(--dt-card-alt);
+    --border: var(--dt-border);
+    --input: var(--dt-border);
+    --ring: var(--dt-accent);
   }
 
   .dark:root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --dt-bg: 210 13% 9%;
+    --dt-board-bg: 204 14% 7.3%;
+    --dt-card: 210 14% 13.7%;
+    --dt-card-alt: 205 15% 16.1%;
+    --dt-sheet: 207 14% 12.4%;
+    --dt-border: 212 13% 19%;
+    --dt-border-strong: 212 11% 25.7%;
+    --dt-ink: 90 6% 92.9%;
+    --dt-muted: 210 6% 62.7%;
+    --dt-faint: 203 6% 44.5%;
+    --dt-accent: 96 36% 46.7%;
+    --dt-accent-tint: 95 22% 15.5%;
+    --dt-accent-ink: 91 50% 78.2%;
+    --dt-accent-bright: 94 39% 58.2%;
+    --dt-danger: 8 69% 62.9%;
+    --dt-square-light: 78 26% 62.2%;
+    --dt-square-dark: 91 30% 33.7%;
+    --dt-piece-white: 45 40% 98%;
+    --dt-piece-black: 75 8% 9.4%;
+    /* accentPressed/accentDisabled/highlight have no distinct dark-theme
+     * spec in the handoff — light values carry over as-is. */
+    --dt-accent-pressed: 102 38% 27.6%;
+    --dt-accent-disabled: 94 22% 79.4%;
+    --dt-highlight: 50 84% 63.9%;
+
+    --background: var(--dt-bg);
+    --foreground: var(--dt-ink);
+    --card: var(--dt-card);
+    --card-foreground: var(--dt-ink);
+    --popover: var(--dt-card);
+    --popover-foreground: var(--dt-ink);
+    --primary: var(--dt-accent);
+    --primary-foreground: 197 19% 7.3%;
+    --secondary: var(--dt-card-alt);
+    --secondary-foreground: var(--dt-ink);
+    --muted: var(--dt-border);
+    --muted-foreground: var(--dt-muted);
+    --accent: var(--dt-accent-tint);
+    --accent-foreground: var(--dt-accent-ink);
+    --destructive: var(--dt-danger);
+    --destructive-foreground: var(--dt-bg);
+    --border: var(--dt-border);
+    --input: var(--dt-border);
+    --ring: var(--dt-accent);
   }
 }

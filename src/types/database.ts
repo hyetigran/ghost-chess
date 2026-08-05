@@ -68,6 +68,13 @@ export const playerViewSchema = z.object({
   player_id: z.string().uuid(),
   white_player_id: z.string().uuid().nullable(),
   black_player_id: z.string().uuid().nullable(),
+  // Same "not secret" reasoning as white_player_id/black_player_id above —
+  // denormalized so the client never needs a direct public.users read
+  // (RLS there is own-row-only) to show a player card for the opponent.
+  white_username: z.string().nullable(),
+  white_elo_rating: z.number().int().nullable(),
+  black_username: z.string().nullable(),
+  black_elo_rating: z.number().int().nullable(),
   redacted_fen: z.string(),
   current_turn: z.enum(['white', 'black']),
   status: z.enum(['waiting', 'active', 'completed', 'abandoned']),
