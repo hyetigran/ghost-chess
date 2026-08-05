@@ -1,6 +1,7 @@
 import { Chess, type Square } from 'chess.js';
 import {
   applyPseudoLegalMove,
+  applyPseudoLegalSan,
   pseudoLegalMoves,
   wasKingCaptured,
 } from '~/lib/game/pseudo-legal-moves';
@@ -178,6 +179,35 @@ describe('pseudoLegalMoves / applyPseudoLegalMove', () => {
         expect(outcome).not.toBeNull();
       }
       expect(chess.isThreefoldRepetition()).toBe(true);
+    });
+  });
+
+  describe('applyPseudoLegalSan (move-history replay)', () => {
+    it('resolves and applies a stored SAN string, including a king-capturing one', () => {
+      const chess = new Chess('4k3/8/8/8/4Q3/8/8/K7 w - - 0 1', {
+        skipValidation: true,
+      });
+      const outcome = applyPseudoLegalSan(chess, 'Qxe8');
+      expect(outcome).not.toBeNull();
+      expect(outcome && wasKingCaptured(outcome)).toBe(true);
+    });
+
+    it('replays an ordinary game identically to the public chess.js API', () => {
+      const sanMoves = ['e4', 'e5', 'Nf3', 'Nc6'];
+      const reference = new Chess();
+      for (const san of sanMoves) reference.move(san);
+
+      const viaModule = new Chess();
+      for (const san of sanMoves) {
+        expect(applyPseudoLegalSan(viaModule, san)).not.toBeNull();
+      }
+
+      expect(viaModule.fen()).toBe(reference.fen());
+    });
+
+    it('returns null for a SAN string matching no pseudo-legal move in the position', () => {
+      const chess = new Chess();
+      expect(applyPseudoLegalSan(chess, 'Qxh8')).toBeNull();
     });
   });
 

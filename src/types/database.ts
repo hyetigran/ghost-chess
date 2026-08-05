@@ -29,8 +29,15 @@ export const userSchema = z.object({
 // see CONTEXT.md's Forfeit entry for why conflating them was a real bug
 // (the ELO trigger inferred the loser from whose turn it was for both,
 // which is only correct for a timeout).
+//
+// 'king_captured' replaces 'checkmate'/'stalemate' under Fog of War
+// (ADR-0009) — the game ends the instant a king is captured, not by
+// checkmate detection. 'draw' now also covers the rare "the side to move
+// has zero pseudo-legal moves" case that used to be 'stalemate', plus
+// threefold repetition / insufficient material / the fifty-move rule,
+// unchanged from before.
 export const gameResultSchema = z
-  .enum(['checkmate', 'stalemate', 'draw', 'abandoned', 'timeout'])
+  .enum(['king_captured', 'draw', 'abandoned', 'timeout'])
   .nullable();
 
 export const gameSchema = z.object({
@@ -44,7 +51,6 @@ export const gameSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   fen: z.string(),
   pgn: z.string().nullable(),
-  is_check: z.boolean(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });
@@ -89,7 +95,6 @@ export const playerViewSchema = z.object({
   // from this plus updated_at/current_turn, without ever reading
   // public.games directly.
   time_control_hours: z.union([z.literal(1), z.literal(12), z.literal(24)]),
-  is_check: z.boolean(),
   captured_by_white: z.array(z.string()),
   captured_by_black: z.array(z.string()),
   updated_at: z.string().datetime(),

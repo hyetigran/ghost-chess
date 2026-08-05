@@ -141,10 +141,17 @@ export function pseudoLegalMoves(
  * position's pseudo-legal moves — returns null (no mutation) otherwise.
  * Promotion defaults to queen when omitted, matching this app's existing
  * auto-queen client behavior (no promotion piece picker UI).
+ *
+ * `attempt` is loosely typed (plain strings, not `Square`) deliberately —
+ * every real caller is feeding this untrusted input (a network request, a
+ * DB row), not a value already known to be a real square. An attempt with
+ * a bogus square (e.g. "z9") simply never matches any candidate below and
+ * falls through to the `null` return, same as any other illegal attempt —
+ * no separate validation step needed.
  */
 export function applyPseudoLegalMove(
   chess: Chess,
-  attempt: { from: Square; to: Square; promotion?: PieceSymbol },
+  attempt: { from: string; to: string; promotion?: string },
 ): PseudoLegalMove | null {
   const all = internal(chess)._moves({ legal: false });
   const wantPromotion = attempt.promotion ?? 'q';
@@ -156,6 +163,36 @@ export function applyPseudoLegalMove(
   );
   if (!match) return null;
 
+  return commitMove(chess, match, all);
+}
+
+/**
+ * Resolves a stored SAN string (e.g. from `moves.move_text`) against the
+ * current position's pseudo-legal moves and applies it — the move-history
+ * replay equivalent of `applyPseudoLegalMove`, needed because a historical
+ * move under Fog of War rules may be one the public `chess.move(san)` API
+ * would refuse to recognize (a check-unsafe or king-capturing move), same
+ * reasoning as everything else in this module. Returns null if no
+ * pseudo-legal move in the current position produces this exact SAN.
+ */
+export function applyPseudoLegalSan(
+  chess: Chess,
+  san: string,
+): PseudoLegalMove | null {
+  const all = internal(chess)._moves({ legal: false });
+  const match = all.find(
+    (m) => internal(chess)._moveToSan(m, all).replace(/[+#]$/, '') === san,
+  );
+  if (!match) return null;
+
+  return commitMove(chess, match, all);
+}
+
+function commitMove(
+  chess: Chess,
+  match: InternalMove,
+  all: InternalMove[],
+): PseudoLegalMove {
   // SAN must be computed before _makeMove mutates the position — chess.js's
   // own _moveToSan is self-contained (it does its own temporary make/undo
   // internally to work out disambiguation and the +/# suffix), so this call

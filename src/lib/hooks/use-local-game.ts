@@ -12,7 +12,6 @@ const START_FEN = new Chess().fen();
 type UseLocalGameResult = {
   fen: string;
   phase: LocalGamePhase;
-  isCheck: boolean;
   capturedByWhite: string[];
   capturedByBlack: string[];
   moves: MoveEntry[];
@@ -30,7 +29,6 @@ export function useLocalGame(): UseLocalGameResult {
     type: 'playing',
     viewer: 'white',
   });
-  const [isCheck, setIsCheck] = React.useState(false);
   const [capturedByWhite, setCapturedByWhite] = React.useState<string[]>([]);
   const [capturedByBlack, setCapturedByBlack] = React.useState<string[]>([]);
   const [moves, setMoves] = React.useState<MoveEntry[]>([]);
@@ -40,7 +38,6 @@ export function useLocalGame(): UseLocalGameResult {
     if (!outcome.legal) return;
 
     setFen(outcome.newFen);
-    setIsCheck(outcome.isCheck);
     setPhase(nextPhaseAfterMove(outcome));
     setMoves((current) => [
       ...current,
@@ -68,7 +65,6 @@ export function useLocalGame(): UseLocalGameResult {
   const reset = (): void => {
     setFen(START_FEN);
     setPhase({ type: 'playing', viewer: 'white' });
-    setIsCheck(false);
     setCapturedByWhite([]);
     setCapturedByBlack([]);
     setMoves([]);
@@ -77,7 +73,6 @@ export function useLocalGame(): UseLocalGameResult {
   return {
     fen,
     phase,
-    isCheck,
     capturedByWhite,
     capturedByBlack,
     moves,

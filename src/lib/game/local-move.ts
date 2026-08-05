@@ -1,7 +1,13 @@
 import { Chess } from 'chess.js';
+import {
+  applyPseudoLegalMove,
+  pseudoLegalMoves,
+  wasKingCaptured,
+} from '~/lib/game/pseudo-legal-moves';
 
 export type Color = 'white' | 'black';
-export type LocalGameResult = 'checkmate' | 'stalemate' | 'draw';
+/** See decide-move.ts's GameResult doc comment — same Fog of War semantics (ADR-0009). */
+export type LocalGameResult = 'king_captured' | 'draw';
 
 export type MoveAttempt = {
   from: string;
@@ -15,7 +21,6 @@ export type LocalMoveOutcome =
       legal: true;
       newFen: string;
       newCurrentTurn: Color;
-      isCheck: boolean;
       isGameOver: boolean;
       result: LocalGameResult | null;
       winner: Color | null;
@@ -26,11 +31,6 @@ export type LocalMoveOutcome =
       mover: Color;
     };
 
-export type LocalGamePhase =
-  | { type: 'playing'; viewer: Color }
-  | { type: 'handoff'; nextViewer: Color }
-  | { type: 'gameOver'; result: LocalGameResult; winner: Color | null };
-
 const ILLEGAL: LocalMoveOutcome = { legal: false };
 
 // Local pass-and-play (#20) has no server, no time control, and no
@@ -38,35 +38,41 @@ const ILLEGAL: LocalMoveOutcome = { legal: false };
 // trusted app instance, so unlike decide-move.ts (ADR-0007's server-side
 // arbiter) there's no adversary to defend against here. This is just
 // "apply the move to the true position and describe what happened."
+//
+// Legality is piece-movement-rule legality only (pseudo-legal, via
+// pseudo-legal-moves.ts) — under Fog of War (ADR-0009) a move that leaves
+// the mover's own king in check, or that captures the enemy king outright,
+// is legal; king capture is how the game ends.
 export function applyLocalMove(
   fen: string,
   attempt: MoveAttempt,
 ): LocalMoveOutcome {
   const chess = new Chess(fen);
-
-  let moveResult: ReturnType<Chess['move']>;
-  try {
-    moveResult = chess.move({
-      from: attempt.from,
-      to: attempt.to,
-      promotion: attempt.promotion,
-    });
-  } catch {
-    return ILLEGAL;
-  }
+  const moveResult = applyPseudoLegalMove(chess, {
+    from: attempt.from,
+    to: attempt.to,
+    promotion: attempt.promotion,
+  });
   if (!moveResult) return ILLEGAL;
+
+  // moverColor is the side that just moved — chess.turn() has already
+  // flipped to the side now to move by this point.
+  const moverColor: Color = chess.turn() === 'w' ? 'black' : 'white';
 
   let result: LocalGameResult | null = null;
   let winner: Color | null = null;
 
-  if (chess.isCheckmate()) {
-    result = 'checkmate';
-    // chess.turn() is the side now to move — the side that just got
-    // checkmated, i.e. the loser.
-    winner = chess.turn() === 'w' ? 'black' : 'white';
-  } else if (chess.isStalemate()) {
-    result = 'stalemate';
-  } else if (chess.isDraw()) {
+  if (wasKingCaptured(moveResult)) {
+    result = 'king_captured';
+    winner = moverColor;
+  } else if (pseudoLegalMoves(chess).length === 0) {
+    // Stalemate's replacement — see decide-move.ts's identical branch.
+    result = 'draw';
+  } else if (
+    chess.isThreefoldRepetition() ||
+    chess.isInsufficientMaterial() ||
+    chess.isDrawByFiftyMoves()
+  ) {
     result = 'draw';
   }
 
@@ -74,24 +80,25 @@ export function applyLocalMove(
     legal: true,
     newFen: chess.fen(),
     newCurrentTurn: chess.turn() === 'w' ? 'white' : 'black',
-    isCheck: chess.isCheck(),
     isGameOver: result !== null,
     result,
     winner,
     captured: moveResult.captured
-      ? {
-          by: moveResult.color === 'w' ? 'white' : 'black',
-          pieceType: moveResult.captured,
-        }
+      ? { by: moverColor, pieceType: moveResult.captured }
       : null,
     san: moveResult.san,
-    mover: moveResult.color === 'w' ? 'white' : 'black',
+    mover: moverColor,
   };
 }
 
 // Pure phase transition after a legal move, extracted so useLocalGame stays
 // a thin wrapper (matching the reduceMoveConfirmation/useMoveConfirmation
 // pattern) rather than inlining this three-way read.
+export type LocalGamePhase =
+  | { type: 'playing'; viewer: Color }
+  | { type: 'handoff'; nextViewer: Color }
+  | { type: 'gameOver'; result: LocalGameResult; winner: Color | null };
+
 export function nextPhaseAfterMove(
   outcome: Extract<LocalMoveOutcome, { legal: true }>,
 ): LocalGamePhase {

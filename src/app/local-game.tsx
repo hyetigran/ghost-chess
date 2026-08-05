@@ -14,7 +14,6 @@ export default function LocalGameScreen(): React.JSX.Element {
   const {
     fen,
     phase,
-    isCheck,
     capturedByWhite,
     capturedByBlack,
     moves,
@@ -45,7 +44,6 @@ export default function LocalGameScreen(): React.JSX.Element {
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
         {phase.viewer === 'white' ? 'White' : 'Black'} to move
-        {isCheck ? ' — Check!' : ''}
       </Text>
       <DevFullBoardToggle
         enabled={showFullBoard}
