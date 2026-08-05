@@ -1,9 +1,10 @@
 # Handoff: Chess app — core play flow (mobile + web)
 
 ## Overview
-A five-screen core loop for a chess app built with React Native + Expo (iOS, Android, web):
-**New game → Pairing → Live game → Game-over sheet → Game review.**
-Two complete themes (light + dark) plus a foundations sheet (color, type, radii, spacing, button states).
+A chess app built with React Native + Expo (iOS, Android, web), covering two play modes:
+- **Live (real-time):** New game → Pairing → Live game → Game-over sheet → Game review.
+- **Daily (correspondence, turn-based):** Your games (turn queue) → New game / Daily tab (open invitation) → Daily game with move confirmation.
+Every screen is drawn in both **light and dark**, plus a foundations sheet (color, type, radii, spacing, button states).
 
 ## About the Design Files
 The files in this bundle are **design references authored in HTML** — prototypes showing intended look, layout, and behavior. They are **not production code to copy**. The task is to **recreate these designs in the target codebase** using its own environment and patterns: React Native + Expo with `StyleSheet`, `SafeAreaView`, `Pressable`, `react-navigation`, `react-native-reanimated`, and `expo-font`. Where no equivalent primitive exists (e.g. the bottom sheet), pick the library the project already uses or the best-supported option (`@gorhom/bottom-sheet`).
@@ -88,9 +89,9 @@ Fonts: **Manrope** (400/500/600/700/800) for UI, **IBM Plex Mono** (400/500/600)
 - Motion: taps 180ms ease-out (scale .98 on press); sheet in 260ms cubic-bezier(.2,.8,.2,1); piece snap 120ms ease-out; capture fade 140ms; progress bar animates continuously.
 - Minimum hit target 44 × 44.
 
-## Screens / Views
+## Screens / Views — Live mode
 
-### 1. New game
+### 1. New game (Live tab)
 **Purpose:** pick time control, opponent type, rated on/off, then search.
 **Layout:** status bar 52 → header row (36px back tile + title, padding 6/20/14) → scroll body, `gap: 22` → sticky footer CTA with a `linear-gradient(to top, bg 60%, transparent)` fade.
 - **Time control grid:** 3 columns, `gap: 10`, each tile card+border, radius 16, padding 14/0, centered. Value Manrope 700 · 17, category micro-mono under it. Selected tile: fill accentTint, **2px** accent border (padding drops to 13 to hold height), value in accentInk, category in accent. Last tile "Custom" = 1px dashed #C9C4B8, no fill, label Manrope 600 · 15 muted → opens a custom-time modal.
@@ -134,8 +135,44 @@ Fonts: **Manrope** (400/500/600/700/800) for UI, **IBM Plex Mono** (400/500/600)
 - **Eval graph:** card radius 18, padding 12; inner 52px block radius 8 — dark ground = black advantage, light polygon = white advantage, 1px midline @35% white, 2px accent playhead at current move. Tappable/draggable to jump.
 - **Footer pair:** "Key moments" secondary + "Move list" inverse-fill button (ink bg / bg text; dark: #EDEEEC bg, #14171A text).
 
+
+## Screens / Views — Daily (correspondence) mode
+
+Daily games are turn-based: each player has a **time allowance per move measured in hours/days**, the game persists across sessions, and there is no running blitz clock. The mode is chosen on the New game screen (Live / Daily segmented control) and games live in a persistent queue.
+
+### 6. Your games (daily home)
+**Purpose:** answer "where is it my turn?" in one glance and get back into a game in one tap.
+**Layout:** status bar 52 → header (title Manrope 800 · 26 / −2.5% + handle & daily rating 500 · 13 muted; trailing 44px accent "+" tile, radius 14) → filter pills → scroll body → footer CTA.
+- **Filter pills:** radius 99, padding 8/15. Active = ink fill, bg text, 700 · 13. Inactive = card + border, muted 600 · 13. Counts inline ("Your turn · 3", "Waiting · 5", "Finished").
+- **Game row:** card, radius 18, padding 12/14, `gap: 12`. 46px radius-12 **board thumbnail** (rendered position at low detail — 4-row checker in the mock; real implementation renders the actual FEN). Middle: opponent 700 · 16 + rating mono 500 · 12 + optional class chip (radius 99, padding 2/7, mono 700 · 9). Sub-line 500 · 12 muted: "Move 14 · you play white · rated". Trailing: **time remaining** mono 600 · 15 over mono 600 · 9 "LEFT".
+- **Urgency:** > 12h remaining → muted; < 12h → accent; < 6h → danger **and** a 3px danger left border on the card. Section header shows "N EXPIRING" in danger mono when any row is urgent.
+- **Invitations section:** dashed-border row (no fill) — accentTint icon tile, "Open invitation · Class D", terms sub-line, trailing danger "Cancel" text button. Incoming invitations from others use the same row with accent "Accept" / muted "Decline".
+- **Footer:** primary "Play next game" (jumps to the most urgent game) + a 56px secondary square that switches to Live mode (⚡).
+- **Empty state:** if nothing is your turn, the section becomes a card reading "Nothing waiting on you — 5 games with opponents" and the CTA becomes "Start a new game".
+
+### 7. New game — Daily tab
+Same shell as the Live New game screen with a **segmented control** directly under the header: track `#EDEBE4` (dark `#1E2328`), radius 16, 4px padding; selected segment card-filled radius 12, 700 · 15 with `0 1px 3px rgba(27,26,23,.12)`; unselected muted 600 · 15. Switching segments swaps the body only.
+- **Time per move grid:** identical geometry to the live time-control grid (3 cols, radius 16). Options 12h / 1 day / 2 days / 3 days / 7 days / Any. Selected = accentTint + 2px accent, with an optional micro-mono tag ("POPULAR"). "Any" (dashed) means the accepter picks. A 500 · 12 muted line under the grid explains banking: "Each player gets 1 day per move, banked up to 7 days."
+- **"Who can accept" group:** one card containing four rows split by 1px dividers (`#EDEBE4` / `#2A3037`) — Rated game, My rating class only (sub-line names the class + range), My country only, Allow engine analysis. Each row: title 700 · 15 + explanatory sub-line 500 · 12 muted + 52 × 31 switch. Note the grouped-card pattern differs from Live's standalone rows because these are four related filters.
+- **Footer:** primary "Post open invitation"; secondary "Invite a specific friend" (opens friend picker). Posting returns to Your games with the new invitation row inserted and a toast.
+
+### 8. Daily game
+**Purpose:** make one considered move and send it. Same board component and highlight system as the live game; the differences are the clock treatment and the explicit confirm step.
+- **Header:** mono label "DAILY · 1 DAY / MOVE · RATED".
+- **Opponent strip:** avatar + name + rating + country flag; sub-line 500 · 12 muted **"Moved 4 hours ago"** instead of captured pieces. Trailing pill shows an em-dash over mono 600 · 9 "WAITING" — the opponent's clock does not tick while it's your move.
+- **Board:** last-move highlight @28% and the selected/staged destination @45% with a 3px accent inset ring. The staged move is **local only** until confirmed.
+- **Confirm card:** appears the moment a destination is chosen — 38px accentTint tile with the SAN in mono 700 · 13, "Confirm e2–e4?" 700 · 15, "Tap the board again to change it" 500 · 12 muted.
+- **Action pair:** "Undo" secondary (flex 1) + "Send move" primary (flex 2, 800 · 17). Both 56px tall, radius 16. Send is the only thing that commits the move — this is deliberate: a mistap over three days is expensive. Undo clears the staged move and restores the board.
+- **Clock preview row:** "Your clock after sending" + the resulting mono 600 · 14 value, so the player knows what they're spending.
+- **Utility row:** MOVES / FLIP / CHAT (danger unread dot) / RESIGN. There is no draw button here — draw offers live in the ⋯ menu, since they're rare in daily play. If "Allow engine analysis" was enabled for the game, an ANALYSE tile replaces MOVES and the move list moves into the ⋯ menu.
+- **Footer:** dashed "Next game where it's your turn →" — after sending, this advances straight to the next queued game (the core correspondence loop). Hidden when the queue is empty.
+- **Waiting state (same screen, opponent's turn):** confirm card, action pair and clock row are replaced by a single muted card "Waiting for kcg · 19h left"; the board is fully interactive for review but pieces can't be moved.
+
+### Daily-specific state
+`dailyGames[] {id, opponent, thumbnailFen, yourColor, moveNumber, rated, msRemaining, lastMoveAt}`, `queueFilter: yourTurn|waiting|finished`, `invitations[] {id, direction, timePerMove, ratingClass, country, rated, allowAnalysis, createdAt}`, and per game `stagedMove` (never sent to the server until confirm).
+
 ## Interactions & Behavior
-- Navigation: Home → New game → Pairing → Game (replaces Pairing in the stack) → Game-over sheet (modal over Game) → Review (full-screen modal). ✕ on Review returns Home.
+- Navigation: **Your games** is the app home. Live: Home → New game (Live) → Pairing → Game (replaces Pairing in the stack) → Game-over sheet (modal over Game) → Review (full-screen modal). Daily: Home → game row → Daily game → send → next queued game or back Home. ✕ on Review returns Home. Daily games end into the same game-over sheet and review screens.
 - Move input: tap piece → tap destination (also support drag). Illegal tap deselects. Promotion opens a 4-option inline picker over the target square. Confirm-move toggle is a setting; off by default.
 - Realtime: single game socket. Optimistic local move, reconcile on server ack; on rejection revert with a 160ms shake on the piece.
 - Reconnect: offline banner (danger, 32px) below nav; clocks freeze visually while disconnected.
@@ -161,6 +198,6 @@ Server drives clocks (send remaining ms + server timestamp; interpolate locally,
 - No raster assets, gradients, or photography.
 
 ## Files
-- `Chess App Hi-Fi.dc.html` — hi-fi light (3a) and dark (3b) rows plus the foundations sheet. **Primary reference.**
+- `Chess App Hi-Fi.dc.html` — **primary reference.** Row 4a/4b = daily (correspondence) screens, light and dark. Row 3a/3b = live screens, light and dark, plus the foundations sheet.
 - `Chess App Wireframes.dc.html` — earlier lo-fi wireframes (turn 1 single screens, turn 2 the same flow in both themes). Useful for intent and annotations; superseded visually.
 - `support.js` — runtime needed for the two HTML files to render locally. Not part of the design.
