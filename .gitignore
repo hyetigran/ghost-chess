@@ -33,6 +33,11 @@ yarn-error.*
 .env*.production
 .env*.staging
 
+# Firebase / FCM credentials
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json
+
 # typescript
 *.tsbuildinfo
 

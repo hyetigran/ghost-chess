@@ -36,6 +36,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: Env.PACKAGE,
     jsEngine: 'hermes',
+    googleServicesFile: './google-services.json',
   },
   web: {
     favicon: './assets/images/favicon.png',

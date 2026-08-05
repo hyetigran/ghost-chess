@@ -34,8 +34,8 @@ require('dotenv').config({
 
 // TODO: Replace these values with your own
 
-const BUNDLE_ID = 'app.ghostchess.game'; // ios bundle id
-const PACKAGE = 'app.ghostchess.game'; // android package name
+const BUNDLE_ID = 'app.ghostchess'; // ios bundle id
+const PACKAGE = 'app.ghostchess'; // android package name
 const NAME = 'GhostChess'; // app name
 const EXPO_ACCOUNT_OWNER = 'hyetigran'; // expo account owner
 const EAS_PROJECT_ID = 'ac59969e-4868-464e-be42-be5edcc56fc3'; // eas project id
@@ -79,8 +79,7 @@ const client = z.object({
   VERSION: z.string(),
 
   EXPO_PUBLIC_SUPABASE_URL: z.string(),
-  EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string(),
-  GOOGLE_WEB_CLIENT_ID: z.string(),
+  EXPO_PUBLIC_SUPABASE_KEY: z.string(),
 });
 
 const buildTime = z.object({
@@ -88,9 +87,7 @@ const buildTime = z.object({
   EAS_PROJECT_ID: z.string(),
 
   EXPO_PUBLIC_SUPABASE_URL: z.string(),
-  EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string(),
-  IOS_URL_SCHEMA: z.string(),
-  GOOGLE_WEB_CLIENT_ID: z.string(),
+  EXPO_PUBLIC_SUPABASE_KEY: z.string(),
 });
 
 /**
@@ -106,8 +103,7 @@ const _clientEnv = {
 
   // ADD YOUR ENV VARS HERE TOO
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID,
+  EXPO_PUBLIC_SUPABASE_KEY: process.env.EXPO_PUBLIC_SUPABASE_KEY,
 };
 
 /**
@@ -119,9 +115,7 @@ const _buildTimeEnv = {
   // ADD YOUR ENV VARS HERE TOO
   // These values will be replaced by actual environment variables
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  IOS_URL_SCHEMA: process.env.IOS_URL_SCHEMA,
-  GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID,
+  EXPO_PUBLIC_SUPABASE_KEY: process.env.EXPO_PUBLIC_SUPABASE_KEY,
 };
 
 /**

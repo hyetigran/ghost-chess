@@ -22,9 +22,9 @@ Standard chess shows the full board. Invisible Chess removes opponent visibility
 
 ### Modes
 
-- Online multiplayer (including guests).
-- Local pass-and-play.
-- AI under the same occlusion constraints as humans.
+- Online multiplayer (including guests) via game-ID invite (matchmaking not MVP).
+- Local pass-and-play (device handoff between turns).
+- AI under the same occlusion constraints as humans (heuristic; no privileged board).
 
 ### Time controls
 
