@@ -1,6 +1,7 @@
 import { Chess, type Square } from 'chess.js';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { pawnCaptureCandidates } from '~/lib/game/pawn-capture-candidates';
+import { pseudoLegalMoves } from '~/lib/game/pseudo-legal-moves';
 import { redactFen, type PieceColor } from '~/lib/game/redact-fen';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -36,18 +37,16 @@ export function chooseAiMoveFromTrueFen(
 // string and has no other way to learn anything about the game, so it
 // structurally cannot read privileged board state. The candidate set
 // built below is the exact same one useSquareSelection computes for a
-// human (chess.js's own legal moves for the AI's own pieces, widened
-// with pawnCaptureCandidates for hidden-piece diagonal captures) — the
-// AI has no more information or capability than a human looking at the
-// same screen would.
+// human (the shared pseudo-legal move generator for the AI's own pieces,
+// widened with pawnCaptureCandidates for hidden-piece diagonal captures)
+// — the AI has no more information or capability than a human looking at
+// the same screen would.
 //
-// Deliberately no check-awareness: scoring a move by whether it delivers
-// check would need to know where the opponent's king is, which is
-// exactly the information occlusion hides — there's no way to compute
-// "does this look like check" from a redacted view any more honestly
-// than guessing. Scoring is limited to what's actually knowable: whether
-// a target square might hold a piece (capture-shaped candidates), board
-// geography (central control), and promotion.
+// There's no check concept to be "aware" of under Fog of War (ADR-0009) —
+// scoring is limited to what's actually knowable from a redacted view:
+// whether a target square might hold a piece (capture-shaped candidates,
+// including a king if one happens to be visible), board geography
+// (central control), and promotion.
 export function chooseAiMove(
   redactedFen: string,
   difficulty: Difficulty,
@@ -67,16 +66,32 @@ export function chooseAiMove(
   }
 }
 
+// Uses the shared pseudo-legal move generator (pseudo-legal-moves.ts)
+// rather than chess.js's public, legal-filtered moves() — under Fog of
+// War (ADR-0009) a move that leaves the AI's own king in check is legal,
+// so its candidate set widens to match exactly what a human's own board
+// now highlights (use-square-selection.ts uses the same generator). A
+// king capture, if one of the AI's pieces happens to have vision of the
+// opponent's king, is just another candidate that falls out of this the
+// same way any other capture does — nothing king-capture-specific is
+// needed here, scoreMove already rewards any capture.
 function buildCandidates(chess: Chess): Candidate[] {
   const ownColor = chess.turn();
   const candidates: Candidate[] = [];
+
+  const byFromSquare = new Map<Square, ReturnType<typeof pseudoLegalMoves>>();
+  for (const move of pseudoLegalMoves(chess)) {
+    const existing = byFromSquare.get(move.from);
+    if (existing) existing.push(move);
+    else byFromSquare.set(move.from, [move]);
+  }
 
   for (const row of chess.board()) {
     for (const piece of row) {
       if (!piece || piece.color !== ownColor) continue;
       const square = piece.square;
 
-      const legalMoves = chess.moves({ square, verbose: true });
+      const legalMoves = byFromSquare.get(square) ?? [];
       for (const move of legalMoves) {
         candidates.push({
           from: square,
@@ -154,18 +169,19 @@ function toAttempt(candidate: Candidate): AiMoveAttempt {
 // Exhaustive, difficulty-ordered candidate list — unlike chooseAiMove (a
 // single pick), a caller can walk this in order until one validates
 // against the true board, instead of retrying a small fixed number of
-// blind picks. That matters because occlusion hides more than piece
-// identity: if the AI's own king is in check from a piece it can't see
-// (the checking piece belongs to the opponent), the redacted view doesn't
-// know it's in check at all, so chess.js offers ordinary-looking
-// candidates that don't actually escape it right alongside ones that do,
-// with nothing to tell them apart. A single random pick can land on an
-// illegal one; capped retries can exhaust themselves doing the same
-// (worse for 'hard', which deterministically keeps re-picking from the
-// same tied-for-best group). Walking the full list can't run out of
-// things to try short of genuine checkmate or stalemate: redaction only
-// hides *other* squares, never the mover's own piece geometry, so every
-// true-legal move is guaranteed to already be somewhere in this list.
+// blind picks. Under Fog of War (ADR-0009) there's no "own king in check
+// from an unseen piece" failure mode anymore (check-safety doesn't
+// restrict any move), but a different reason for a candidate to fail
+// remains: pawnCaptureCandidates' speculative diagonal targets can turn
+// out to be genuinely empty on the true board, since occlusion hides more
+// than piece identity, just not move-legality anymore. A single random
+// pick can land on one of those; capped retries can exhaust themselves
+// doing the same (worse for 'hard', which deterministically keeps
+// re-picking from the same tied-for-best group). Walking the full list
+// can't run out of things to try short of having zero pseudo-legal moves
+// at all: redaction only hides *other* squares, never the mover's own
+// piece geometry, so every true-legal move is guaranteed to already be
+// somewhere in this list.
 export function chooseAiMoveOrder(
   redactedFen: string,
   difficulty: Difficulty,
