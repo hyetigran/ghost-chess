@@ -25,7 +25,7 @@ values (
 );
 
 update public.games
-set status = 'completed', result = 'checkmate', winner_id = 'c0000000-0000-0000-0000-000000000001'
+set status = 'completed', result = 'king_captured', winner_id = 'c0000000-0000-0000-0000-000000000001'
 where id = 'd0000000-0000-0000-0000-000000000001';
 
 select is(

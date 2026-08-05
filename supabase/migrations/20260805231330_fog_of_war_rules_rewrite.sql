@@ -1,33 +1,26 @@
--- User creation function
---
--- username falls back to a generated guest handle when signup metadata
--- doesn't provide one — which is every signup today, since the only
--- signup path this app actually has is Anonymous Auth (ADR-0005,
--- src/api/auth/index.ts's signInAnonymously), and its metadata carries
--- device_id, not username. Without the fallback, this insert violates
--- users.username's NOT NULL constraint, which — since this function runs
--- from a trigger in the same transaction as the auth.users insert —
--- rolls back the whole signup, not just the public.users row (#32). The
--- fallback is derived from new.id (globally unique, guaranteed by
--- auth.users' own primary key), so it can't collide with
--- users.username's UNIQUE constraint the way a counter or short random
--- suffix could.
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-    insert into public.users (
-        id,
-        username,
-        email
-    )
-    values (
-        new.id,
-        coalesce(new.raw_user_meta_data->>'username', 'guest_' || replace(new.id::text, '-', '')),
-        new.email
-    );
-    return new;
-end;
-$$ language plpgsql security definer;
+-- Fog of War rules rewrite (ADR-0008, ADR-0009): replaces absolute
+-- occlusion with attack-based vision, and checkmate/stalemate detection
+-- with king-capture-ends-the-game. See supabase/schemas/02_games.sql,
+-- 04_player_views.sql, 08_functions.sql for the full annotated
+-- rationale this migration applies mechanically.
+
+-- ============================================================
+-- games / player_views: result enum swap, is_check column drop
+-- ============================================================
+
+alter table public.games
+    drop constraint games_result_check,
+    add constraint games_result_check check (result in ('king_captured', 'draw', 'abandoned', 'timeout', null)),
+    drop column is_check;
+
+alter table public.player_views
+    drop constraint player_views_result_check,
+    add constraint player_views_result_check check (result in ('king_captured', 'draw', 'abandoned', 'timeout', null)),
+    drop column is_check;
+
+-- ============================================================
+-- update_ratings_after_game: new king_captured/draw CASE branches
+-- ============================================================
 
 -- ELO rating update function
 create or replace function public.update_ratings_after_game()
@@ -169,6 +162,11 @@ begin
     return new;
 end;
 $$ language plpgsql security definer;
+
+-- ============================================================
+-- redact_fen: attack-based Fog of War vision, replaces absolute
+-- opponent-piece occlusion
+-- ============================================================
 
 -- Redact a true FEN down to what a given color is allowed to see under Fog
 -- of War (ADR-0008, docs/adr/0008-attack-based-fog-of-war-vision.md): an
@@ -396,129 +394,9 @@ begin
 end;
 $$ language plpgsql immutable set search_path = '';
 
--- Fills whichever player slot is still empty on a 'waiting' game (#25) —
--- createGame (src/api/server/game.ts) always assigns the creator to
--- exactly one random color and leaves the other slot null, so this is
--- the invite-acceptance half of that flow: a game-ID-based join, never
--- identity-based (docs/adr/0005's guest-invite rationale — the invite is
--- just this uuid, nothing about who the inviter is gets shared). games
--- has no UPDATE policy (see end_own_game's comment below for why), so
--- this needs the same security-definer escape hatch. The UPDATE's WHERE
--- clause re-checks status = 'waiting' and that a slot is still null in
--- the same statement that fills it — race-safe against two callers
--- joining the same game concurrently, since only the first UPDATE to
--- actually run can match; the second sees a row that's no longer
--- 'waiting' and updates zero rows, caught below via v_game being null
--- after the RETURNING clause matches nothing.
---
--- The auth.uid() is null guard exists because the participant check
--- below (white_player_id = auth.uid() or black_player_id = auth.uid())
--- would otherwise silently pass for an unauthenticated caller: NULL =
--- NULL is NULL, not true, in SQL, so neither branch of that OR raises —
--- execution would fall through into the UPDATE, whose CASE assigns the
--- empty slot to auth.uid() (NULL, a no-op) while unconditionally
--- flipping status to 'active' anyway, permanently bricking the game
--- (an 'active' row is invisible to games' own SELECT RLS, so the
--- creator could never even see it again). Reproduced and confirmed live
--- against a local instance before adding this guard.
-create or replace function public.join_game(p_game_id uuid)
-returns public.games
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_game public.games;
-begin
-    if auth.uid() is null then
-        raise exception 'not authenticated';
-    end if;
-
-    select * into v_game from public.games where id = p_game_id;
-
-    if v_game is null then
-        raise exception 'game not found';
-    end if;
-
-    if v_game.status <> 'waiting' then
-        raise exception 'game is not open to join';
-    end if;
-
-    if v_game.white_player_id = auth.uid() or v_game.black_player_id = auth.uid() then
-        raise exception 'already a participant in this game';
-    end if;
-
-    update public.games
-    set white_player_id = case when white_player_id is null then auth.uid() else white_player_id end,
-        black_player_id = case when white_player_id is null then black_player_id else auth.uid() end,
-        status = 'active'
-    where id = p_game_id
-      and status = 'waiting'
-      and (white_player_id is null or black_player_id is null)
-    returning * into v_game;
-
-    if v_game is null then
-        raise exception 'game is not open to join';
-    end if;
-
-    return v_game;
-end;
-$$;
-
--- Ends a game a participant is resigning. #13's apply_move (also security
--- definer) is the sole writer for real moves, but resignation is a
--- separate concern it doesn't touch — games' SELECT RLS denies 'active'
--- rows entirely (#12), which also blocks a direct client UPDATE from
--- even locating the row (Postgres requires a row to pass a table's
--- SELECT policy before UPDATE can see it, independent of the UPDATE
--- policy's own USING clause — and games has no UPDATE policy at all now,
--- see 05_rls.sql), so resignation needs this same security-definer
--- escape hatch. This implements resignation specifically, not
--- arbitrary game completion: result and winner_id are derived server-side
--- (always 'abandoned', always the *other* participant), never accepted as
--- parameters — a resigning client naming its own result/winner could
--- otherwise forge a 'king_captured'/'draw' outcome (or hand itself the
--- win), which the ELO trigger would then process as real. A real
--- king-capture/draw completion needs actual server-validated game-end
--- detection, which belongs with #13's move validation, not here.
-create or replace function public.end_own_game(p_game_id uuid)
-returns public.games
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_game public.games;
-    v_winner_id uuid;
-begin
-    select * into v_game from public.games where id = p_game_id;
-
-    if v_game is null then
-        raise exception 'game not found';
-    end if;
-
-    if v_game.status <> 'active' then
-        raise exception 'game is not active';
-    end if;
-
-    if v_game.white_player_id = auth.uid() then
-        v_winner_id := v_game.black_player_id;
-    elsif v_game.black_player_id = auth.uid() then
-        v_winner_id := v_game.white_player_id;
-    else
-        raise exception 'not a participant in this game';
-    end if;
-
-    update public.games
-    set status = 'completed',
-        result = 'abandoned',
-        winner_id = v_winner_id
-    where id = p_game_id
-    returning * into v_game;
-
-    return v_game;
-end;
-$$;
+-- ============================================================
+-- sync_player_views: drop is_check plumbing
+-- ============================================================
 
 -- Keeps player_views in sync with games in the same transaction as every
 -- move (docs/adr/0002). While a game is active (or waiting for an opponent),
@@ -649,29 +527,19 @@ begin
 end;
 $$ language plpgsql security definer set search_path = '';
 
--- Atomically applies an already-validated move: inserts the moves row and
--- updates games in a single transaction, so player_views' sync trigger
--- (docs/adr/0002) never observes one write without the other. This
--- function does NOT itself validate chess legality — that happens in the
--- submit-move edge function via chess.js (src/lib/game/decide-move.ts's
--- Deno counterpart), which is the only caller. It must never be callable
--- by anon/authenticated: since this function trusts its arguments
--- completely, a client calling it directly could write any fen it wants,
--- bypassing chess rules entirely and defeating the entire point of having
--- server-side validation (docs/adr/0007). See the revoke below.
---
--- It DOES guard against a race the edge function alone can't close: the
--- edge function reads games.fen, decides legality against it, then calls
--- this function — two concurrent submissions (e.g. a double-tap) can both
--- read the same fen and both pass that decision before either commits.
--- p_expected_fen makes the games update conditional on the position not
--- having changed since the caller validated against it; if zero rows
--- match, this raises rather than silently applying a move computed
--- against a position that's no longer current. move_number is computed
--- here from public.moves, inside this transaction, rather than trusted
--- from a value the edge function computed from an earlier, separately-run
--- count query — the same race would otherwise apply to it too. A unique
--- constraint on moves(game_id, move_number) (03_moves.sql) backstops both.
+
+-- ============================================================
+-- apply_move: signature changed (dropped p_is_check) — must be
+-- explicitly dropped, not just CREATE OR REPLACE'd, since Postgres
+-- treats a changed parameter list as a distinct overload rather
+-- than replacing the existing function (verified against a live
+-- local instance: skipping the DROP left both signatures coexisting
+-- and broke the unqualified REVOKE/GRANT calls below with an
+-- ambiguous-function-name error).
+-- ============================================================
+
+drop function if exists public.apply_move(uuid, uuid, text, text, text, text, text, boolean, text, text, uuid);
+
 create or replace function public.apply_move(
     p_game_id uuid,
     p_player_id uuid,
@@ -726,267 +594,3 @@ $$ language plpgsql security definer set search_path = '';
 -- function) — anon/authenticated must never be able to call this directly.
 revoke execute on function public.apply_move from public;
 grant execute on function public.apply_move to service_role;
-
--- Shared push-send primitive for notify_game_change() and
--- send_time_warnings() below (#29) — calls Expo's push API directly via
--- pg_net rather than through an intermediate edge function, since there's
--- no business logic left to run once the notification has already been
--- decided; keeping it in SQL avoids the URL-bootstrapping problem of a
--- Postgres function needing to know its own project's edge function URL.
--- Fire-and-forget (net.http_post is async) and silently no-ops for a
--- recipient with no token (permission never granted, or never registered)
--- rather than erroring — a missing token is an expected, common case, not
--- a failure.
-create or replace function public.send_push_notification(
-    p_push_token text,
-    p_title text,
-    p_body text,
-    p_data jsonb default '{}'::jsonb
-)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-    if p_push_token is null then
-        return;
-    end if;
-
-    perform net.http_post(
-        url := 'https://exp.host/--/api/v2/push/send',
-        headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'Accept', 'application/json'
-        ),
-        body := jsonb_build_object(
-            'to', p_push_token,
-            'title', p_title,
-            'body', p_body,
-            'data', p_data
-        )
-    );
-end;
-$$;
-
-revoke execute on function public.send_push_notification from public;
-
--- Looks up a user's push token and sends to it in one call — every caller
--- below (notify_game_change's three branches, send_time_warnings) was
--- repeating the same "select push_token into ...; perform
--- send_push_notification(...)" pair with its own null-token guard.
-create or replace function public.send_push_to_user(
-    p_user_id uuid,
-    p_title text,
-    p_body text,
-    p_data jsonb default '{}'::jsonb
-)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_push_token text;
-begin
-    select push_token into v_push_token from public.users where id = p_user_id;
-    perform public.send_push_notification(v_push_token, p_title, p_body, p_data);
-end;
-$$;
-
-revoke execute on function public.send_push_to_user from public;
-
--- Mirrors src/lib/notifications/decide-notification.ts's
--- decideGameChangeNotifications (#29, dual-implementation pattern) — this
--- trigger is the actual enforcement point, the TS function is the
--- tested reference. "Game invitations" (PRD §4.4) has no invitee to
--- notify in this app's model (game-ID shares, ADR-0005, not records
--- naming a recipient) — this notifies the *creator* that their invite
--- was accepted instead, the only side of "invitation" this data model
--- can actually name a recipient for. Push copy is deliberately generic
--- (src/lib/notifications/notification-copy.ts's mirror) — never names an
--- opponent, color, or result, since push payloads can surface on a lock
--- screen and occlusion-sensitive content has no business there.
-create or replace function public.notify_game_change()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_became_active boolean;
-    v_became_terminal boolean;
-    v_creator_id uuid;
-    v_mover_id uuid;
-begin
-    v_became_active := old.status = 'waiting' and new.status = 'active';
-    v_became_terminal := new.status in ('completed', 'abandoned') and old.status <> new.status;
-
-    -- The creator receiving both this and a "your turn" push below when
-    -- they also happen to be the first mover (i.e. they were assigned
-    -- white) is a known, accepted overlap, not a bug — both are genuinely
-    -- true, distinct events, and merging them into one combined
-    -- notification isn't worth the added type/copy surface for two
-    -- pushes that only ever co-occur once, at game start.
-    if v_became_active then
-        v_creator_id := coalesce(old.white_player_id, old.black_player_id);
-        if v_creator_id is not null then
-            perform public.send_push_to_user(
-                v_creator_id,
-                'Opponent found!',
-                'Someone joined your game — it starts now.',
-                jsonb_build_object('gameId', new.id)
-            );
-        end if;
-    end if;
-
-    if v_became_terminal then
-        for v_mover_id in select unnest(array[new.white_player_id, new.black_player_id]) loop
-            if v_mover_id is not null then
-                perform public.send_push_to_user(
-                    v_mover_id,
-                    'Game over',
-                    'Your game has ended — tap to see how it finished.',
-                    jsonb_build_object('gameId', new.id)
-                );
-            end if;
-        end loop;
-    elsif new.status = 'active' and (v_became_active or old.current_turn <> new.current_turn) then
-        v_mover_id := case when new.current_turn = 'white' then new.white_player_id else new.black_player_id end;
-        if v_mover_id is not null then
-            perform public.send_push_to_user(
-                v_mover_id,
-                'Your turn',
-                'It''s your move.',
-                jsonb_build_object('gameId', new.id)
-            );
-        end if;
-    end if;
-
-    return new;
-end;
-$$;
-
-revoke execute on function public.notify_game_change from public;
-
--- Mirrors src/lib/notifications/deadline-warning.ts's
--- isApproachingDeadline (#29) — a scheduled job, not a trigger, since
--- nothing about a row changes when time simply passes. Percentage-based
--- (20% of the time control remaining), not a fixed lead time: a fixed
--- "1 hour before" would fire almost immediately on a 1-hour time control
--- and absurdly early on a 24-hour one. time_warning_sent_at (set here,
--- cleared by apply_move on the next move) keeps this from re-sending
--- every cron tick for the same turn.
-create or replace function public.send_time_warnings()
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-    v_game record;
-    v_mover_id uuid;
-    v_deadline timestamptz;
-    v_window interval;
-begin
-    for v_game in
-        select * from public.games
-        where status = 'active'
-          and time_warning_sent_at is null
-    loop
-        v_window := make_interval(hours => (v_game.settings->>'timeControlHours')::int);
-        v_deadline := v_game.updated_at + v_window;
-
-        if v_deadline > now() and v_deadline <= now() + (v_window * 0.2) then
-            v_mover_id := case when v_game.current_turn = 'white' then v_game.white_player_id else v_game.black_player_id end;
-
-            if v_mover_id is not null then
-                perform public.send_push_to_user(
-                    v_mover_id,
-                    'Time is running out',
-                    'You''re close to your move deadline in an active game.',
-                    jsonb_build_object('gameId', v_game.id)
-                );
-            end if;
-
-            update public.games set time_warning_sent_at = now() where id = v_game.id;
-        end if;
-    end loop;
-end;
-$$;
-
-revoke execute on function public.send_time_warnings from public;
-
--- Enforces per-move deadlines (docs/adr/0006): scheduled via pg_cron below
--- to run independent of any client being online — a player can't rely on
--- the app being open to notice a deadline lapsed. Forfeits every active
--- game where the player to move has run out of time, crediting the win to
--- the other participant; update_ratings_after_game's 'timeout' branch
--- (above) then updates ELO the same way it does for any other completed
--- game, since this is a normal games UPDATE like any other. No grace
--- period (PRD §2.4/§4.4, CONTEXT.md's Forfeit entry): a missed "your
--- turn" notification doesn't pause or extend anything here — this only
--- ever compares updated_at (set to now() on every move, so it doubles as
--- "when did the current turn start") against the stored time control.
-create or replace function public.forfeit_lapsed_games()
-returns void as $$
-begin
-    update public.games
-    set status = 'completed',
-        result = 'timeout',
-        winner_id = case
-            when current_turn = 'white' then black_player_id
-            else white_player_id
-        end
-    where status = 'active'
-      and updated_at <= now() - make_interval(hours => (settings->>'timeControlHours')::int);
-end;
-$$ language plpgsql security definer set search_path = '';
-
--- Not a user-facing RPC — nothing in it depends on a calling user's
--- identity (no auth.uid() check, no parameters), so unlike apply_move
--- there's no data it could leak or corrupt if called directly. Revoked
--- anyway for clarity: this is a scheduled system job, not something a
--- client should ever have reason to invoke.
-revoke execute on function public.forfeit_lapsed_games from public;
-
--- Triggers
-create trigger on_auth_user_created
-    after insert on auth.users
-    for each row execute function public.handle_new_user();
-
-create trigger on_game_completed
-    after update of status on public.games
-    for each row
-    when (new.status = 'completed' and old.status != 'completed')
-    execute function public.update_ratings_after_game();
-
-create trigger on_game_change_sync_player_views
-    after insert or update on public.games
-    for each row execute function public.sync_player_views();
-
-create trigger on_game_change_notify
-    after update on public.games
-    for each row execute function public.notify_game_change();
-
--- Scheduled job: enforces per-move deadlines independent of any client
--- being open (docs/adr/0006). Every minute is frequent enough that the
--- gap between a deadline lapsing and the forfeit actually landing stays
--- well under the coarsest time control (1 hour) without meaningfully
--- loading the database (an index-friendly scan of active games,
--- 04_indexes.sql's idx_games_status). cron.schedule is idempotent — safe
--- to re-run this migration/schema.
-select cron.schedule(
-    'forfeit-lapsed-games',
-    '* * * * *',
-    $$ select public.forfeit_lapsed_games(); $$
-);
-
--- Every 5 minutes is frequent enough to land comfortably inside the
--- tightest warning window (20% of a 1-hour time control = 12 minutes)
--- without scanning active games unnecessarily often (#29).
-select cron.schedule(
-    'send-time-warnings',
-    '*/5 * * * *',
-    $$ select public.send_time_warnings(); $$
-);

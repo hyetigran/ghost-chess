@@ -25,7 +25,9 @@ create table "public"."player_views" (
     "redacted_fen" text not null,
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
-    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', 'timeout', null)),
+    -- See the matching comment on games.result (02_games.sql) — kept in
+    -- lockstep, same Fog of War (ADR-0009) semantics.
+    "result" text check (result in ('king_captured', 'draw', 'abandoned', 'timeout', null)),
     -- Denormalized from games.winner_id, same reasoning as
     -- white_player_id/black_player_id above — not secret (who won is
     -- never hidden information, only the in-progress position is), and
@@ -39,7 +41,6 @@ create table "public"."player_views" (
     -- secret — a game's time control is visible to both players by
     -- definition (it's chosen at creation).
     "time_control_hours" integer not null check (time_control_hours in (1, 12, 24)),
-    "is_check" boolean not null default false,
     "captured_by_white" text[] not null default '{}',
     "captured_by_black" text[] not null default '{}',
     "updated_at" timestamp with time zone not null default timezone('utc'::text, now()),
