@@ -1,4 +1,5 @@
-import { redactFen } from '~/lib/game/redact-fen';
+import { Chess } from 'chess.js';
+import { computeVisibleSquares, redactFen } from '~/lib/game/redact-fen';
 
 // redactFen now constructs a real chess.js Chess instance to compute vision
 // (isAttacked), so — unlike the old pure-string-transform version — every
@@ -170,6 +171,45 @@ describe('redactFen', () => {
       expect(redactFen(fen, 'white')).toBe(
         '8/8/8/4p3/4K3/8/8/8 w - - 0 1',
       );
+    });
+  });
+
+  describe('computeVisibleSquares', () => {
+    it('includes every square the viewer attacks, not just enemy-occupied ones (for the board fog tint)', () => {
+      // Same open-file fixture as the redactFen test above: white rook a1
+      // attacks the whole a-file up to and including a8 (occupied), so
+      // every square in between should be visible too, even though
+      // they're empty — the fog tint needs "can I see this square" for
+      // ALL squares, not just ones currently hiding a piece.
+      const chess = new Chess('r6k/8/8/8/8/8/8/R6K w - - 0 1');
+      const visible = computeVisibleSquares(chess, 'white');
+
+      expect(visible.has('a2')).toBe(true);
+      expect(visible.has('a5')).toBe(true);
+      expect(visible.has('a8')).toBe(true);
+      // b-file and beyond are untouched by anything white has here.
+      expect(visible.has('b5')).toBe(false);
+    });
+
+    it('is safe to call directly on a redacted fen and reproduces the same set the server would compute from the true board', () => {
+      // The whole point of this function (see its doc comment): a piece
+      // that's the first blocker on one of the viewer's own rays is
+      // always already revealed in a redacted view, so recomputing
+      // vision from that same redacted board reproduces the true-board
+      // answer exactly.
+      const trueFen = 'r6k/8/8/8/8/8/8/R6K w - - 0 1';
+      const redacted = redactFen(trueFen, 'white');
+
+      const fromTrueBoard = computeVisibleSquares(
+        new Chess(trueFen),
+        'white',
+      );
+      const fromRedactedBoard = computeVisibleSquares(
+        new Chess(redacted, { skipValidation: true }),
+        'white',
+      );
+
+      expect(fromRedactedBoard).toEqual(fromTrueBoard);
     });
   });
 });

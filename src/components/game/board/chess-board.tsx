@@ -10,6 +10,7 @@ import {
 } from '~/lib/game/board-geometry';
 import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
+import { computeVisibleSquares } from '~/lib/game/redact-fen';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 const LABEL_GUTTER = 16;
@@ -56,6 +57,23 @@ export function ChessBoard({
   );
   const { selectedSquare, legalTargets, handleSquarePress } =
     useSquareSelection(chess, orientation, onMove);
+  // Fog of War (ADR-0008): squares outside the viewer's own vision get a
+  // tint, whether they're genuinely empty or hiding an enemy piece — the
+  // board can't tell those apart any more than the player can. Own pieces
+  // are always "known," so they're never fogged regardless of this set.
+  const visibleSquares = React.useMemo(
+    () => computeVisibleSquares(chess, orientation),
+    [chess, orientation],
+  );
+  const ownPieceColor = orientation === 'white' ? 'w' : 'b';
+  // Every caller sets `interactive` to false exactly when `redactedFen`
+  // has stopped being redacted (ADR-0003's reveal-on-completion, for the
+  // online screen; local/AI games never render this component at all
+  // once they're over, only mid-game history review, which is still
+  // genuinely occluded) — showing fog over an already-fully-revealed
+  // position would misrepresent it as still uncertain, so fog is skipped
+  // entirely once `interactive` is false rather than computed and hidden.
+  const fogEnabled = interactive;
 
   return (
     <View
@@ -86,15 +104,21 @@ export function ChessBoard({
                 const isSelected = selectedSquare === square;
                 const isLegalTarget = legalTargets.has(square);
                 const isFlashing = flashSquare === square;
+                const isOutsideVision =
+                  fogEnabled &&
+                  piece?.color !== ownPieceColor &&
+                  !visibleSquares.has(square);
 
                 return (
                   <Pressable
                     key={square}
                     className={`w-[12.5%] h-[12.5%] items-center justify-center ${
                       isLight ? 'bg-squareLight' : 'bg-squareDark'
-                    } ${isSelected ? 'bg-highlight' : ''} ${
-                      isLegalTarget ? 'bg-accent' : ''
-                    } ${isFlashing ? 'bg-danger' : ''}`}
+                    } ${isOutsideVision ? 'bg-fog' : ''} ${
+                      isSelected ? 'bg-highlight' : ''
+                    } ${isLegalTarget ? 'bg-accent' : ''} ${
+                      isFlashing ? 'bg-danger' : ''
+                    }`}
                     onPress={() => interactive && handleSquarePress(square)}
                   >
                     {piece && (

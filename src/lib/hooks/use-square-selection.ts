@@ -3,6 +3,7 @@ import { Chess, Square } from 'chess.js';
 import type { Orientation } from '~/lib/game/board-geometry';
 import { decideSelectionAction } from '~/lib/game/selection';
 import { pawnCaptureCandidates } from '~/lib/game/pawn-capture-candidates';
+import { pseudoLegalMoves } from '~/lib/game/pseudo-legal-moves';
 
 type SquareSelection = {
   selectedSquare: Square | null;
@@ -26,10 +27,16 @@ export function useSquareSelection(
 
   const legalTargets = React.useMemo(() => {
     if (!selectedSquare) return new Set<Square>();
+    // The shared pseudo-legal generator, not chess.js's public legal-
+    // filtered moves() — under Fog of War (ADR-0009) a move that leaves
+    // the mover's own king in check is legal, so the board must offer it
+    // as a tappable target too (e.g. walking the king onto a square a
+    // visible enemy piece attacks), not silently withhold it the way the
+    // old check-safety filter would have.
     const targets = new Set(
-      chess
-        .moves({ square: selectedSquare, verbose: true })
-        .map((move) => move.to as Square),
+      pseudoLegalMoves(chess, { square: selectedSquare }).map(
+        (move) => move.to as Square,
+      ),
     );
     // chess.js omits a pawn's diagonal capture squares whenever it can't
     // see a piece there — which, against a redacted board, is every real

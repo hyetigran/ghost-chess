@@ -53,6 +53,7 @@ module.exports = {
         highlight: 'hsl(var(--dt-highlight))',
         squareLight: 'hsl(var(--dt-square-light))',
         squareDark: 'hsl(var(--dt-square-dark))',
+        fog: 'hsl(var(--dt-fog))',
         pieceWhite: 'hsl(var(--dt-piece-white))',
         pieceBlack: 'hsl(var(--dt-piece-black))',
         sheet: 'hsl(var(--dt-sheet, var(--dt-card)))',

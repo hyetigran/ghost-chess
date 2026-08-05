@@ -1,4 +1,4 @@
-import { Chess } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 
 export type PieceColor = 'white' | 'black';
 
@@ -91,6 +91,41 @@ function computeVisibleEnemySquares(
       if (!piece || piece.color !== enemyChessColor) continue;
       if (chess.isAttacked(piece.square, viewerChessColor)) {
         visible.add(piece.square);
+      }
+    }
+  }
+
+  return visible;
+}
+
+/**
+ * Every square the viewer currently has vision of — not just enemy-
+ * occupied ones, unlike computeVisibleEnemySquares above. For the board's
+ * fog tint (ChessBoard): a square is "in the fog" iff it's neither the
+ * viewer's own piece nor in this set, regardless of whether it looks
+ * empty or holds a revealed enemy piece.
+ *
+ * Safe to call directly on a viewer's own REDACTED fen, not just a true
+ * one — vision only ever depends on the viewer's own piece positions
+ * (always complete/accurate in a redacted view) plus blockers, and any
+ * piece that's the first blocker on one of the viewer's own rays is, by
+ * definition, already revealed in that same redacted view (that's what
+ * redactFen computes). So recomputing vision from the redacted board a
+ * client already has reproduces the exact same set the server computed
+ * from the true board — no extra data or round trip needed.
+ */
+export function computeVisibleSquares(
+  chess: Chess,
+  viewerColor: PieceColor,
+): Set<string> {
+  const viewerChessColor = viewerColor === 'white' ? 'w' : 'b';
+  const visible = new Set<string>();
+
+  for (const file of FILES) {
+    for (let rank = 1; rank <= 8; rank++) {
+      const square = `${file}${rank}` as Square;
+      if (chess.isAttacked(square, viewerChessColor)) {
+        visible.add(square);
       }
     }
   }
