@@ -219,3 +219,33 @@ export const opponentSchema = userSchema.pick({
   username: true,
   elo_rating: true,
 });
+
+// Open invitations (#33) — shapes returned by the get_open_invitations()/
+// get_my_open_invitations() RPCs (supabase/schemas/08_functions.sql), not
+// picked from gameSchema/playerViewSchema: these are security-definer
+// functions that join in the poster's identity from public.users (whose
+// own RLS is own-row-only, so a client can't do that join itself), and
+// return exactly the fields the browse UI needs rather than a full games
+// row.
+export const openInvitationSchema = z.object({
+  id: z.string().uuid(),
+  creator_id: z.string().uuid(),
+  creator_username: z.string(),
+  creator_elo_rating: z.number().int(),
+  creator_color: z.enum(['white', 'black']),
+  settings: gameSettingsSchema,
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
+  created_at: z.string().datetime(),
+});
+
+export const myOpenInvitationSchema = z.object({
+  id: z.string().uuid(),
+  settings: gameSettingsSchema,
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
+  created_at: z.string().datetime(),
+});
+
+export type OpenInvitation = z.infer<typeof openInvitationSchema>;
+export type MyOpenInvitation = z.infer<typeof myOpenInvitationSchema>;

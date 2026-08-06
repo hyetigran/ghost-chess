@@ -101,9 +101,14 @@ export async function getActiveGames(
       game_id,
       white_player_id,
       black_player_id,
+      white_username,
+      white_elo_rating,
+      black_username,
+      black_elo_rating,
       status,
       current_turn,
       time_control_hours,
+      redacted_fen,
       updated_at
     `,
     )
