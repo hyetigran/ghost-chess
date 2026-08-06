@@ -30,9 +30,15 @@ export function QuickMatchSearching({
   onCancelled,
 }: Props): React.JSX.Element {
   const router = useRouter();
-  const { data: status } = useQuery(matchmakingQueries.status(viewerId));
   const { mutate: leaveQueue, isPending: isLeaving } =
     useLeaveMatchmakingQueue();
+  // Explicit "still actually searching" gate, not just relying on this
+  // component unmounting once onCancelled fires — the leave mutation is
+  // in flight for one round trip before that happens, during which a
+  // stray 3s poll tick would otherwise still fire.
+  const { data: status } = useQuery(
+    matchmakingQueries.status(viewerId, { enabled: !isLeaving }),
+  );
 
   // Only used to force a re-render every second so the elapsed-time and
   // band indicators visibly tick — the elapsed value itself is derived

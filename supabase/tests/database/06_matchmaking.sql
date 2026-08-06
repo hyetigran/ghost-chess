@@ -3,7 +3,7 @@
 -- partitioning, leave/status idempotency, and run_matchmaking_sweep's
 -- backstop pairing + stale-row cleanup.
 begin;
-select plan(14);
+select plan(16);
 
 insert into auth.users (id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -12,7 +12,10 @@ values
     ('f1000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
     ('f1000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
     ('f1000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
-    ('f1000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now());
+    ('f1000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
+    ('f1000000-0000-0000-0000-000000000007', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
+    ('f1000000-0000-0000-0000-000000000008', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
+    ('f1000000-0000-0000-0000-000000000009', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now());
 
 update public.users set elo_rating = 1200 where id = 'f1000000-0000-0000-0000-000000000001';
 update public.users set elo_rating = 1250 where id = 'f1000000-0000-0000-0000-000000000002';
@@ -20,6 +23,9 @@ update public.users set elo_rating = 2000 where id = 'f1000000-0000-0000-0000-00
 update public.users set elo_rating = 1150 where id = 'f1000000-0000-0000-0000-000000000004';
 update public.users set elo_rating = 1500 where id = 'f1000000-0000-0000-0000-000000000005';
 update public.users set elo_rating = 1520 where id = 'f1000000-0000-0000-0000-000000000006';
+update public.users set elo_rating = 1000 where id = 'f1000000-0000-0000-0000-000000000007';
+update public.users set elo_rating = 3000 where id = 'f1000000-0000-0000-0000-000000000008';
+update public.users set elo_rating = 3050 where id = 'f1000000-0000-0000-0000-000000000009';
 
 -- Opportunistic pairing: player 1 joins alone (24h) first, stays
 -- unmatched; player 2 joins the same time control with a rating inside
@@ -106,7 +112,7 @@ reset request.jwt.claims;
 set role authenticated;
 set local request.jwt.claims = '{"sub":"f1000000-0000-0000-0000-000000000006","role":"authenticated"}';
 select is(
-    (select matched_game_id from public.join_matchmaking_queue(3)),
+    (select matched_game_id from public.join_matchmaking_queue(12)),
     null,
     'a rating-compatible player on a different time control does not pair'
 );
@@ -177,6 +183,34 @@ select is(
     (select count(*) from public.matchmaking_queue where user_id = 'f1000000-0000-0000-0000-000000000006')::int,
     0,
     'run_matchmaking_sweep prunes entries stale for longer than its grace window'
+);
+
+-- An incompatible head-of-queue entry must not block two later,
+-- mutually-compatible entries from pairing with each other. Player 7
+-- (1000 elo, oldest) is incompatible with both 8 and 9 even after
+-- widening (diff 2000/2050, band tops out at 700 for 7's 3-minute wait);
+-- players 8 (3000) and 9 (3050) are compatible with each other (diff 50).
+-- Inserted directly (not via join_matchmaking_queue) so joined_at ordering
+-- — and therefore which entry the sweep tries first — is deterministic.
+insert into public.matchmaking_queue (user_id, time_control_hours, elo_rating, joined_at, updated_at)
+values
+    ('f1000000-0000-0000-0000-000000000007', 24, 1000, now() - interval '3 minutes', now()),
+    ('f1000000-0000-0000-0000-000000000008', 24, 3000, now() - interval '2 minutes', now()),
+    ('f1000000-0000-0000-0000-000000000009', 24, 3050, now() - interval '1 minute', now());
+
+select public.run_matchmaking_sweep();
+
+select is(
+    (select matched_game_id from public.matchmaking_queue where user_id = 'f1000000-0000-0000-0000-000000000007'),
+    null,
+    'an incompatible oldest entry stays unmatched rather than being paired with an incompatible partner'
+);
+
+select is(
+    (select count(distinct matched_game_id) from public.matchmaking_queue
+     where user_id in ('f1000000-0000-0000-0000-000000000008', 'f1000000-0000-0000-0000-000000000009'))::int,
+    1,
+    'two later, mutually-compatible entries still pair despite the incompatible head of the queue'
 );
 
 select * from finish();

@@ -11,7 +11,12 @@ create table "public"."matchmaking_queue" (
     -- with no multi-queue UI to build — join_matchmaking_queue() enforces
     -- this is the only way in (08_functions.sql).
     "user_id" uuid not null references public.users(id) on delete cascade,
-    "time_control_hours" integer not null,
+    -- Same domain as player_views.time_control_hours (04_player_views.sql)
+    -- — constrained at the DB level like every other enum-shaped column in
+    -- this schema (games.status/current_turn/result), not just by the TS
+    -- GameSettings['timeControlHours'] union, since join_matchmaking_queue
+    -- accepts this as a raw client-supplied integer.
+    "time_control_hours" integer not null check (time_control_hours in (1, 12, 24)),
     -- Snapshot at enqueue time, not a live join to users.elo_rating —
     -- nothing can change a player's rating while they're queued (no game
     -- reports mid-search), so the snapshot and a live read are always

@@ -262,11 +262,14 @@ export type MyOpenInvitation = z.infer<typeof myOpenInvitationSchema>;
 // `settings` jsonb at all (time_control_hours is a plain column there).
 // matched_game_id starts null and is set the moment pair_queue_entries
 // pairs this row — the client polls for it going non-null to know when
-// to navigate into the created game. get_matchmaking_status itself
-// returns SQL NULL (not a row of all-null fields) when the caller isn't
-// queued at all, which PostgREST serializes as JSON null — modeled at
-// the call site (getMatchmakingStatus, src/api/server/matchmaking.ts) via
-// `.nullable()` on this schema, not as a field inside it.
+// to navigate into the created game. get_matchmaking_status returns a
+// genuinely null public.matchmaking_queue composite when the caller
+// isn't queued at all, but verified directly against a live local
+// instance that PostgREST serializes that as `{user_id: null, ...}`
+// (every column null), not a bare JSON null — so the "not queued" case
+// is handled at the call site (getMatchmakingStatus,
+// src/api/server/matchmaking.ts) via an explicit `data.user_id === null`
+// check before parsing, not `.nullable()` on this schema.
 export const matchmakingQueueEntrySchema = z.object({
   user_id: z.string().uuid(),
   time_control_hours: gameSettingsSchema.shape.timeControlHours,

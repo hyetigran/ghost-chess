@@ -139,27 +139,44 @@ export default function NewGameScreen() {
   const isOpen = mode === 'open';
   const isQuickMatch = mode === 'quickMatch';
 
-  const title = isOpen
-    ? 'Post open invitation'
-    : isQuickMatch
-      ? 'Quick match'
-      : 'New Game';
-  const description = isOpen
-    ? 'Anyone eligible can find and accept this'
-    : isQuickMatch
-      ? 'We’ll pair you with a similarly-rated opponent automatically'
-      : 'Create a new chess game and invite your friends';
-  const submitLabel = isOpen
-    ? 'Post open invitation'
-    : isQuickMatch
-      ? 'Find match'
-      : 'Create Game';
-  const isSubmitting = isOpen ? isPosting : isQuickMatch ? isJoiningQueue : isCreating;
-  const handleSubmit = isOpen
-    ? handlePostInvitation
-    : isQuickMatch
-      ? handleFindMatch
-      : handleCreatePrivate;
+  // One switch point instead of five parallel ternary chains on the same
+  // two booleans — `mode` is narrowed to exclude 'choice' here by the
+  // early return above, so this map covers exactly the remaining cases.
+  const modeConfig: Record<
+    Exclude<Mode, 'choice'>,
+    {
+      title: string;
+      description: string;
+      submitLabel: string;
+      isSubmitting: boolean;
+      onSubmit: () => void;
+    }
+  > = {
+    private: {
+      title: 'New Game',
+      description: 'Create a new chess game and invite your friends',
+      submitLabel: 'Create Game',
+      isSubmitting: isCreating,
+      onSubmit: handleCreatePrivate,
+    },
+    open: {
+      title: 'Post open invitation',
+      description: 'Anyone eligible can find and accept this',
+      submitLabel: 'Post open invitation',
+      isSubmitting: isPosting,
+      onSubmit: handlePostInvitation,
+    },
+    quickMatch: {
+      title: 'Quick match',
+      description:
+        'We’ll pair you with a similarly-rated opponent automatically',
+      submitLabel: 'Find match',
+      isSubmitting: isJoiningQueue,
+      onSubmit: handleFindMatch,
+    },
+  };
+  const { title, description, submitLabel, isSubmitting, onSubmit } =
+    modeConfig[mode];
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
@@ -225,7 +242,7 @@ export default function NewGameScreen() {
             </Text>
           )}
 
-          <Button disabled={isSubmitting} onPress={handleSubmit}>
+          <Button disabled={isSubmitting} onPress={onSubmit}>
             <Text>{submitLabel}</Text>
           </Button>
           <Button variant='ghost' onPress={() => setMode('choice')}>

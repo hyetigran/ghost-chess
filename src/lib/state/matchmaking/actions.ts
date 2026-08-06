@@ -4,12 +4,15 @@ import {
   leaveMatchmakingQueue,
 } from '~/api/server/matchmaking';
 import { useAuth } from '~/context/auth-context';
+import { matchmakingQueries } from '~/lib/state/matchmaking/queries';
 import type { GameSettings } from '~/types/database';
 
 // Both hooks write the mutation's own result straight into the status
 // query's cache (setQueryData) rather than invalidating it — the point of
 // joining/leaving is to update the searching screen immediately, not wait
-// for matchmakingQueries.status's next 3s poll tick.
+// for matchmakingQueries.status's next 3s poll tick. The query key comes
+// from matchmakingQueries.status itself rather than being re-typed here,
+// so the two can never drift apart.
 export const useJoinMatchmakingQueue = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
@@ -22,7 +25,10 @@ export const useJoinMatchmakingQueue = () => {
     },
     onSuccess: (data) => {
       if (userId) {
-        queryClient.setQueryData(['matchmaking', 'status', userId], data);
+        queryClient.setQueryData(
+          matchmakingQueries.status(userId).queryKey,
+          data,
+        );
       }
     },
   });
@@ -37,7 +43,10 @@ export const useLeaveMatchmakingQueue = () => {
     mutationFn: () => leaveMatchmakingQueue(),
     onSuccess: () => {
       if (userId) {
-        queryClient.setQueryData(['matchmaking', 'status', userId], null);
+        queryClient.setQueryData(
+          matchmakingQueries.status(userId).queryKey,
+          null,
+        );
       }
     },
   });

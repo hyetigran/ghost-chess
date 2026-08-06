@@ -1321,12 +1321,19 @@ $$;
 -- Backstop pairing pass (#34): join_matchmaking_queue's own opportunistic
 -- check only fires at the moment someone joins, so whoever's last into an
 -- otherwise-empty queue would wait forever without this. Scheduled every
--- minute below, the same cadence as forfeit-lapsed-games. One pass per
--- tick, not a loop-until-stable: if the oldest (widest-band) entry in a
--- time-control bucket can't find anyone compatible, nobody else in that
--- bucket is a closer match either, so this moves on rather than trying
--- every remaining pair combinatorially — small expected queue sizes make
--- this plenty fast without needing anything fancier.
+-- minute below, the same cadence as forfeit-lapsed-games.
+--
+-- Tries every still-unmatched entry as a potential pairing anchor, oldest
+-- first, not just the single oldest one — compatibility depends on
+-- rating gap, not just wait time, so the oldest (widest-band) entry
+-- failing to find a partner does NOT mean nobody else in the bucket can
+-- pair with each other (e.g. oldest=1000 elo, next two are 3000/3100:
+-- those two are mutually compatible and must still get paired even
+-- though neither is compatible with the 1000-elo head of the queue).
+-- v_skip_ids remembers which anchors already failed this pass so they're
+-- not re-selected forever once every remaining candidate has been ruled
+-- out for them — an entry landing on the skip list is still eligible as
+-- someone ELSE's candidate, since compatibility isn't transitive.
 create or replace function public.run_matchmaking_sweep()
 returns void
 language plpgsql
@@ -1337,6 +1344,7 @@ declare
     v_time_control record;
     v_a public.matchmaking_queue;
     v_b public.matchmaking_queue;
+    v_skip_ids uuid[];
 begin
     -- Stale entries first (client crashed/backgrounded without calling
     -- leave_matchmaking_queue — get_matchmaking_status's heartbeat would
@@ -1349,16 +1357,19 @@ begin
         select distinct time_control_hours from public.matchmaking_queue
         where matched_game_id is null
     loop
+        v_skip_ids := array[]::uuid[];
+
         loop
             select * into v_a
             from public.matchmaking_queue
             where time_control_hours = v_time_control.time_control_hours
               and matched_game_id is null
+              and user_id <> all(v_skip_ids)
             order by joined_at asc
             for update skip locked
             limit 1;
 
-            exit when v_a is null;
+            exit when v_a.user_id is null;
 
             select * into v_b
             from public.matchmaking_queue
@@ -1370,9 +1381,11 @@ begin
             for update skip locked
             limit 1;
 
-            exit when v_b is null;
-
-            perform public.pair_queue_entries(v_a, v_b);
+            if v_b.user_id is null then
+                v_skip_ids := v_skip_ids || v_a.user_id;
+            else
+                perform public.pair_queue_entries(v_a, v_b);
+            end if;
         end loop;
     end loop;
 end;
