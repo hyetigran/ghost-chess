@@ -4,15 +4,15 @@ const VIEWER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const OPPONENT = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 
 describe('describeGameResult', () => {
-  it('describes a checkmate win for the viewer', () => {
-    expect(describeGameResult('checkmate', VIEWER, VIEWER)).toBe(
-      'You won by checkmate!',
+  it('describes a king-capture win for the viewer', () => {
+    expect(describeGameResult('king_captured', VIEWER, VIEWER)).toBe(
+      'You won by capturing the king!',
     );
   });
 
-  it('describes a checkmate loss for the viewer', () => {
-    expect(describeGameResult('checkmate', OPPONENT, VIEWER)).toBe(
-      'You lost by checkmate.',
+  it('describes a king-capture loss for the viewer', () => {
+    expect(describeGameResult('king_captured', OPPONENT, VIEWER)).toBe(
+      'You lost — your king was captured.',
     );
   });
 
@@ -34,10 +34,7 @@ describe('describeGameResult', () => {
     );
   });
 
-  it('describes a stalemate or draw as neutral, regardless of winnerId', () => {
-    expect(describeGameResult('stalemate', null, VIEWER)).toBe(
-      'Draw by stalemate.',
-    );
+  it('describes a draw as neutral, regardless of winnerId', () => {
     expect(describeGameResult('draw', null, VIEWER)).toBe('Draw.');
   });
 
@@ -46,8 +43,8 @@ describe('describeGameResult', () => {
   });
 
   it('falls back to a generic message when the viewer id is unknown', () => {
-    expect(describeGameResult('checkmate', VIEWER, undefined)).toBe(
-      'Game over — checkmate.',
+    expect(describeGameResult('king_captured', VIEWER, undefined)).toBe(
+      'Game over — a king was captured.',
     );
   });
 });

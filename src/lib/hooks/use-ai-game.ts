@@ -20,7 +20,6 @@ type GameOverState = { result: LocalGameResult; winner: Color | null };
 type UseAiGameResult = {
   fen: string;
   redactedFen: string;
-  isCheck: boolean;
   gameOver: GameOverState | null;
   capturedByWhite: string[];
   capturedByBlack: string[];
@@ -31,18 +30,26 @@ type UseAiGameResult = {
 
 // Walks chooseAiMoveOrderFromTrueFen's full candidate list until one
 // validates against the true board, rather than a small number of blind
-// retries: occlusion can make a candidate that looks legal on the AI's
-// own redacted view turn out illegal on the true board — not just via
-// #18's pawn-diagonal problem, but also when the AI's own king is in
-// check from a piece it can't see at all, which the redacted view has no
-// way to even register as a check. A capped-retry approach could
-// exhaust itself doing the same fixed thing over and over there (a real
-// bug this used to have); the full ordered list can't run out of
-// something new to try short of genuine checkmate/stalemate. Pure and
-// synchronous so it can run both from an event handler and from a
-// useState lazy initializer (playing as Black means the AI's opening
-// move has to be decided before the first render, not triggered by an
-// effect after it).
+// retries: fog-of-war vision can make a candidate that looks legal on the
+// AI's own redacted view turn out illegal on the true board (#18's
+// pawn-diagonal problem — a diagonal target square outside current vision
+// may turn out empty). A capped-retry approach could exhaust itself doing
+// the same fixed thing over and over there (a real bug this used to have);
+// the full ordered list can't run out of something new to try short of
+// having no pseudo-legal moves at all.
+//
+// The "own king in check from an unseen piece" reasoning this comment used
+// to cite no longer applies under Fog of War (ADR-0009) — there's no
+// leaves-your-king-in-check illegality anymore, so that's not a rejection
+// reason a candidate can hit. chooseAiMoveOrderFromTrueFen's own candidate
+// generation and scoring still needs re-deriving for the new rules
+// (tracked separately) — this exhaustive-retry structure itself stays
+// correct regardless, since #18's reason for existing is untouched.
+//
+// Pure and synchronous so it can run both from an event handler and from a
+// useState lazy initializer (playing as Black means the AI's opening move
+// has to be decided before the first render, not triggered by an effect
+// after it).
 function attemptAiTurn(
   fen: string,
   aiColor: Color,
@@ -80,7 +87,6 @@ export function useAiGame(
   );
 
   const [fen, setFen] = React.useState(initial?.newFen ?? START_FEN);
-  const [isCheck, setIsCheck] = React.useState(initial?.isCheck ?? false);
   const [gameOver, setGameOver] = React.useState<GameOverState | null>(
     initial?.isGameOver && initial.result
       ? { result: initial.result, winner: initial.winner }
@@ -102,7 +108,6 @@ export function useAiGame(
     outcome: Extract<LocalMoveOutcome, { legal: true }>,
   ): void => {
     setFen(outcome.newFen);
-    setIsCheck(outcome.isCheck);
     if (outcome.isGameOver && outcome.result) {
       setGameOver({ result: outcome.result, winner: outcome.winner });
     }
@@ -138,7 +143,6 @@ export function useAiGame(
   const reset = (): void => {
     const fresh = initialOutcomeFor(aiColor, difficulty);
     setFen(fresh?.newFen ?? START_FEN);
-    setIsCheck(fresh?.isCheck ?? false);
     setGameOver(
       fresh?.isGameOver && fresh.result
         ? { result: fresh.result, winner: fresh.winner }
@@ -157,8 +161,17 @@ export function useAiGame(
 
   return {
     fen,
-    redactedFen: redactFen(fen, humanColor),
-    isCheck,
+    // Once the game is over, `fen` may be a true position with a king
+    // actually missing (captured, not hidden — ADR-0009) — redactFen()
+    // assumes a complete true position and correctly throws on that, so
+    // it must not be called past game-over. ADR-0003 says occlusion lifts
+    // entirely on completion anyway, so the true fen is the right value
+    // here regardless (never actually rendered post-gameOver today —
+    // ai-game.tsx returns LocalGameOverScreen before reaching ChessBoard —
+    // but correct if that ever changes, e.g. a future "review this game"
+    // view). Mirrors local-game.tsx's equivalent redactFen call, which
+    // avoids this by sitting after its own gameOver early-return instead.
+    redactedFen: gameOver ? fen : redactFen(fen, humanColor),
     gameOver,
     capturedByWhite,
     capturedByBlack,

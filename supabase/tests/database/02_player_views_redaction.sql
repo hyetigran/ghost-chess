@@ -15,7 +15,11 @@ values
     ('a0000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now()),
     ('a0000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', null, '', '{"provider":"anonymous"}', '{}', now(), now());
 
--- After 1. e4 e5 2. Nf3 — real pieces on both sides, active game.
+-- After 1. e4 e5 2. Nf3 — real pieces on both sides, active game. Chosen
+-- deliberately (not just "any early position"): white's knight on f3
+-- attacks e5, so under Fog of War vision (ADR-0008) white's view of this
+-- exact position reveals the black pawn on e5 — the tests below assert
+-- that specific, real piece of vision, not blanket "opponent invisible."
 insert into public.games (id, white_player_id, black_player_id, settings, status, current_turn, fen, pgn)
 values (
     'b0000000-0000-0000-0000-000000000001',
@@ -31,14 +35,15 @@ values (
 -- Redaction transformation: run as superuser (RLS doesn't apply), so
 -- these three checks are purely about what sync_player_views actually
 -- wrote, independent of access control.
-select ok(
-    split_part((select redacted_fen from public.player_views where game_id = 'b0000000-0000-0000-0000-000000000001' and player_id = 'a0000000-0000-0000-0000-000000000001'), ' ', 1) !~ '[pnbrqk]',
-    'white''s redacted_fen placement contains no black (lowercase) piece letters'
+select is(
+    (select redacted_fen from public.player_views where game_id = 'b0000000-0000-0000-0000-000000000001' and player_id = 'a0000000-0000-0000-0000-000000000001'),
+    '8/8/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQ - 0 2',
+    'white''s redacted_fen shows only the e5 pawn (attacked by the f3 knight) and no other black piece'
 );
 
 select ok(
     split_part((select redacted_fen from public.player_views where game_id = 'b0000000-0000-0000-0000-000000000001' and player_id = 'a0000000-0000-0000-0000-000000000002'), ' ', 1) !~ '[PNBRQK]',
-    'black''s redacted_fen placement contains no white (uppercase) piece letters'
+    'black''s redacted_fen placement contains no white (uppercase) piece letters (nothing black has attacks that far forward yet)'
 );
 
 select isnt(
@@ -76,10 +81,10 @@ select is(
     'the row white sees is their own row, never black''s'
 );
 
-select ok(
-    split_part((select redacted_fen from public.player_views where game_id = 'b0000000-0000-0000-0000-000000000001'), ' ', 1)
-        !~ '[pnbrqk]',
-    'even reading through RLS as white, the visible redacted_fen still has no black pieces'
+select is(
+    (select redacted_fen from public.player_views where game_id = 'b0000000-0000-0000-0000-000000000001'),
+    '8/8/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQ - 0 2',
+    'even reading through RLS as white, the visible redacted_fen still shows only the one attacked black pawn'
 );
 
 reset role;

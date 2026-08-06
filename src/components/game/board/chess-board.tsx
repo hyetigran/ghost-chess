@@ -8,6 +8,7 @@ import {
   squareAt,
   type Orientation,
 } from '~/lib/game/board-geometry';
+import { legalTargetSquares } from '~/lib/game/legal-target-squares';
 import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
@@ -56,6 +57,29 @@ export function ChessBoard({
   );
   const { selectedSquare, legalTargets, handleSquarePress } =
     useSquareSelection(chess, orientation, onMove);
+  const ownPieceColor = orientation === 'white' ? 'w' : 'b';
+  // Fog/haze rule: a square is NOT hazy iff one of the viewer's own
+  // pieces could currently move there (legal-target-squares.ts) — every
+  // other square gets the haze, whether it's genuinely empty or hiding an
+  // enemy piece; the board can't tell those apart any more than the
+  // player can. Own pieces are always "known," so they're never hazy
+  // regardless of this set. Deliberately not the same set as ADR-0008's
+  // attack-based vision (computeVisibleSquares, redact-fen.ts) — that
+  // still governs what's actually revealed server-side; this only
+  // governs the board's visual haze, and includes e.g. a pawn's forward
+  // push square, which is a legal destination but not a vision square.
+  const reachableSquares = React.useMemo(
+    () => legalTargetSquares(chess, ownPieceColor),
+    [chess, ownPieceColor],
+  );
+  // Every caller sets `interactive` to false exactly when `redactedFen`
+  // has stopped being redacted (ADR-0003's reveal-on-completion, for the
+  // online screen; local/AI games never render this component at all
+  // once they're over, only mid-game history review, which is still
+  // genuinely occluded) — showing fog over an already-fully-revealed
+  // position would misrepresent it as still uncertain, so fog is skipped
+  // entirely once `interactive` is false rather than computed and hidden.
+  const fogEnabled = interactive;
 
   return (
     <View
@@ -86,6 +110,10 @@ export function ChessBoard({
                 const isSelected = selectedSquare === square;
                 const isLegalTarget = legalTargets.has(square);
                 const isFlashing = flashSquare === square;
+                const isHazy =
+                  fogEnabled &&
+                  piece?.color !== ownPieceColor &&
+                  !reachableSquares.has(square);
 
                 return (
                   <Pressable
@@ -102,6 +130,19 @@ export function ChessBoard({
                         source={pieceImage(piece)}
                         style={{ width: '80%', height: '80%' }}
                         resizeMode='contain'
+                      />
+                    )}
+                    {/* A translucent haze layered over the tile rather
+                        than a flat color swap, so the light/dark checker
+                        pattern (and any highlight underneath) still shows
+                        faintly through — reads as "this square is
+                        obscured," not "this is a third square color."
+                        pointerEvents="none" so the overlay never steals
+                        the tap from the Pressable it sits on. */}
+                    {isHazy && (
+                      <View
+                        className='absolute inset-0 opacity-60 bg-fog'
+                        pointerEvents='none'
                       />
                     )}
                   </Pressable>

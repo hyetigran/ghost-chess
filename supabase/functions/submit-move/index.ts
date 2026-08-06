@@ -1,8 +1,8 @@
 // Server-side move-validation path, ADR-0007 (docs/adr/0007-constant-time-move-rejection.md).
 // This is the only place a move is ever accepted: clients never write to
 // games/moves directly (see ADR-0001, ADR-0012's fix). Every illegal-move
-// rejection — not a participant, not your turn, game not active, or
-// chess.js rejects the move — returns the exact same { error: "illegal_move" }
+// rejection — not a participant, not your turn, game not active, or the
+// move isn't pseudo-legal — returns the exact same { error: "illegal_move" }
 // shape via the same code path, so content and timing stay indistinguishable
 // regardless of *why* a move failed (CONTEXT.md's Move rejection entry).
 //
@@ -22,6 +22,105 @@
 // response — see illegalMoveResponse()'s call site below.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Chess } from 'npm:chess.js@1.1.0';
+
+// deno-lint-ignore no-explicit-any
+type ChessInstance = any;
+
+// ---------------------------------------------------------------------
+// Pseudo-legal move helpers — hand-kept-in-lockstep Deno copy of
+// src/lib/game/pseudo-legal-moves.ts (same cross-runtime-boundary
+// reasoning as the redact_fen/decide-move.ts duplication above). See that
+// file's header comment for the full rationale: under Fog of War
+// (ADR-0009) a move that leaves the mover's own king in check is legal,
+// and capturing the enemy king ends the game — chess.js's public API
+// refuses both, so this relies on its private `_moves({legal:false})` /
+// `_makeMove` / `_moveToSan` / `_incPositionCount` internals instead.
+// pseudo-legal-moves.test.ts carries the canary test that would catch a
+// chess.js upgrade silently breaking this; if that ever fails, re-verify
+// this copy against the same spike before trusting either one again.
+// ---------------------------------------------------------------------
+
+function algebraicFromIndex(index: number): string {
+  const file = index & 0xf;
+  const rank = index >> 4;
+  return (('abcdefgh'[file] ?? '') + '87654321'[rank]) as string;
+}
+
+type PseudoLegalMove = {
+  from: string;
+  to: string;
+  piece: string;
+  captured?: string;
+  promotion?: string;
+  san: string;
+};
+
+function toPseudoLegalMove(
+  chess: ChessInstance,
+  move: ChessInstance,
+  allMoves: ChessInstance[],
+): PseudoLegalMove {
+  const rawSan = chess._moveToSan(move, allMoves);
+  return {
+    from: algebraicFromIndex(move.from),
+    to: algebraicFromIndex(move.to),
+    piece: move.piece,
+    captured: move.captured,
+    promotion: move.promotion,
+    san: rawSan.replace(/[+#]$/, ''),
+  };
+}
+
+function pseudoLegalMoves(chess: ChessInstance): PseudoLegalMove[] {
+  const all = chess._moves({ legal: false });
+  return all.map((m: ChessInstance) => toPseudoLegalMove(chess, m, all));
+}
+
+function commitMove(
+  chess: ChessInstance,
+  match: ChessInstance,
+  all: ChessInstance[],
+): PseudoLegalMove {
+  const outcome = toPseudoLegalMove(chess, match, all);
+  chess._makeMove(match);
+  chess._incPositionCount(chess.fen());
+  return outcome;
+}
+
+function applyPseudoLegalMove(
+  chess: ChessInstance,
+  attempt: { from: string; to: string; promotion?: string },
+): PseudoLegalMove | null {
+  const all = chess._moves({ legal: false });
+  const wantPromotion = attempt.promotion ?? 'q';
+  const match = all.find(
+    (m: ChessInstance) =>
+      algebraicFromIndex(m.from) === attempt.from &&
+      algebraicFromIndex(m.to) === attempt.to &&
+      (m.promotion === undefined || m.promotion === wantPromotion),
+  );
+  if (!match) return null;
+  return commitMove(chess, match, all);
+}
+
+function applyPseudoLegalSan(
+  chess: ChessInstance,
+  san: string,
+): PseudoLegalMove | null {
+  const all = chess._moves({ legal: false });
+  const match = all.find(
+    (m: ChessInstance) =>
+      chess._moveToSan(m, all).replace(/[+#]$/, '') === san,
+  );
+  if (!match) return null;
+  return commitMove(chess, match, all);
+}
+
+function wasKingCaptured(move: PseudoLegalMove): boolean {
+  return move.captured === 'k';
+}
+
+// ---------------------------------------------------------------------
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX_ATTEMPTS = 30;
@@ -198,12 +297,13 @@ Deno.serve(async (req: Request) => {
 
   // A nonexistent gameId is folded into the same uniform illegal-move
   // response rather than a distinct 404: a 404 returned before any
-  // chess.js/participant work would confirm which game IDs are real,
-  // which is a disclosure ADR-0007 doesn't carve out an exception for
-  // (unlike auth/rate-limit, this is about the game itself, not just
+  // legality work would confirm which game IDs are real, which is a
+  // disclosure ADR-0007 doesn't carve out an exception for (unlike
+  // auth/rate-limit, this is about the game itself, not just
   // request-level bookkeeping). Falling back to the starting position
-  // keeps the chess.js call — and therefore the timing profile — the same
-  // shape as the real-game path; `legal` still forces false via `!game`.
+  // keeps the move-attempt call — and therefore the timing profile — the
+  // same shape as the real-game path; `legal` still forces false via
+  // `!game`.
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const callerColor: 'white' | 'black' | null = game
     ? game.white_player_id === user.id
@@ -213,18 +313,21 @@ Deno.serve(async (req: Request) => {
         : null
     : null;
 
-  // Replay history rather than loading game.fen directly, same reasoning
-  // as decide-move.ts's buildChessFromHistory: an empty history (a fresh
-  // game, or the not-found fallback above) is equivalent to loading the
-  // fen/start position directly, so this doesn't change behavior for
-  // those cases.
-  const chess =
+  // Replay history via applyPseudoLegalSan rather than the public
+  // chess.move(san) — same reasoning as decide-move.ts's
+  // buildChessFromHistory: under Fog of War a historical move may be one
+  // the public API's check-safety filter would refuse to recognize. An
+  // empty history (a fresh game, or the not-found fallback above) loads
+  // fen/start position directly instead, equivalent for those cases.
+  const chess: ChessInstance =
     moveHistory.length === 0
       ? new Chess(game?.fen ?? START_FEN)
       : new Chess();
   try {
     for (const san of moveHistory) {
-      chess.move(san);
+      if (!applyPseudoLegalSan(chess, san)) {
+        throw new Error(`unresolvable historical move: ${san}`);
+      }
     }
   } catch {
     // Replay failed on defensive, shouldn't-happen input (moveHistory is
@@ -234,17 +337,11 @@ Deno.serve(async (req: Request) => {
     chess.load(game?.fen ?? START_FEN);
   }
 
-  // deno-lint-ignore no-explicit-any
-  let moveResult: any = null;
-  try {
-    moveResult = chess.move({
-      from: body.from,
-      to: body.to,
-      promotion: body.promotion,
-    });
-  } catch {
-    moveResult = null;
-  }
+  const moveResult = applyPseudoLegalMove(chess, {
+    from: body.from,
+    to: body.to,
+    promotion: body.promotion,
+  });
 
   // A lapsed deadline makes any move attempt too late, folded into the
   // same uniform `legal` boolean as every other rejection reason
@@ -267,29 +364,36 @@ Deno.serve(async (req: Request) => {
     ) &&
     moveResult !== null;
 
-  if (!legal || !callerColor || !game) {
+  if (!legal || !callerColor || !game || !moveResult) {
     return illegalMoveResponse();
   }
 
   let status: GameRow['status'] = 'active';
-  let result: 'checkmate' | 'stalemate' | 'draw' | null = null;
+  let result: 'king_captured' | 'draw' | null = null;
   let winnerId: string | null = null;
 
-  if (chess.isCheckmate()) {
+  if (wasKingCaptured(moveResult)) {
     status = 'completed';
-    result = 'checkmate';
+    result = 'king_captured';
     winnerId = user.id;
-  } else if (chess.isStalemate()) {
+  } else if (pseudoLegalMoves(chess).length === 0) {
+    // Stalemate's replacement — see decide-move.ts's identical branch.
     status = 'completed';
-    result = 'stalemate';
-  } else if (chess.isDraw()) {
+    result = 'draw';
+  } else if (
+    chess.isThreefoldRepetition() ||
+    chess.isInsufficientMaterial() ||
+    chess.isDrawByFiftyMoves()
+  ) {
+    // Individually, not via the composite isDraw() — that still bundles
+    // the now-removed stalemate concept.
     status = 'completed';
     result = 'draw';
   }
 
   // p_expected_fen (not a move number computed here) is what makes this
   // call concurrency-safe — see apply_move's doc comment
-  // (supabase/schemas/06_functions.sql). move_number is computed inside
+  // (supabase/schemas/08_functions.sql). move_number is computed inside
   // that same function, from the same transaction that checks this
   // precondition, not from the moveHistory query above (which could itself
   // be stale by the time this call lands).
@@ -301,7 +405,6 @@ Deno.serve(async (req: Request) => {
     p_new_fen: chess.fen(),
     p_captured_piece: moveResult.captured ?? null,
     p_new_current_turn: chess.turn() === 'w' ? 'white' : 'black',
-    p_is_check: chess.isCheck(),
     p_status: status,
     p_result: result,
     p_winner_id: winnerId,

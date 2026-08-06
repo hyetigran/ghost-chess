@@ -18,7 +18,6 @@ describe('applyLocalMove', () => {
       'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
     );
     expect(outcome.newCurrentTurn).toBe('black');
-    expect(outcome.isCheck).toBe(false);
     expect(outcome.isGameOver).toBe(false);
     expect(outcome.result).toBeNull();
     expect(outcome.winner).toBeNull();
@@ -55,8 +54,17 @@ describe('applyLocalMove', () => {
     });
   });
 
-  it('detects checkmate and attributes the win to the side that just moved', () => {
-    const outcome = applyLocalMove('6k1/5ppp/8/8/8/8/8/R6K w - - 0 1', {
+  it('accepts a move that leaves the mover\'s own king in check (Fog of War, ADR-0009)', () => {
+    const outcome = applyLocalMove('4r2k/8/8/8/8/8/4P3/4K3 w - - 0 1', {
+      from: 'e2',
+      to: 'e4',
+    });
+
+    expect(outcome.legal).toBe(true);
+  });
+
+  it('detects a king capture and attributes the win to the side that just moved', () => {
+    const outcome = applyLocalMove('k7/8/8/8/8/8/8/R6K w - - 0 1', {
       from: 'a1',
       to: 'a8',
     });
@@ -64,21 +72,46 @@ describe('applyLocalMove', () => {
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
     expect(outcome.isGameOver).toBe(true);
-    expect(outcome.result).toBe('checkmate');
+    expect(outcome.result).toBe('king_captured');
     expect(outcome.winner).toBe('white');
-    expect(outcome.isCheck).toBe(true);
+    expect(outcome.captured).toEqual({ by: 'white', pieceType: 'k' });
   });
 
-  it('detects stalemate as a game-ending draw with no winner', () => {
-    const outcome = applyLocalMove('k7/8/1K6/8/8/8/8/7Q w - - 0 1', {
-      from: 'h1',
-      to: 'h2',
+  it('attributes a black king-capture win correctly, not just white', () => {
+    const outcome = applyLocalMove('r6k/8/8/8/8/8/8/K7 b - - 0 1', {
+      from: 'a8',
+      to: 'a1',
     });
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.result).toBe('king_captured');
+    expect(outcome.winner).toBe('black');
+  });
+
+  it('does NOT end the game on a move that would have been checkmate under the old rules', () => {
+    const outcome = applyLocalMove('6k1/5ppp/8/8/8/8/8/R6K w - - 0 1', {
+      from: 'a1',
+      to: 'a8',
+    });
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    expect(outcome.captured).toBeNull();
+    expect(outcome.isGameOver).toBe(false);
+    expect(outcome.result).toBeNull();
+  });
+
+  it('detects a completed draw when the side to move has zero pseudo-legal moves', () => {
+    const outcome = applyLocalMove(
+      'kn6/pp1p3K/pppp4/pppp4/pppp4/pppppppp/pppppppp/nnnnnnnn w - - 0 1',
+      { from: 'h7', to: 'h8' },
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
     expect(outcome.isGameOver).toBe(true);
-    expect(outcome.result).toBe('stalemate');
+    expect(outcome.result).toBe('draw');
     expect(outcome.winner).toBeNull();
   });
 
@@ -94,19 +127,6 @@ describe('applyLocalMove', () => {
     expect(outcome.result).toBe('draw');
     expect(outcome.winner).toBeNull();
   });
-
-  it('attributes a black checkmate win correctly, not just white', () => {
-    // Fool's mate: 1. f3 e5 2. g4 Qh4#.
-    const beforeQh4Mate =
-      'rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2';
-
-    const outcome = applyLocalMove(beforeQh4Mate, { from: 'd8', to: 'h4' });
-
-    expect(outcome.legal).toBe(true);
-    if (!outcome.legal) throw new Error('expected legal');
-    expect(outcome.result).toBe('checkmate');
-    expect(outcome.winner).toBe('black');
-  });
 });
 
 describe('nextPhaseAfterMove', () => {
@@ -119,28 +139,28 @@ describe('nextPhaseAfterMove', () => {
     });
   });
 
-  it('transitions to gameOver with the winner after checkmate', () => {
-    const outcome = legalOutcome('6k1/5ppp/8/8/8/8/8/R6K w - - 0 1', {
+  it('transitions to gameOver with the winner after a king capture', () => {
+    const outcome = legalOutcome('k7/8/8/8/8/8/8/R6K w - - 0 1', {
       from: 'a1',
       to: 'a8',
     });
 
     expect(nextPhaseAfterMove(outcome)).toEqual({
       type: 'gameOver',
-      result: 'checkmate',
+      result: 'king_captured',
       winner: 'white',
     });
   });
 
-  it('transitions to gameOver with no winner after stalemate', () => {
-    const outcome = legalOutcome('k7/8/1K6/8/8/8/8/7Q w - - 0 1', {
-      from: 'h1',
-      to: 'h2',
-    });
+  it('transitions to gameOver with no winner after a no-legal-moves draw', () => {
+    const outcome = legalOutcome(
+      'kn6/pp1p3K/pppp4/pppp4/pppp4/pppppppp/pppppppp/nnnnnnnn w - - 0 1',
+      { from: 'h7', to: 'h8' },
+    );
 
     expect(nextPhaseAfterMove(outcome)).toEqual({
       type: 'gameOver',
-      result: 'stalemate',
+      result: 'draw',
       winner: null,
     });
   });

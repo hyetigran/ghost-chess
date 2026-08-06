@@ -11,11 +11,17 @@ create table "public"."games" (
     "black_player_id" uuid references public.users default null,
     "settings" jsonb not null,
     "status" text not null check (status in ('waiting', 'active', 'completed', 'abandoned')),
-    "result" text check (result in ('checkmate', 'stalemate', 'draw', 'abandoned', 'timeout', null)),
+    -- 'king_captured' replaces 'checkmate'/'stalemate' under Fog of War
+    -- (ADR-0009, docs/adr/0009-king-capture-ends-the-game.md) — the game
+    -- ends the instant a king is captured, not by checkmate detection.
+    -- 'draw' now also covers the rare "the side to move has zero
+    -- pseudo-legal moves" case that used to be 'stalemate', plus threefold
+    -- repetition / insufficient material / the fifty-move rule, unchanged
+    -- from before.
+    "result" text check (result in ('king_captured', 'draw', 'abandoned', 'timeout', null)),
     "current_turn" text not null check (current_turn in ('white', 'black')),
     "fen" text not null,
     "pgn" text not null,
-    "is_check" boolean not null default false,
     "winner_id" uuid references public.users(id) default null,
     -- Set once send_time_warnings() (06_functions.sql, #29) sends a
     -- deadline-approaching push for the *current* turn, so it doesn't

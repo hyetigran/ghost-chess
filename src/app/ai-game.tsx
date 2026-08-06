@@ -61,7 +61,6 @@ function AiGameBoard({
   const {
     fen,
     redactedFen,
-    isCheck,
     gameOver,
     capturedByWhite,
     capturedByBlack,
@@ -91,7 +90,7 @@ function AiGameBoard({
   return (
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
-        Your move{isCheck ? ' — Check!' : ''}
+        Your move
       </Text>
       <DevFullBoardToggle
         enabled={showFullBoard}
