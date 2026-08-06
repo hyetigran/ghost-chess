@@ -51,6 +51,12 @@ export const gameSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   fen: z.string(),
   pgn: z.string().nullable(),
+  is_check: z.boolean(),
+  // Open-invitation rating gate (#33) — both null means "open to
+  // anyone," the case for every private-link game and every open
+  // invitation that didn't turn on "my rating class only".
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });
@@ -140,9 +146,14 @@ export type ActiveGame = Pick<
   | 'game_id'
   | 'white_player_id'
   | 'black_player_id'
+  | 'white_username'
+  | 'white_elo_rating'
+  | 'black_username'
+  | 'black_elo_rating'
   | 'status'
   | 'current_turn'
   | 'time_control_hours'
+  | 'redacted_fen'
   | 'updated_at'
 >;
 
@@ -178,9 +189,14 @@ export const activeGameSchema = playerViewSchema.pick({
   game_id: true,
   white_player_id: true,
   black_player_id: true,
+  white_username: true,
+  white_elo_rating: true,
+  black_username: true,
+  black_elo_rating: true,
   status: true,
   current_turn: true,
   time_control_hours: true,
+  redacted_fen: true,
   updated_at: true,
 });
 
@@ -209,3 +225,33 @@ export const opponentSchema = userSchema.pick({
   username: true,
   elo_rating: true,
 });
+
+// Open invitations (#33) — shapes returned by the get_open_invitations()/
+// get_my_open_invitations() RPCs (supabase/schemas/08_functions.sql), not
+// picked from gameSchema/playerViewSchema: these are security-definer
+// functions that join in the poster's identity from public.users (whose
+// own RLS is own-row-only, so a client can't do that join itself), and
+// return exactly the fields the browse UI needs rather than a full games
+// row.
+export const openInvitationSchema = z.object({
+  id: z.string().uuid(),
+  creator_id: z.string().uuid(),
+  creator_username: z.string(),
+  creator_elo_rating: z.number().int(),
+  creator_color: z.enum(['white', 'black']),
+  settings: gameSettingsSchema,
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
+  created_at: z.string().datetime(),
+});
+
+export const myOpenInvitationSchema = z.object({
+  id: z.string().uuid(),
+  settings: gameSettingsSchema,
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
+  created_at: z.string().datetime(),
+});
+
+export type OpenInvitation = z.infer<typeof openInvitationSchema>;
+export type MyOpenInvitation = z.infer<typeof myOpenInvitationSchema>;

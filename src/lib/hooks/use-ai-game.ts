@@ -166,11 +166,12 @@ export function useAiGame(
     // assumes a complete true position and correctly throws on that, so
     // it must not be called past game-over. ADR-0003 says occlusion lifts
     // entirely on completion anyway, so the true fen is the right value
-    // here regardless (never actually rendered post-gameOver today —
-    // ai-game.tsx returns LocalGameOverScreen before reaching ChessBoard —
-    // but correct if that ever changes, e.g. a future "review this game"
-    // view). Mirrors local-game.tsx's equivalent redactFen call, which
-    // avoids this by sitting after its own gameOver early-return instead.
+    // here regardless. ai-game.tsx doesn't consume this field directly —
+    // it keeps its own displayFen so it can also honor the "Remove fog"
+    // button (fog stays on, frozen at the last live view, until pressed)
+    // — but it hits this exact same redactFen-on-a-missing-king constraint
+    // doing so, so this field's reasoning still documents the constraint
+    // for both.
     redactedFen: gameOver ? fen : redactFen(fen, humanColor),
     gameOver,
     capturedByWhite,

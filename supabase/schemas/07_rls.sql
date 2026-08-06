@@ -28,6 +28,15 @@ create policy "Users can view their own non-active games" on public.games
         and status <> 'active'
     );
 
+-- No raw-table RLS policy for browsing open invitations (#33): a
+-- browsing user needs the poster's username/elo_rating too (public.users'
+-- own SELECT policy above is own-row-only, so even a permissive games
+-- policy couldn't join that in client-side) — get_open_invitations()/
+-- get_my_open_invitations() (08_functions.sql) are security-definer
+-- functions instead, returning exactly the joined fields the browse UI
+-- needs and nothing more, rather than widening raw table access to solve
+-- half the problem.
+
 create policy "Users can create games" on public.games
     for insert to authenticated
     with check (auth.uid() = white_player_id or auth.uid() = black_player_id);

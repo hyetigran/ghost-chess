@@ -23,6 +23,19 @@ create table "public"."games" (
     "fen" text not null,
     "pgn" text not null,
     "winner_id" uuid references public.users(id) default null,
+    -- Open-invitation rating gate, set only when settings.isPrivate is
+    -- false and the creator turned on "my rating class only" (#33). Both
+    -- null means "open to anyone" — the implicit behavior for every game
+    -- before this feature existed, including today's private-link games.
+    -- Real columns rather than another settings jsonb key: join_game's
+    -- eligibility check needs a plain WHERE-clause range comparison,
+    -- which doesn't index well into jsonb the way a real column does.
+    -- Derived once from the creator's elo_rating at post time and stored
+    -- statically, not recomputed live — matches the mockup's fixed
+    -- "Class D · 1200-1399" shown at post time rather than a filter that
+    -- silently drifts as the creator's own rating changes later.
+    "invitation_min_rating" integer default null,
+    "invitation_max_rating" integer default null,
     -- Set once send_time_warnings() (06_functions.sql, #29) sends a
     -- deadline-approaching push for the *current* turn, so it doesn't
     -- re-send on every cron tick; cleared back to null by apply_move
