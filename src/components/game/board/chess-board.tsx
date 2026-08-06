@@ -114,11 +114,9 @@ export function ChessBoard({
                     key={square}
                     className={`w-[12.5%] h-[12.5%] items-center justify-center ${
                       isLight ? 'bg-squareLight' : 'bg-squareDark'
-                    } ${isOutsideVision ? 'bg-fog' : ''} ${
-                      isSelected ? 'bg-highlight' : ''
-                    } ${isLegalTarget ? 'bg-accent' : ''} ${
-                      isFlashing ? 'bg-danger' : ''
-                    }`}
+                    } ${isSelected ? 'bg-highlight' : ''} ${
+                      isLegalTarget ? 'bg-accent' : ''
+                    } ${isFlashing ? 'bg-danger' : ''}`}
                     onPress={() => interactive && handleSquarePress(square)}
                   >
                     {piece && (
@@ -126,6 +124,19 @@ export function ChessBoard({
                         source={pieceImage(piece)}
                         style={{ width: '80%', height: '80%' }}
                         resizeMode='contain'
+                      />
+                    )}
+                    {/* Fog of War (ADR-0008): a translucent haze layered
+                        over the tile rather than a flat color swap, so the
+                        light/dark checker pattern (and any highlight
+                        underneath) still shows faintly through — reads as
+                        "this square is obscured," not "this is a third
+                        square color." pointerEvents="none" so the overlay
+                        never steals the tap from the Pressable it sits on. */}
+                    {isOutsideVision && (
+                      <View
+                        className='absolute inset-0 opacity-60 bg-fog'
+                        pointerEvents='none'
                       />
                     )}
                   </Pressable>
