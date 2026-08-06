@@ -1,5 +1,30 @@
 import type { GameResult } from '~/types/database';
 
+// Drives GameOverBanner's color/emoji — kept separate from the sentence
+// text below so both online and local/AI game-over screens can share one
+// banner component despite having different heading copy.
+export type GameOutcomeTone = 'positive' | 'negative' | 'neutral';
+
+export function gameOutcomeTone(
+  result: GameResult,
+  winnerId: string | null,
+  viewerId: string | undefined,
+): GameOutcomeTone {
+  if (!result || result === 'draw' || !viewerId) return 'neutral';
+  return winnerId === viewerId ? 'positive' : 'negative';
+}
+
+export function gameOutcomeHeading(
+  result: GameResult,
+  winnerId: string | null,
+  viewerId: string | undefined,
+): string {
+  if (!result) return 'Game Over';
+  if (result === 'draw') return 'Draw';
+  if (!viewerId) return 'Game Over';
+  return winnerId === viewerId ? 'You Won' : 'You Lost';
+}
+
 // Human-readable post-game result text, phrased relative to the viewer
 // (#19's "post-game summary" — result). Pure and unit-tested so the
 // win/loss/draw phrasing logic doesn't live tangled in JSX.

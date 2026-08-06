@@ -5,9 +5,10 @@ import { CapturedPieces } from '~/components/game/captured-pieces/captured-piece
 import { MoveHistory } from '~/components/game/move-history/move-history';
 import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { HandoffScreen } from '~/components/local-game/handoff-screen';
-import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
-import { Text } from '~/components/ui';
+import { LocalGameOverModal } from '~/components/local-game/local-game-over-modal';
+import { Dialog, Text } from '~/components/ui';
 import { redactFen } from '~/lib/game/redact-fen';
+import type { Color } from '~/lib/game/local-move';
 import { useLocalGame } from '~/lib/hooks/use-local-game';
 
 export default function LocalGameScreen(): React.JSX.Element {
@@ -23,6 +24,36 @@ export default function LocalGameScreen(): React.JSX.Element {
   } = useLocalGame();
   const [showFullBoard, setShowFullBoard] = React.useState(false);
   const [viewingPly, setViewingPly] = React.useState<number | null>(null);
+  const [showGameOver, setShowGameOver] = React.useState(false);
+
+  // The gameOver phase carries no `viewer` (nextPhaseAfterMove, local-move.ts)
+  // — pass-and-play has no single "current viewer" once the game ends, both
+  // players already shared the device. Keep whichever side was on-screen
+  // right before the final move as the fogged default until "Remove fog" is
+  // pressed, rather than picking an arbitrary color.
+  const lastViewerRef = React.useRef<Color>('white');
+  if (phase.type === 'playing') lastViewerRef.current = phase.viewer;
+  const viewer = phase.type === 'playing' ? phase.viewer : lastViewerRef.current;
+
+  // Once the game ends, `fen` may be a true position with a king actually
+  // missing (captured, not hidden — ADR-0009) — redactFen() assumes a
+  // complete position and throws on that. Freeze the last real redacted
+  // view here (updated every render up to gameOver) so the fogged default
+  // afterward is a cached string, never a fresh redactFen() call against
+  // that now-invalid position.
+  // Seeded with the raw `fen` (never passed to redactFen) purely as a
+  // placeholder — useRef's initializer argument still runs on every
+  // render even though only the first call matters, so it must never be
+  // the redactFen() call itself. The guard below overwrites `.current`
+  // with the real redacted value before gameOver is ever reached.
+  const lastKnownRedactedFenRef = React.useRef(fen);
+  if (phase.type !== 'gameOver') {
+    lastKnownRedactedFenRef.current = redactFen(fen, viewer);
+  }
+
+  React.useEffect(() => {
+    setShowGameOver(phase.type === 'gameOver');
+  }, [phase.type]);
 
   if (phase.type === 'handoff') {
     return (
@@ -30,20 +61,12 @@ export default function LocalGameScreen(): React.JSX.Element {
     );
   }
 
-  if (phase.type === 'gameOver') {
-    return (
-      <LocalGameOverScreen
-        result={phase.result}
-        winner={phase.winner}
-        onNewGame={reset}
-      />
-    );
-  }
-
   return (
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
-        {phase.viewer === 'white' ? 'White' : 'Black'} to move
+        {phase.type === 'gameOver'
+          ? 'Game over'
+          : `${phase.viewer === 'white' ? 'White' : 'Black'} to move`}
       </Text>
       <DevFullBoardToggle
         enabled={showFullBoard}
@@ -53,21 +76,27 @@ export default function LocalGameScreen(): React.JSX.Element {
         <View className='w-full lg:w-[560px] lg:shrink-0'>
           <ChessBoard
             redactedFen={
-              viewingPly !== null
+              phase.type === 'gameOver'
                 ? showFullBoard
-                  ? moves[viewingPly].fen
-                  : redactFen(moves[viewingPly].fen, phase.viewer)
-                : showFullBoard
                   ? fen
-                  : redactFen(fen, phase.viewer)
+                  : lastKnownRedactedFenRef.current
+                : viewingPly !== null
+                  ? showFullBoard
+                    ? moves[viewingPly].fen
+                    : redactFen(moves[viewingPly].fen, viewer)
+                  : showFullBoard
+                    ? fen
+                    : redactFen(fen, viewer)
             }
             onMove={(from, to) => {
               setViewingPly(null);
               makeMove(from, to);
             }}
-            orientation={phase.viewer}
-            interactive={viewingPly === null}
-            inactiveLabel='Reviewing a past move'
+            orientation={viewer}
+            interactive={phase.type === 'playing' && viewingPly === null}
+            inactiveLabel={
+              viewingPly !== null ? 'Reviewing a past move' : 'Final position'
+            }
           />
           <CapturedPieces
             capturedByWhite={capturedByWhite}
@@ -80,6 +109,23 @@ export default function LocalGameScreen(): React.JSX.Element {
           onSelectPly={setViewingPly}
         />
       </View>
+
+      {phase.type === 'gameOver' && (
+        <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
+          <LocalGameOverModal
+            result={phase.result}
+            winner={phase.winner}
+            onRevealBoard={() => {
+              setShowFullBoard(true);
+              setShowGameOver(false);
+            }}
+            onNewGame={() => {
+              setShowFullBoard(false);
+              reset();
+            }}
+          />
+        </Dialog>
+      )}
     </View>
   );
 }

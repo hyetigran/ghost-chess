@@ -229,6 +229,7 @@ export default function GameScreen() {
           result={game.result}
           winnerId={game.winner_id}
           viewerId={userId}
+          onReviewBoard={() => setShowGameOver(false)}
           onRematch={() => {
             // Implement rematch
           }}

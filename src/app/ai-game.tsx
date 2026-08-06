@@ -6,8 +6,8 @@ import { MoveHistory } from '~/components/game/move-history/move-history';
 import { DevFullBoardToggle } from '~/components/dev/dev-full-board-toggle';
 import { ColorPicker } from '~/components/ai-game/color-picker';
 import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
-import { LocalGameOverScreen } from '~/components/local-game/local-game-over-screen';
-import { Text } from '~/components/ui';
+import { LocalGameOverModal } from '~/components/local-game/local-game-over-modal';
+import { Dialog, Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
 import { redactFen } from '~/lib/game/redact-fen';
 import type { Difficulty } from '~/lib/game/ai-move';
@@ -57,10 +57,10 @@ function AiGameBoard({
   const [humanColor] = React.useState(() => resolveHumanColor(colorChoice));
   const [showFullBoard, setShowFullBoard] = React.useState(false);
   const [viewingPly, setViewingPly] = React.useState<number | null>(null);
+  const [showGameOver, setShowGameOver] = React.useState(false);
 
   const {
     fen,
-    redactedFen,
     gameOver,
     capturedByWhite,
     capturedByBlack,
@@ -69,28 +69,38 @@ function AiGameBoard({
     reset,
   } = useAiGame(humanColor, difficulty);
 
-  if (gameOver) {
-    return (
-      <LocalGameOverScreen
-        result={gameOver.result}
-        winner={gameOver.winner}
-        onNewGame={() => {
-          reset();
-          onDone();
-        }}
-      />
-    );
+  // Once the game ends, `fen` may be a true position with a king actually
+  // missing (captured, not hidden — ADR-0009) — redactFen() assumes a
+  // complete position and throws on that (see useAiGame's own redactedFen,
+  // which hits the same constraint). Freeze the last real redacted view
+  // here (updated every render up to gameOver) so the fogged default
+  // afterward is a cached string, never a fresh redactFen() call against
+  // that now-invalid position. Seeded with the raw `fen` as a placeholder
+  // — useRef's initializer argument still runs on every render even
+  // though only the first call matters, so it must never be the
+  // redactFen() call itself.
+  const lastKnownRedactedFenRef = React.useRef(fen);
+  if (!gameOver) {
+    lastKnownRedactedFenRef.current = redactFen(fen, humanColor);
   }
 
+  React.useEffect(() => {
+    setShowGameOver(!!gameOver);
+  }, [gameOver]);
+
   const viewingFen = viewingPly !== null ? moves[viewingPly].fen : fen;
-  const displayFen = showFullBoard
-    ? viewingFen
-    : redactFen(viewingFen, humanColor);
+  const displayFen = gameOver
+    ? showFullBoard
+      ? fen
+      : lastKnownRedactedFenRef.current
+    : showFullBoard
+      ? viewingFen
+      : redactFen(viewingFen, humanColor);
 
   return (
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
-        Your move
+        {gameOver ? 'Game over' : 'Your move'}
       </Text>
       <DevFullBoardToggle
         enabled={showFullBoard}
@@ -105,8 +115,10 @@ function AiGameBoard({
               makeMove(from, to);
             }}
             orientation={humanColor}
-            interactive={viewingPly === null}
-            inactiveLabel='Reviewing a past move'
+            interactive={!gameOver && viewingPly === null}
+            inactiveLabel={
+              viewingPly !== null ? 'Reviewing a past move' : 'Final position'
+            }
           />
           <CapturedPieces
             capturedByWhite={capturedByWhite}
@@ -119,6 +131,25 @@ function AiGameBoard({
           onSelectPly={setViewingPly}
         />
       </View>
+
+      {gameOver && (
+        <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
+          <LocalGameOverModal
+            result={gameOver.result}
+            winner={gameOver.winner}
+            viewerColor={humanColor}
+            onRevealBoard={() => {
+              setShowFullBoard(true);
+              setShowGameOver(false);
+            }}
+            onNewGame={() => {
+              setShowFullBoard(false);
+              reset();
+              onDone();
+            }}
+          />
+        </Dialog>
+      )}
     </View>
   );
 }

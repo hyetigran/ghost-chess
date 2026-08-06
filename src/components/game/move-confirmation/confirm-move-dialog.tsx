@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import { Button } from '~/components/ui/button';
+import { DialogContent } from '~/components/ui/dialog';
 import { Text } from '~/components/ui/text';
 import type { PendingMove } from '~/lib/game/move-confirmation';
 
@@ -18,7 +19,7 @@ export function ConfirmMoveDialog({
   if (!pendingMove) return null;
 
   return (
-    <View className='p-6'>
+    <DialogContent className='w-full max-w-sm'>
       <Text className='mb-4 text-lg font-semibold text-center'>
         Send move {pendingMove.from} → {pendingMove.to}?
       </Text>
@@ -30,6 +31,6 @@ export function ConfirmMoveDialog({
           <Text>Confirm</Text>
         </Button>
       </View>
-    </View>
+    </DialogContent>
   );
 }

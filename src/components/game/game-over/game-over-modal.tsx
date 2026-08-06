@@ -2,9 +2,15 @@ import * as React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '~/components/ui/button';
+import { DialogContent } from '~/components/ui/dialog';
 import { Text } from '~/components/ui/text';
+import { GameOverBanner } from '~/components/game/game-over/game-over-banner';
 import { GameResult, Move } from '~/types/database';
-import { describeGameResult } from '~/lib/game/game-result-text';
+import {
+  describeGameResult,
+  gameOutcomeHeading,
+  gameOutcomeTone,
+} from '~/lib/game/game-result-text';
 import { gameQueries } from '~/lib/state/game/queries';
 
 type Props = {
@@ -12,6 +18,7 @@ type Props = {
   result: GameResult;
   winnerId: string | null;
   viewerId: string | undefined;
+  onReviewBoard: () => void;
   onRematch: () => void;
   onNewGame: () => void;
 };
@@ -21,6 +28,7 @@ export function GameOverModal({
   result,
   winnerId,
   viewerId,
+  onReviewBoard,
   onRematch,
   onNewGame,
 }: Props): React.JSX.Element {
@@ -32,22 +40,33 @@ export function GameOverModal({
   const { data: moves } = useQuery(gameQueries.gameMovesByGameId(gameId));
 
   return (
-    <View className='p-6'>
-      <Text className='mb-4 text-2xl font-bold text-center'>
-        {describeGameResult(result, winnerId, viewerId)}
-      </Text>
+    <DialogContent className='w-full max-w-sm'>
+      <GameOverBanner
+        tone={gameOutcomeTone(result, winnerId, viewerId)}
+        heading={gameOutcomeHeading(result, winnerId, viewerId)}
+        subtext={describeGameResult(result, winnerId, viewerId)}
+      />
 
       {moves && moves.length > 0 && <MoveHistory moves={moves} />}
 
-      <View className='flex-row gap-2 mt-4'>
-        <Button onPress={onRematch} className='flex-1'>
-          <Text>Rematch</Text>
-        </Button>
-        <Button variant='outline' onPress={onNewGame} className='flex-1'>
-          <Text>New Game</Text>
+      <View className='gap-2 mt-4'>
+        <View className='flex-row gap-2'>
+          <Button onPress={onRematch} className='flex-1'>
+            <Text>Rematch</Text>
+          </Button>
+          <Button variant='outline' onPress={onNewGame} className='flex-1'>
+            <Text>New Game</Text>
+          </Button>
+        </View>
+        {/* The board underneath is already unredacted (ADR-0003) — this
+            just closes the modal so the viewer can look at it, same
+            action as the dialog's own X/backdrop dismiss, just labeled
+            for what it actually does here. */}
+        <Button variant='ghost' onPress={onReviewBoard}>
+          <Text>Review board</Text>
         </Button>
       </View>
-    </View>
+    </DialogContent>
   );
 }
 
