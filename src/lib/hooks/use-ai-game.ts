@@ -161,7 +161,17 @@ export function useAiGame(
 
   return {
     fen,
-    redactedFen: redactFen(fen, humanColor),
+    // Once the game is over, `fen` may be a true position with a king
+    // actually missing (captured, not hidden — ADR-0009) — redactFen()
+    // assumes a complete true position and correctly throws on that, so
+    // it must not be called past game-over. ADR-0003 says occlusion lifts
+    // entirely on completion anyway, so the true fen is the right value
+    // here regardless (never actually rendered post-gameOver today —
+    // ai-game.tsx returns LocalGameOverScreen before reaching ChessBoard —
+    // but correct if that ever changes, e.g. a future "review this game"
+    // view). Mirrors local-game.tsx's equivalent redactFen call, which
+    // avoids this by sitting after its own gameOver early-return instead.
+    redactedFen: gameOver ? fen : redactFen(fen, humanColor),
     gameOver,
     capturedByWhite,
     capturedByBlack,

@@ -91,6 +91,25 @@ describe('redactFen', () => {
     expect(redacted).not.toContain('d6');
   });
 
+  it('throws on a true fen missing a king — including a genuinely post-king-capture position, not just a malformed one (regression)', () => {
+    // ADR-0009: a king capture is a legal move, so a "true" fen can now
+    // structurally lack a king for a real, non-error reason — the king
+    // was actually captured, not hidden. redactFen's contract is still
+    // "trueFen is a complete position with both kings" (it has no
+    // skipValidation, unlike chessFromRedactedFen), so this must keep
+    // throwing rather than silently redacting a missing king — the fix
+    // for a post-capture caller belongs at the call site (check the game
+    // is over and skip redaction entirely, matching ADR-0003's reveal-
+    // on-completion — see local-game.tsx/use-ai-game.ts), not by
+    // weakening this validation. This test exists because that exact
+    // contract violation reached production once already (useAiGame
+    // called redactFen unconditionally, before checking game-over,
+    // throwing "Invalid FEN: missing black king" mid-render).
+    const postKingCaptureFen = '4Q3/8/8/8/8/8/8/4K3 b - - 0 1';
+
+    expect(() => redactFen(postKingCaptureFen, 'white')).toThrow();
+  });
+
   it('passes through active color and fullmove number unchanged', () => {
     const fen = '7k/8/8/8/8/8/8/K7 b - - 12 34';
 
