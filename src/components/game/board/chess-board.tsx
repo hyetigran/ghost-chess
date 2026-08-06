@@ -8,9 +8,9 @@ import {
   squareAt,
   type Orientation,
 } from '~/lib/game/board-geometry';
+import { legalTargetSquares } from '~/lib/game/legal-target-squares';
 import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
-import { computeVisibleSquares } from '~/lib/game/redact-fen';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 const LABEL_GUTTER = 16;
@@ -57,15 +57,21 @@ export function ChessBoard({
   );
   const { selectedSquare, legalTargets, handleSquarePress } =
     useSquareSelection(chess, orientation, onMove);
-  // Fog of War (ADR-0008): squares outside the viewer's own vision get a
-  // tint, whether they're genuinely empty or hiding an enemy piece — the
-  // board can't tell those apart any more than the player can. Own pieces
-  // are always "known," so they're never fogged regardless of this set.
-  const visibleSquares = React.useMemo(
-    () => computeVisibleSquares(chess, orientation),
-    [chess, orientation],
-  );
   const ownPieceColor = orientation === 'white' ? 'w' : 'b';
+  // Fog/haze rule: a square is NOT hazy iff one of the viewer's own
+  // pieces could currently move there (legal-target-squares.ts) — every
+  // other square gets the haze, whether it's genuinely empty or hiding an
+  // enemy piece; the board can't tell those apart any more than the
+  // player can. Own pieces are always "known," so they're never hazy
+  // regardless of this set. Deliberately not the same set as ADR-0008's
+  // attack-based vision (computeVisibleSquares, redact-fen.ts) — that
+  // still governs what's actually revealed server-side; this only
+  // governs the board's visual haze, and includes e.g. a pawn's forward
+  // push square, which is a legal destination but not a vision square.
+  const reachableSquares = React.useMemo(
+    () => legalTargetSquares(chess, ownPieceColor),
+    [chess, ownPieceColor],
+  );
   // Every caller sets `interactive` to false exactly when `redactedFen`
   // has stopped being redacted (ADR-0003's reveal-on-completion, for the
   // online screen; local/AI games never render this component at all
@@ -104,10 +110,10 @@ export function ChessBoard({
                 const isSelected = selectedSquare === square;
                 const isLegalTarget = legalTargets.has(square);
                 const isFlashing = flashSquare === square;
-                const isOutsideVision =
+                const isHazy =
                   fogEnabled &&
                   piece?.color !== ownPieceColor &&
-                  !visibleSquares.has(square);
+                  !reachableSquares.has(square);
 
                 return (
                   <Pressable
@@ -126,14 +132,14 @@ export function ChessBoard({
                         resizeMode='contain'
                       />
                     )}
-                    {/* Fog of War (ADR-0008): a translucent haze layered
-                        over the tile rather than a flat color swap, so the
-                        light/dark checker pattern (and any highlight
-                        underneath) still shows faintly through — reads as
-                        "this square is obscured," not "this is a third
-                        square color." pointerEvents="none" so the overlay
-                        never steals the tap from the Pressable it sits on. */}
-                    {isOutsideVision && (
+                    {/* A translucent haze layered over the tile rather
+                        than a flat color swap, so the light/dark checker
+                        pattern (and any highlight underneath) still shows
+                        faintly through — reads as "this square is
+                        obscured," not "this is a third square color."
+                        pointerEvents="none" so the overlay never steals
+                        the tap from the Pressable it sits on. */}
+                    {isHazy && (
                       <View
                         className='absolute inset-0 opacity-60 bg-fog'
                         pointerEvents='none'
