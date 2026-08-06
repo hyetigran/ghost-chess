@@ -6,10 +6,21 @@ import {
   chooseAiMoveOrderFromTrueFen,
 } from '~/lib/game/ai-move';
 import { applyLocalMove } from '~/lib/game/local-move';
+import { redactFen } from '~/lib/game/redact-fen';
 
 describe('chooseAiMove', () => {
-  it('returns null when the side to move has no legal moves (stalemate)', () => {
-    const move = chooseAiMove('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', 'easy');
+  it('returns null when the side to move has no pseudo-legal moves', () => {
+    // Under Fog of War (ADR-0009) check-safety no longer restricts
+    // anything, so old-style stalemate positions (like the pre-rewrite
+    // fixture this test used) generally have real pseudo-legal moves now
+    // (a king can walk into an "attacked" square). Zero moves requires
+    // every one of the side's own pieces to be completely boxed in by its
+    // own material — same deliberately contrived fixture verified in
+    // decide-move.test.ts's equivalent case.
+    const move = chooseAiMove(
+      'kn5K/pppppppp/pppppppp/pppppppp/pppppppp/pppppppp/pppppppp/nnnnnnnn b - - 0 1',
+      'easy',
+    );
     expect(move).toBeNull();
   });
 
@@ -96,33 +107,58 @@ describe('chooseAiMove', () => {
 });
 
 describe('chooseAiMoveFromTrueFen', () => {
-  it('actually redacts the true fen before choosing — a caller that skipped redaction would pick a different move', () => {
-    // Black rook a8 can slide all the way to a1, where a white rook
-    // really sits (a genuine capture) — reachable either way, since
-    // redaction hides identity, not connectivity, so this isn't about
-    // whether the move is offered, only how it scores. Black knight d7
-    // can reach e5, a center square, unaffected by redaction either way.
+  // Under the OLD absolute-occlusion model this test constructed a
+  // position where feeding the true fen directly (skipping redaction)
+  // inflated a move's score — a real enemy piece was reachable but
+  // invisible, so redaction turned a "capture" into an apparent quiet
+  // move. That specific divergence is no longer constructible under Fog
+  // of War (ADR-0008): vision is defined as "squares the viewer's own
+  // pieces currently attack," which for sliding pieces is exactly the
+  // same set as "squares it could capture on" (both stop at the first
+  // blocker) — so any square a piece can truly reach for a capture is, by
+  // construction, always within that piece's own vision. There's no
+  // longer a way for a genuinely reachable enemy piece to be hidden from
+  // the piece that can capture it, which means chess.js run on the true
+  // fen and chess.js run on the correctly-redacted fen always agree on
+  // whether a given destination is a capture — scoreMove can no longer
+  // diverge between the two paths for the current scoring function
+  // (capture-shaped / center-square / promotion, none of which read
+  // anything about pieces the AI's own pieces don't reach).
+  //
+  // What's still worth testing — and still a real risk if someone edits
+  // this composition later — is that chooseAiMoveFromTrueFen is actually
+  // defined as "redact, then choose," not that doing so changes any
+  // particular outcome today.
+  it('is defined as redact-then-choose: equivalent to calling redactFen and chooseAiMove separately', () => {
     const trueFen = 'r6k/3n4/8/8/8/8/6K1/R7 b - - 0 1';
 
-    // Fed the true fen directly (the bug this composition exists to
-    // prevent, per its own doc comment): chess.js sees the real capture
-    // on a1 (scores 3, uniquely highest — knight-e5's center bonus is
-    // only 2), so 'hard' always picks it.
-    const buggyMove = chooseAiMove(trueFen, 'hard', () => 0.5);
-    expect(buggyMove).toEqual({ from: 'a8', to: 'a1' });
-
-    // Fed through the real composition: a1 is invisible to black, so
-    // that same move now scores 0 (an ordinary quiet move, no capture
-    // flag) — knight-e5's center bonus (2) is uniquely highest instead.
-    const correctMove = chooseAiMoveFromTrueFen(
-      trueFen,
-      'black',
+    const composed = chooseAiMoveFromTrueFen(trueFen, 'black', 'hard', () => 0.5);
+    const manual = chooseAiMove(
+      redactFen(trueFen, 'black'),
       'hard',
       () => 0.5,
     );
-    expect(correctMove).toEqual({ from: 'd7', to: 'e5' });
 
-    expect(correctMove).not.toEqual(buggyMove);
+    expect(composed).toEqual(manual);
+  });
+
+  it('a genuinely reachable capture is never hidden by redaction, even though a not-yet-reachable piece still is', () => {
+    // Black rook a8 can slide all the way to a1 where a white rook really
+    // sits — reachable, so (per the invariant above) also visible, so it
+    // scores as a real capture (+3) either way. Black knight d7 reaching
+    // the center (e5, +2) stays the next-best option either way. A second
+    // white rook at h1 is NOT reachable by anything black has (not
+    // aligned with the rook on a8, out of the knight's range) and stays
+    // genuinely invisible — included to confirm redaction still hides
+    // what it should, not just that it stopped hiding what it used to.
+    const trueFen = 'r6k/3n4/8/8/8/8/6K1/R6R b - - 0 1';
+
+    const redacted = redactFen(trueFen, 'black');
+    expect(redacted).toContain('R7'); // the reachable rook on a1 is visible
+    expect(redacted.split(' ')[0]).not.toMatch(/R.*R/); // only one 'R' — h1 stays hidden
+
+    const move = chooseAiMoveFromTrueFen(trueFen, 'black', 'hard', () => 0.5);
+    expect(move).toEqual({ from: 'a8', to: 'a1' });
   });
 });
 
@@ -138,26 +174,38 @@ describe('chooseAiMoveOrder', () => {
     }
   });
 
-  it('returns an empty list, not null, when there are no legal moves', () => {
+  it('returns an empty list, not null, when there are no pseudo-legal moves', () => {
     expect(
-      chooseAiMoveOrder('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', 'easy'),
+      chooseAiMoveOrder(
+        'kn5K/pppppppp/pppppppp/pppppppp/pppppppp/pppppppp/pppppppp/nnnnnnnn b - - 0 1',
+        'easy',
+      ),
     ).toEqual([]);
   });
 });
 
 describe('chooseAiMoveOrderFromTrueFen', () => {
-  it('always includes a legal check-escaping move, even though the checking piece is invisible to the AI', () => {
-    // White king on e1 is in check from black's rook on e8 down the open
-    // e-file — a check the AI (playing white) structurally can't see on
-    // its own redacted view, since the checking piece belongs to the
-    // opponent (ADR-0004) and redaction hides it (and black's king)
-    // entirely. On the redacted board chess.js has no idea white is in
-    // check, so it offers e1's every adjacent square as equally
-    // "legal-looking" — including e2, which stays on the e-file and
-    // doesn't actually escape check. This is the exact shape of the real
-    // bug report: a single blind pick (or a small number of retries) can
-    // land on e1-e2 and have nothing else queued up to try.
-    const trueFen = '4r2k/8/8/8/8/8/8/4K3 w - - 0 1';
+  // Under the OLD absolute-occlusion model this described a scenario
+  // where the AI's own king was in check from a piece it structurally
+  // couldn't see (ADR-0004's redacted view has no way to register a
+  // check that way) — that failure mode is gone under Fog of War
+  // (ADR-0009), since a move leaving the AI's own king in check is simply
+  // legal now, not silently-illegal-but-plausible-looking. The remaining
+  // reason the exhaustive, walk-until-valid list still matters (see
+  // ai-move.ts's updated comment on chooseAiMoveOrder): pawnCaptureCandidates
+  // speculatively offers a pawn's diagonal squares as capture-shaped
+  // candidates regardless of whether anything is really there — if the
+  // true board turns out empty, that candidate is genuinely illegal (a
+  // pawn can't move diagonally without capturing), and a single blind
+  // pick landing on one of those has nothing else queued up to try under
+  // a capped-retry approach.
+  it('always includes a real legal move, even when the top-scoring candidates are speculative pawn captures that turn out empty', () => {
+    // White pawn e4's diagonals (d5, f5) are empty on the true board — no
+    // black piece anywhere near them — so pawnCaptureCandidates' guesses
+    // there are illegal; d5 in particular outscores every real legal
+    // move (capture-shaped +3, center-square +2), so 'hard' would try it
+    // first if this function only ever offered a single pick.
+    const trueFen = 'k7/8/8/8/4P3/8/8/7K w - - 0 1';
 
     for (const difficulty of ['easy', 'medium', 'hard'] as const) {
       for (const seed of [0, 0.2, 0.4, 0.6, 0.8, 0.999]) {
@@ -177,7 +225,7 @@ describe('chooseAiMoveOrderFromTrueFen', () => {
   });
 
   it('places every generated candidate ahead of one that fails true-board validation, never dropping any', () => {
-    const trueFen = '4r2k/8/8/8/8/8/8/4K3 w - - 0 1';
+    const trueFen = 'k7/8/8/8/4P3/8/8/7K w - - 0 1';
     const order = chooseAiMoveOrderFromTrueFen(
       trueFen,
       'white',
@@ -185,10 +233,10 @@ describe('chooseAiMoveOrderFromTrueFen', () => {
       () => 0.5,
     );
 
-    // e1-e2 is exactly the redacted-view-plausible, true-illegal
-    // candidate described above — present in the list, just not the
-    // only thing offered.
-    expect(order).toContainEqual({ from: 'e1', to: 'e2' });
+    // d5 is exactly the highest-scoring, true-illegal speculative capture
+    // described above — present in the list, just not the only thing
+    // offered.
+    expect(order).toContainEqual({ from: 'e4', to: 'd5' });
     expect(order.some((move) => applyLocalMove(trueFen, move).legal)).toBe(
       true,
     );

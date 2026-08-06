@@ -11,8 +11,7 @@ export function describeGameResult(
   if (!result) return 'Game over.';
   if (!viewerId) {
     const generic: Record<Exclude<GameResult, null>, string> = {
-      checkmate: 'Game over — checkmate.',
-      stalemate: 'Game over — stalemate.',
+      king_captured: 'Game over — a king was captured.',
       draw: 'Game over — draw.',
       abandoned: 'Game over — a player resigned.',
       timeout: 'Game over — a player ran out of time.',
@@ -23,16 +22,16 @@ export function describeGameResult(
   const won = winnerId === viewerId;
 
   switch (result) {
-    case 'checkmate':
-      return won ? 'You won by checkmate!' : 'You lost by checkmate.';
+    case 'king_captured':
+      return won
+        ? 'You won by capturing the king!'
+        : 'You lost — your king was captured.';
     case 'timeout':
       return won
         ? 'You won — your opponent ran out of time!'
         : 'You lost — you ran out of time.';
     case 'abandoned':
       return won ? 'You won — your opponent resigned!' : 'You resigned.';
-    case 'stalemate':
-      return 'Draw by stalemate.';
     case 'draw':
       return 'Draw.';
   }

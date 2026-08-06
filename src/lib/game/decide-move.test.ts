@@ -42,7 +42,6 @@ describe('decideMove', () => {
     );
     expect(outcome.capturedPiece).toBeNull();
     expect(outcome.newCurrentTurn).toBe('black');
-    expect(outcome.isCheck).toBe(false);
     expect(outcome.status).toBe('active');
     expect(outcome.result).toBeNull();
     expect(outcome.winnerId).toBeNull();
@@ -74,6 +73,25 @@ describe('decideMove', () => {
     );
 
     expect(outcome).toEqual({ legal: false });
+  });
+
+  it('accepts a move that leaves the mover\'s own king in check (Fog of War, ADR-0009)', () => {
+    // White king e1 pinned-looking but not actually pinned to anything —
+    // moving the e-file pawn opens the file to a black rook on e8. Under
+    // the old rules this would be illegal (leaves the king in check);
+    // under Fog of War it's a perfectly legal (if unwise) move.
+    const game = baseGame({
+      fen: '4r2k/8/8/8/8/8/4P3/4K3 w - - 0 1',
+    });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'e2', to: 'e4' },
+      { now: 1000 },
+    );
+
+    expect(outcome.legal).toBe(true);
   });
 
   it('rejects a move from someone who is not a participant in the game', () => {
@@ -142,11 +160,12 @@ describe('decideMove', () => {
     expect(notYourTurn).toEqual(inactiveGame);
   });
 
-  it('detects checkmate and assigns the mover as winner', () => {
+  it('detects a king capture and assigns the mover as winner', () => {
+    // Open a-file: white rook a1 slides all the way to a8, capturing the
+    // black king directly — the whole game-ending mechanism under Fog of
+    // War (ADR-0009), replacing checkmate detection.
     const game = baseGame({
-      fen: '6k1/5ppp/8/8/8/8/8/R6K w - - 0 1',
-      white_player_id: WHITE_ID,
-      black_player_id: BLACK_ID,
+      fen: 'k7/8/8/8/8/8/8/R6K w - - 0 1',
     });
 
     const outcome = decideMove(
@@ -159,27 +178,62 @@ describe('decideMove', () => {
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
     expect(outcome.status).toBe('completed');
-    expect(outcome.result).toBe('checkmate');
+    expect(outcome.result).toBe('king_captured');
     expect(outcome.winnerId).toBe(WHITE_ID);
-    expect(outcome.isCheck).toBe(true);
+    expect(outcome.capturedPiece).toBe('k');
   });
 
-  it('detects stalemate as a completed draw with no winner', () => {
+  it('does NOT end the game on a move that would have been checkmate under the old rules', () => {
+    // Scholar's-mate-style back-rank attack: under the old rules 4.Qxf7
+    // would be checkmate. Under Fog of War there's no check/checkmate
+    // concept — the queen has captured a pawn and is merely attacking the
+    // king, which survives; the game continues until an actual king
+    // capture happens.
     const game = baseGame({
-      fen: 'k7/8/1K6/8/8/8/8/7Q w - - 0 1',
+      fen: '6k1/5ppp/8/8/8/8/8/R6K w - - 0 1',
     });
 
     const outcome = decideMove(
       game,
       WHITE_ID,
-      { from: 'h1', to: 'h2' },
+      { from: 'a1', to: 'a8' },
+      { now: 1000 },
+    );
+
+    expect(outcome.legal).toBe(true);
+    if (!outcome.legal) throw new Error('expected legal');
+    // a8 is empty in this fixture (the king is on g8) — this is an
+    // ordinary rook move, not a capture, and the game is still active.
+    expect(outcome.capturedPiece).toBeNull();
+    expect(outcome.status).toBe('active');
+    expect(outcome.result).toBeNull();
+  });
+
+  it('detects a completed draw when the side to move has zero pseudo-legal moves', () => {
+    // Stalemate's replacement under Fog of War: since check-safety no
+    // longer restricts anything, having genuinely zero pseudo-legal moves
+    // requires every one of the side's own pieces to be completely boxed
+    // in by its own material — deliberately contrived (41 black pieces,
+    // impossible to reach via real play) rather than a "realistic"
+    // position, since that's what it actually takes to construct this
+    // case at all once a king can walk into an attacked square. White
+    // plays a no-op king step (h7-h8); black, to move next, has nothing
+    // it can do.
+    const game = baseGame({
+      fen: 'kn6/pp1p3K/pppp4/pppp4/pppp4/pppppppp/pppppppp/nnnnnnnn w - - 0 1',
+    });
+
+    const outcome = decideMove(
+      game,
+      WHITE_ID,
+      { from: 'h7', to: 'h8' },
       { now: 1000 },
     );
 
     expect(outcome.legal).toBe(true);
     if (!outcome.legal) throw new Error('expected legal');
     expect(outcome.status).toBe('completed');
-    expect(outcome.result).toBe('stalemate');
+    expect(outcome.result).toBe('draw');
     expect(outcome.winnerId).toBeNull();
   });
 
@@ -209,8 +263,8 @@ describe('decideMove', () => {
   });
 
   it('does not falsely detect repetition from a fen-only fixture with no history', () => {
-    // Sanity check for the fallback path itself: the checkmate fixture
-    // above reuses the same starting fen pattern as other tests via
+    // Sanity check for the fallback path itself: the king-capture fixture
+    // above reuses a similar starting fen pattern to other tests via
     // baseGame(), but with an empty moveHistory it must not be treated as
     // a repeated position.
     const game = baseGame(); // start position, empty moveHistory
@@ -322,8 +376,12 @@ describe('decideMove', () => {
   // moveHistory) into the next call, the same way a real game actually
   // progresses move-by-move through this function — closer to what would
   // catch a real end-to-end regression than isolated single-call fixtures.
-  it('plays a full game through to checkmate move by move, each move built from the previous outcome', () => {
-    // Scholar's mate: 1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6?? 4. Qxf7#
+  it('plays a full game through to a king capture, move by move, each move built from the previous outcome', () => {
+    // Scholar's-mate setup, but played through to an actual king capture
+    // rather than stopping at the old checkmate move: 1. e4 e5 2. Qh5 Nc6
+    // 3. Bc4 Nf6 4. Qxf7 (used to be mate — now just a capture, game goes
+    // on) a6 (black plays an unrelated move; there's no check to answer)
+    // 5. Qxe8 (the queen, still on f7, now captures the king outright).
     const moves: { from: string; to: string; color: string }[] = [
       { from: 'e2', to: 'e4', color: WHITE_ID },
       { from: 'e7', to: 'e5', color: BLACK_ID },
@@ -332,6 +390,8 @@ describe('decideMove', () => {
       { from: 'f1', to: 'c4', color: WHITE_ID },
       { from: 'g8', to: 'f6', color: BLACK_ID },
       { from: 'h5', to: 'f7', color: WHITE_ID },
+      { from: 'a7', to: 'a6', color: BLACK_ID },
+      { from: 'f7', to: 'e8', color: WHITE_ID },
     ];
 
     let game = baseGame();
@@ -360,8 +420,8 @@ describe('decideMove', () => {
     }
 
     expect(lastOutcome?.status).toBe('completed');
-    expect(lastOutcome?.result).toBe('checkmate');
+    expect(lastOutcome?.result).toBe('king_captured');
     expect(lastOutcome?.winnerId).toBe(WHITE_ID);
-    expect(lastOutcome?.moveText).toBe('Qxf7#');
+    expect(lastOutcome?.moveText).toBe('Qxe8');
   });
 });

@@ -5,10 +5,8 @@ export function describeLocalGameResult(
   winner: Color | null,
 ): string {
   switch (result) {
-    case 'checkmate':
-      return `${winner === 'white' ? 'White' : 'Black'} wins by checkmate!`;
-    case 'stalemate':
-      return 'Draw by stalemate.';
+    case 'king_captured':
+      return `${winner === 'white' ? 'White' : 'Black'} wins by capturing the king!`;
     case 'draw':
       return 'Draw.';
   }

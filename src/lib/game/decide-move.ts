@@ -1,15 +1,21 @@
 import { Chess } from 'chess.js';
 import { isDeadlineLapsed, type TimeControlHours } from '~/lib/game/deadline';
+import {
+  applyPseudoLegalMove,
+  applyPseudoLegalSan,
+  pseudoLegalMoves,
+  wasKingCaptured,
+} from '~/lib/game/pseudo-legal-moves';
 
 export type Color = 'white' | 'black';
 export type GameStatus = 'waiting' | 'active' | 'completed' | 'abandoned';
-export type GameResult =
-  | 'checkmate'
-  | 'stalemate'
-  | 'draw'
-  | 'abandoned'
-  | 'timeout'
-  | null;
+/**
+ * Fog of War abolishes check/checkmate (ADR-0009) — the game ends the
+ * instant a king is captured, not by the old checkmate/stalemate detection.
+ * 'draw' now also covers the rare "the side to move has zero pseudo-legal
+ * moves" case that used to be 'stalemate' — see decideMove's draw branch.
+ */
+export type GameResult = 'king_captured' | 'draw' | 'abandoned' | 'timeout' | null;
 
 export type GameSnapshot = {
   fen: string;
@@ -52,7 +58,6 @@ export type MoveOutcome =
       newFen: string;
       capturedPiece: string | null;
       newCurrentTurn: Color;
-      isCheck: boolean;
       status: GameStatus;
       result: GameResult;
       winnerId: string | null;
@@ -63,11 +68,17 @@ const ILLEGAL: MoveOutcome = { legal: false };
 /**
  * Reconstructs a Chess instance by replaying moveHistory from the start,
  * so repetition-tracking is populated (see GameSnapshot.moveHistory's
- * comment). An empty history loads `fen` directly instead: for a real
- * game this is equivalent (zero moves played means fen is necessarily the
- * starting position anyway), and it's what lets tests exercise a specific
- * position directly (e.g. a constructed endgame study) without needing a
- * move sequence that actually reaches it, for scenarios that aren't about
+ * comment). Replays via applyPseudoLegalSan rather than the public
+ * `chess.move(san)` — under Fog of War rules, a historical move may be one
+ * the public API's check-safety filter would refuse to recognize (a
+ * check-unsafe or king-capturing move), same reasoning as every other move-
+ * legality call site in this codebase (see pseudo-legal-moves.ts).
+ *
+ * An empty history loads `fen` directly instead: for a real game this is
+ * equivalent (zero moves played means fen is necessarily the starting
+ * position anyway), and it's what lets tests exercise a specific position
+ * directly (e.g. a constructed endgame study) without needing a move
+ * sequence that actually reaches it, for scenarios that aren't about
  * repetition. Also falls back to `fen` if replay fails outright — that
  * loses repetition detection for this call but keeps the function
  * available rather than throwing on defensive, shouldn't-happen input
@@ -82,7 +93,9 @@ function buildChessFromHistory(game: GameSnapshot): Chess {
   try {
     const chess = new Chess();
     for (const san of game.moveHistory) {
-      chess.move(san);
+      if (!applyPseudoLegalSan(chess, san)) {
+        throw new Error(`unresolvable historical move: ${san}`);
+      }
     }
     return chess;
   } catch {
@@ -94,14 +107,20 @@ function buildChessFromHistory(game: GameSnapshot): Chess {
  * The single, server-side move-validation decision per ADR-0007: given the
  * true game state and a move attempt, decide whether it's legal and, if so,
  * what the resulting state is. Every rejection reason (not a participant,
- * not your turn, game not active, chess.js rejects the move) produces the
+ * not your turn, game not active, the move isn't pseudo-legal) produces the
  * exact same { legal: false } shape — this function must never branch into
  * reason-specific code paths that do different amounts of work, since the
  * response this feeds is required to be indistinguishable by content or
  * timing (CONTEXT.md's Move rejection glossary entry). In particular, the
- * chess.js move attempt always runs, even when the caller obviously isn't a
+ * move attempt always runs, even when the caller obviously isn't a
  * participant or it isn't their turn — participation/turn are folded into
  * the same final boolean rather than used as an early-return gate.
+ *
+ * Legality is piece-movement-rule legality only (pseudo-legal, via
+ * pseudo-legal-moves.ts) — under Fog of War (ADR-0009) a move that leaves
+ * the mover's own king in check, or that captures the enemy king outright,
+ * is legal. There is no "does this leave my king in check" veto anymore;
+ * king capture is how the game ends, not something prevented.
  *
  * `now` is injectable (rather than reading Date.now() internally) purely
  * for deterministic testing; callers pass Date.now() in production.
@@ -120,16 +139,11 @@ export function decideMove(
         : null;
 
   const chess = buildChessFromHistory(game);
-  let moveResult: ReturnType<Chess['move']> | null;
-  try {
-    moveResult = chess.move({
-      from: attempt.from,
-      to: attempt.to,
-      promotion: attempt.promotion,
-    });
-  } catch {
-    moveResult = null;
-  }
+  const moveResult = applyPseudoLegalMove(chess, {
+    from: attempt.from,
+    to: attempt.to,
+    promotion: attempt.promotion,
+  });
 
   // A lapsed deadline makes any move attempt too late, including one that
   // would otherwise be perfectly legal — the mover no longer gets to act.
@@ -137,7 +151,7 @@ export function decideMove(
   // rejection reason (ADR-0007) rather than checked separately, so a
   // deadline-lapsed rejection is indistinguishable from any other illegal
   // move. It doesn't itself end the game (that's forfeit_lapsed_games',
-  // supabase/schemas/06_functions.sql, a scheduled job — a client can't be
+  // supabase/schemas/08_functions.sql, a scheduled job — a client can't be
   // relied on to be open to trigger it, docs/adr/0006); this just makes
   // sure a move can never sneak through in the window between the
   // deadline lapsing and that job's next tick.
@@ -160,14 +174,24 @@ export function decideMove(
   let result: GameResult = null;
   let winnerId: string | null = null;
 
-  if (chess.isCheckmate()) {
+  if (wasKingCaptured(moveResult)) {
     status = 'completed';
-    result = 'checkmate';
+    result = 'king_captured';
     winnerId = callerId;
-  } else if (chess.isStalemate()) {
+  } else if (pseudoLegalMoves(chess).length === 0) {
+    // Stalemate's replacement: under pseudo-legal-only move generation
+    // this is rare (check-safety no longer restricts anything, so a side
+    // almost always has *some* move, even a bad one), but not impossible —
+    // detect and draw rather than hang the game.
     status = 'completed';
-    result = 'stalemate';
-  } else if (chess.isDraw()) {
+    result = 'draw';
+  } else if (
+    chess.isThreefoldRepetition() ||
+    chess.isInsufficientMaterial() ||
+    chess.isDrawByFiftyMoves()
+  ) {
+    // Individually, not via the composite isDraw() — that still bundles
+    // the now-removed stalemate concept.
     status = 'completed';
     result = 'draw';
   }
@@ -178,7 +202,6 @@ export function decideMove(
     newFen: chess.fen(),
     capturedPiece: moveResult.captured ?? null,
     newCurrentTurn: chess.turn() === 'w' ? 'white' : 'black',
-    isCheck: chess.isCheck(),
     status,
     result,
     winnerId,

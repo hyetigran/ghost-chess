@@ -29,6 +29,10 @@
     --dt-square-dark: 92 29% 43.3%;
     --dt-piece-white: 45 40% 98%;
     --dt-piece-black: 45 5% 16.1%;
+    /* Fog of War (ADR-0008) — not part of the original mockup handoff
+     * (predates the feature). Desaturated so it reads as a haze over the
+     * checkerboard rather than a third square color. */
+    --dt-fog: 80 8% 58%;
 
     --background: var(--dt-bg);
     --foreground: var(--dt-ink);
@@ -71,6 +75,9 @@
     --dt-square-dark: 91 30% 33.7%;
     --dt-piece-white: 45 40% 98%;
     --dt-piece-black: 75 8% 9.4%;
+    /* See :root's comment — same Fog of War token, lifted a bit lighter
+     * so it still reads against darker squares. */
+    --dt-fog: 210 8% 38%;
     /* accentPressed/accentDisabled/highlight have no distinct dark-theme
      * spec in the handoff — light values carry over as-is. */
     --dt-accent-pressed: 102 38% 27.6%;

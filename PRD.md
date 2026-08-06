@@ -1,10 +1,10 @@
-### Invisible Chess - Product Requirements Document (PRD)
+### Ghost Chess (Fog of War Chess) - Product Requirements Document (PRD)
 
 ## 1. Product Overview
 
 ### 1.1 Product Vision
 
-Invisible Chess is a mobile application that offers a unique twist on traditional chess. Players can only see their own pieces, while their opponent's pieces remain invisible. This creates a game of memory, deduction, and strategy that challenges even experienced chess players in new ways.
+Ghost Chess is a mobile application that offers a unique twist on traditional chess. Players see their own pieces plus only the opponent pieces their own pieces currently threaten — everything else stays hidden, and the game ends by capturing the enemy king rather than by checkmate. This creates a game of memory, deduction, and strategy that challenges even experienced chess players in new ways. (Earlier versions of this product hid the opponent's pieces unconditionally rather than by attack-based reveal — see `docs/adr/0008-attack-based-fog-of-war-vision.md` for why that changed.)
 
 ### 1.2 Target Audience
 
@@ -17,29 +17,30 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 
 ### 2.1 Core Gameplay
 
-- Standard chess rules apply for piece movement, check, checkmate, etc.
-- Each player can only see their own pieces on the board
-- Opponent's pieces are invisible at all times while the game is active — the only exception is the instant one is captured
-- When a player attempts any illegal move — including one that targets a square secretly occupied by an invisible opponent piece — the move is rejected with the same generic feedback as any other illegal move. The rejection never reveals why, so it discloses nothing about the opponent's position (see §3.4 for how this is enforced end-to-end, including at the response-timing level)
+- Standard chess piece-movement rules apply, with two deliberate exceptions: there is no check/checkmate, and a move that leaves the mover's own king capturable next turn is legal, not prevented (see King capture below)
+- Each player sees their own pieces plus any opponent piece their own pieces currently attack — everything else on the board is hidden
+- An opponent piece outside the viewer's own attack range is invisible; the only other exception is the instant one is captured
+- When a player attempts any illegal move — including one that targets a square outside their vision — the move is rejected with the same generic feedback as any other illegal move. The rejection never reveals why, so it discloses nothing about the opponent's position (see §3.4 for how this is enforced end-to-end, including at the response-timing level)
 - When a player captures an opponent's piece, it becomes visible briefly before being removed
 - The game tracks and displays captured pieces for both players
-- Once a game ends (checkmate, stalemate, draw, resignation, or abandonment), the true board position is revealed to both players
+- King capture: the game ends the instant a move captures the opponent's king — there is no checkmate condition to detect separately
+- Once a game ends (a king is captured, draw, resignation, or abandonment/timeout), the true board position is revealed to both players
 
 ### 2.2 Visibility Rules
 
 - Player's own pieces: Always visible
-- Opponent's pieces: Invisible for the duration of an active game, except momentarily at the instant of capture
+- Opponent's pieces: Visible only on a square one of the viewer's own pieces currently attacks — sliding pieces (bishop/rook/queen) reveal up to and including the first blocker on a ray, pawns reveal only their diagonal capture squares (never the square directly ahead), knights and the king reveal their normal one-step-or-jump reach. Everything else stays hidden, recomputed fresh from the current position every move (no memory of squares that were visible earlier and have since fallen out of reach)
 - Captured pieces: Displayed in a "captured pieces" area
-- Legal moves: Highlighted for selected pieces
-- Failed moves: All illegal moves — including attempts to move onto a hidden opponent piece — receive identical, generic "illegal move" feedback. Nothing about *why* a move failed is ever disclosed, whether through response content or response timing
-- Check: A player is still told when their own king is in check, even though this implies an invisible opponent piece is delivering it. This is treated as status of the player's own king, not a disclosure of a specific opponent position, and is not subject to the same information-hiding rule as failed moves
+- Legal moves: Highlighted for selected pieces, including ones that would leave the mover's own king capturable — that's a legal (if risky) move here, not something the UI withholds
+- Failed moves: All illegal moves — including attempts to move onto a square outside the mover's vision — receive identical, generic "illegal move" feedback. Nothing about *why* a move failed is ever disclosed, whether through response content or response timing. Visibility never affects legality: whether a move is legal is decided against the true board regardless of what the mover can see, so a square being outside vision only ever changes whether the mover is *told* what's there, never whether the move itself is allowed
+- Check: there is no check concept. A player is never told their king is threatened, since — unlike the old absolute-occlusion model — that information genuinely isn't always available to them; the game simply ends if the capture actually happens
 - Game completion: Once a game is no longer active, occlusion lifts entirely and both players can see the true final position
 
 ### 2.3 Game Modes
 
 - Online multiplayer: Play against other users in real-time. This includes guests (see §3.3) — an account is not required to play a full online game
 - Local play: Pass-and-play on a single device
-- AI opponent: Practice against computer opponents of varying difficulty. The AI plays under the same information constraints as a human opponent — it never has access to the player's hidden pieces. Difficulty comes from how well it reasons under uncertainty, not from privileged board access
+- AI opponent: Practice against computer opponents of varying difficulty. The AI plays under the same information constraints as a human opponent — it never has access to the player's hidden pieces, only whatever its own pieces currently reveal. Difficulty comes from how well it reasons under uncertainty, not from privileged board access
 
 ### 2.4 Game Settings
 
@@ -192,7 +193,7 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 - Advanced statistics and analysis
 - Social features (friends, messaging)
 - Additional game variants
-- Puzzle mode based on invisible chess scenarios
+- Puzzle mode based on Fog of War scenarios
 
 ### 7.2 Monetization Options
 
@@ -250,8 +251,7 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 ### 10.1 Glossary
 
 - FEN: Forsyth-Edwards Notation, a standard notation for describing chess positions
-- Check: A threat to capture the opponent's king
-- Checkmate: A position where the king is in check and cannot escape
+- King capture: The only way a game ends other than a draw, forfeit, or resignation — capturing the opponent's king ends the game immediately. There is no check or checkmate in this game (see `CONTEXT.md`'s King capture entry)
 - Castling: A special move involving the king and rook
 - En passant: A special pawn capture move
 
@@ -267,4 +267,4 @@ Invisible Chess is a mobile application that offers a unique twist on traditiona
 
 ---
 
-This PRD serves as a comprehensive reference for the Invisible Chess application, outlining all aspects of the product from game mechanics to technical implementation details. It should be treated as a living document that evolves as the project progresses.
+This PRD serves as a comprehensive reference for the Ghost Chess application, outlining all aspects of the product from game mechanics to technical implementation details. It should be treated as a living document that evolves as the project progresses.

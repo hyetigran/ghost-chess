@@ -1,18 +1,12 @@
 import { describeLocalGameResult } from '~/lib/game/local-game-result-text';
 
 describe('describeLocalGameResult', () => {
-  it('names the winning side on checkmate', () => {
-    expect(describeLocalGameResult('checkmate', 'white')).toBe(
-      'White wins by checkmate!',
+  it('names the winning side on king capture', () => {
+    expect(describeLocalGameResult('king_captured', 'white')).toBe(
+      'White wins by capturing the king!',
     );
-    expect(describeLocalGameResult('checkmate', 'black')).toBe(
-      'Black wins by checkmate!',
-    );
-  });
-
-  it('describes stalemate as a draw with no winner', () => {
-    expect(describeLocalGameResult('stalemate', null)).toBe(
-      'Draw by stalemate.',
+    expect(describeLocalGameResult('king_captured', 'black')).toBe(
+      'Black wins by capturing the king!',
     );
   });
 
