@@ -11,24 +11,26 @@ import {
   Button,
 } from '~/components/ui';
 import { GameCreatedCard } from '~/components/new-game/game-created-card';
+import { QuickMatchSearching } from '~/components/new-game/quick-match-searching';
 import { SettingsToggleRow } from '~/components/settings/settings-toggle-row';
 import { useAuth } from '~/context/auth-context';
 import { ratingClassRange } from '~/lib/game/rating-class';
 import { timeControlLabel } from '~/lib/game/time-control-label';
 import { useCreateGame } from '~/lib/state/game/actions';
 import { usePostOpenInvitation } from '~/lib/state/invitations/actions';
+import { useJoinMatchmakingQueue } from '~/lib/state/matchmaking/actions';
 import { userQueries } from '~/lib/state/user/queries';
 import type { GameSettings } from '~/types/database';
 
 const TIME_CONTROL_OPTIONS: GameSettings['timeControlHours'][] = [1, 12, 24];
 
-// Two genuinely different outcomes, shown as two distinct choices rather
+// Three genuinely different outcomes, shown as distinct choices rather
 // than a segmented control (#33) — a toggle-style switcher reads as "one
 // mode with a setting," which is exactly the "Live vs Daily" framing this
-// app has no second mode for; these are two different flows (a private,
-// shareable link vs. a discoverable, browsable invitation), not two
-// settings of the same flow.
-type Mode = 'choice' | 'private' | 'open';
+// app has no second mode for; these are different flows (a private,
+// shareable link; a discoverable, browsable invitation; an auto-paired
+// opponent, #34), not settings of the same flow.
+type Mode = 'choice' | 'private' | 'open' | 'quickMatch';
 
 function showError(error: Error): void {
   showMessage({
@@ -58,6 +60,12 @@ export default function NewGameScreen() {
     isPending: isPosting,
     data: postedInvitation,
   } = usePostOpenInvitation();
+  const {
+    mutate: joinQueue,
+    isPending: isJoiningQueue,
+    data: queueEntry,
+    reset: resetQueueEntry,
+  } = useJoinMatchmakingQueue();
 
   const handleCreatePrivate = (): void => {
     createGame(
@@ -76,11 +84,24 @@ export default function NewGameScreen() {
     postInvitation({ timeControlHours, ratingRange }, { onError: showError });
   };
 
+  const handleFindMatch = (): void => {
+    joinQueue(timeControlHours, { onError: showError });
+  };
+
   if (createdGame) {
     return <GameCreatedCard gameId={createdGame.id} variant='private' />;
   }
   if (postedInvitation) {
     return <GameCreatedCard gameId={postedInvitation.id} variant='open' />;
+  }
+  if (queueEntry && userId) {
+    return (
+      <QuickMatchSearching
+        viewerId={userId}
+        timeControlHours={timeControlHours}
+        onCancelled={resetQueueEntry}
+      />
+    );
   }
 
   if (mode === 'choice') {
@@ -91,7 +112,13 @@ export default function NewGameScreen() {
             <CardTitle className='text-2xl font-bold'>New Game</CardTitle>
           </CardHeader>
           <CardContent className='gap-2'>
-            <Button onPress={() => setMode('private')}>
+            <Button onPress={() => setMode('quickMatch')}>
+              <Text>Quick match</Text>
+            </Button>
+            <Text className='mb-2 text-xs text-center text-muted-foreground'>
+              Get auto-paired with a similarly-rated opponent
+            </Text>
+            <Button variant='outline' onPress={() => setMode('private')}>
               <Text>Private link</Text>
             </Button>
             <Text className='mb-2 text-xs text-center text-muted-foreground'>
@@ -110,20 +137,39 @@ export default function NewGameScreen() {
   }
 
   const isOpen = mode === 'open';
+  const isQuickMatch = mode === 'quickMatch';
+
+  const title = isOpen
+    ? 'Post open invitation'
+    : isQuickMatch
+      ? 'Quick match'
+      : 'New Game';
+  const description = isOpen
+    ? 'Anyone eligible can find and accept this'
+    : isQuickMatch
+      ? 'We’ll pair you with a similarly-rated opponent automatically'
+      : 'Create a new chess game and invite your friends';
+  const submitLabel = isOpen
+    ? 'Post open invitation'
+    : isQuickMatch
+      ? 'Find match'
+      : 'Create Game';
+  const isSubmitting = isOpen ? isPosting : isQuickMatch ? isJoiningQueue : isCreating;
+  const handleSubmit = isOpen
+    ? handlePostInvitation
+    : isQuickMatch
+      ? handleFindMatch
+      : handleCreatePrivate;
 
   return (
     <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
       <Card className='w-full max-w-sm p-6 rounded-2xl'>
         <CardHeader className='items-center'>
-          <CardTitle className='text-2xl font-bold'>
-            {isOpen ? 'Post open invitation' : 'New Game'}
-          </CardTitle>
+          <CardTitle className='text-2xl font-bold'>{title}</CardTitle>
         </CardHeader>
         <CardContent className='gap-4'>
           <Text className='text-center text-muted-foreground'>
-            {isOpen
-              ? 'Anyone eligible can find and accept this'
-              : 'Create a new chess game and invite your friends'}
+            {description}
           </Text>
 
           <View className='gap-2'>
@@ -169,11 +215,18 @@ export default function NewGameScreen() {
             </View>
           )}
 
-          <Button
-            disabled={isOpen ? isPosting : isCreating}
-            onPress={isOpen ? handlePostInvitation : handleCreatePrivate}
-          >
-            <Text>{isOpen ? 'Post open invitation' : 'Create Game'}</Text>
+          {isQuickMatch && (
+            // No rating-restriction toggle here, unlike open invitations
+            // — the widening band (src/lib/game/matchmaking-band.ts) *is*
+            // quick match's rating mechanism; a manual class-only filter
+            // on top would just fight the auto-pairing it's already doing.
+            <Text className='text-xs text-center text-muted-foreground'>
+              Always rated — the pairing range widens the longer you wait.
+            </Text>
+          )}
+
+          <Button disabled={isSubmitting} onPress={handleSubmit}>
+            <Text>{submitLabel}</Text>
           </Button>
           <Button variant='ghost' onPress={() => setMode('choice')}>
             <Text>Back</Text>

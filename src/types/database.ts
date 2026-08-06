@@ -255,3 +255,25 @@ export const myOpenInvitationSchema = z.object({
 
 export type OpenInvitation = z.infer<typeof openInvitationSchema>;
 export type MyOpenInvitation = z.infer<typeof myOpenInvitationSchema>;
+
+// The caller's own matchmaking_queue row (join_matchmaking_queue/
+// get_matchmaking_status RPCs, #34) — a standalone schema, not a
+// gameSettingsSchema-style pick, since the underlying row has no
+// `settings` jsonb at all (time_control_hours is a plain column there).
+// matched_game_id starts null and is set the moment pair_queue_entries
+// pairs this row — the client polls for it going non-null to know when
+// to navigate into the created game. get_matchmaking_status itself
+// returns SQL NULL (not a row of all-null fields) when the caller isn't
+// queued at all, which PostgREST serializes as JSON null — modeled at
+// the call site (getMatchmakingStatus, src/api/server/matchmaking.ts) via
+// `.nullable()` on this schema, not as a field inside it.
+export const matchmakingQueueEntrySchema = z.object({
+  user_id: z.string().uuid(),
+  time_control_hours: gameSettingsSchema.shape.timeControlHours,
+  elo_rating: z.number().int(),
+  matched_game_id: z.string().uuid().nullable(),
+  joined_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+});
+
+export type MatchmakingQueueEntry = z.infer<typeof matchmakingQueueEntrySchema>;
