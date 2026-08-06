@@ -26,7 +26,13 @@ export default function NewGameScreen() {
       {
         settings: {
           timeControlHours,
-          isPrivate: false,
+          // This is the private-link flow: a shareable game ID, not
+          // discoverable in the open-invitations browse list (#33). Was
+          // hardcoded `false` before that feature existed, which never
+          // mattered since nothing read this field — now that
+          // "Users can browse open invitations" (07_rls.sql) does, this
+          // needs to be genuinely true for this flow.
+          isPrivate: true,
           allowTakebacks: false,
         },
       },

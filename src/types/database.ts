@@ -45,6 +45,11 @@ export const gameSchema = z.object({
   fen: z.string(),
   pgn: z.string().nullable(),
   is_check: z.boolean(),
+  // Open-invitation rating gate (#33) — both null means "open to
+  // anyone," the case for every private-link game and every open
+  // invitation that didn't turn on "my rating class only".
+  invitation_min_rating: z.number().int().nullable(),
+  invitation_max_rating: z.number().int().nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });
@@ -135,9 +140,14 @@ export type ActiveGame = Pick<
   | 'game_id'
   | 'white_player_id'
   | 'black_player_id'
+  | 'white_username'
+  | 'white_elo_rating'
+  | 'black_username'
+  | 'black_elo_rating'
   | 'status'
   | 'current_turn'
   | 'time_control_hours'
+  | 'redacted_fen'
   | 'updated_at'
 >;
 
@@ -173,9 +183,14 @@ export const activeGameSchema = playerViewSchema.pick({
   game_id: true,
   white_player_id: true,
   black_player_id: true,
+  white_username: true,
+  white_elo_rating: true,
+  black_username: true,
+  black_elo_rating: true,
   status: true,
   current_turn: true,
   time_control_hours: true,
+  redacted_fen: true,
   updated_at: true,
 });
 
