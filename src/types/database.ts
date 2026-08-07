@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+// Every timestamp field in this file sources from a Postgres `timestamp
+// with time zone` column via PostgREST, which always serializes as an
+// offset suffix (`+00:00`), never a literal `Z` — verified directly
+// against a live local instance, including a plain REST .select() (not
+// just RPC responses). Zod's datetimeString() defaults to requiring
+// the literal-Z form and silently rejects the offset form, so every
+// datetime field here needs `{ offset: true }` — this was a real,
+// previously-undetected bug across every schema in this file (not
+// specific to any one feature), since nothing had actually run a live
+// response through these schemas' .parse() before now.
+const datetimeString = () => z.string().datetime({ offset: true });
+
 // Base schemas
 //
 // timeControlHours is the per-move deadline (docs/adr/0006): a fresh
@@ -20,8 +32,8 @@ export const userSchema = z.object({
   losses: z.number().int().nonnegative(),
   draws: z.number().int().nonnegative(),
   elo_rating: z.number().int().min(0),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  created_at: datetimeString(),
+  updated_at: datetimeString(),
 });
 
 // 'timeout' is a forfeit on a lapsed per-move deadline (docs/adr/0006);
@@ -57,8 +69,8 @@ export const gameSchema = z.object({
   // invitation that didn't turn on "my rating class only".
   invitation_min_rating: z.number().int().nullable(),
   invitation_max_rating: z.number().int().nullable(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  created_at: datetimeString(),
+  updated_at: datetimeString(),
 });
 
 export const moveSchema = z.object({
@@ -69,7 +81,7 @@ export const moveSchema = z.object({
   move_text: z.string(),
   fen: z.string(),
   captured_piece: z.string().nullable(),
-  created_at: z.string().datetime(),
+  created_at: datetimeString(),
 });
 
 // Redacted, per-player view of a game — the only game-state shape a client
@@ -103,7 +115,7 @@ export const playerViewSchema = z.object({
   time_control_hours: z.union([z.literal(1), z.literal(12), z.literal(24)]),
   captured_by_white: z.array(z.string()),
   captured_by_black: z.array(z.string()),
-  updated_at: z.string().datetime(),
+  updated_at: datetimeString(),
 });
 
 // Response schemas
@@ -242,7 +254,7 @@ export const openInvitationSchema = z.object({
   settings: gameSettingsSchema,
   invitation_min_rating: z.number().int().nullable(),
   invitation_max_rating: z.number().int().nullable(),
-  created_at: z.string().datetime(),
+  created_at: datetimeString(),
 });
 
 export const myOpenInvitationSchema = z.object({
@@ -250,7 +262,7 @@ export const myOpenInvitationSchema = z.object({
   settings: gameSettingsSchema,
   invitation_min_rating: z.number().int().nullable(),
   invitation_max_rating: z.number().int().nullable(),
-  created_at: z.string().datetime(),
+  created_at: datetimeString(),
 });
 
 export type OpenInvitation = z.infer<typeof openInvitationSchema>;
@@ -275,8 +287,8 @@ export const matchmakingQueueEntrySchema = z.object({
   time_control_hours: gameSettingsSchema.shape.timeControlHours,
   elo_rating: z.number().int(),
   matched_game_id: z.string().uuid().nullable(),
-  joined_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  joined_at: datetimeString(),
+  updated_at: datetimeString(),
 });
 
 export type MatchmakingQueueEntry = z.infer<typeof matchmakingQueueEntrySchema>;

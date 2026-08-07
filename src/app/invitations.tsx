@@ -47,23 +47,27 @@ export default function InvitationsScreen() {
   const handleAccept = (invitation: OpenInvitation): void => {
     acceptInvitation(invitation.id, {
       onSuccess: () => router.push(gameRoute(invitation.id)),
-      onError: (error) =>
+      onError: (error) => {
+        console.error(error);
         showMessage({
           message: 'Could not join this invitation',
           description: error.message,
           type: 'danger',
-        }),
+        });
+      },
     });
   };
 
   const handleCancel = (invitation: MyOpenInvitation): void => {
     cancelInvitation(invitation.id, {
-      onError: (error) =>
+      onError: (error) => {
+        console.error(error);
         showMessage({
           message: 'Could not cancel this invitation',
           description: error.message,
           type: 'danger',
-        }),
+        });
+      },
     });
   };
 

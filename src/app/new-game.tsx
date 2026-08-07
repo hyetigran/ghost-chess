@@ -33,6 +33,7 @@ const TIME_CONTROL_OPTIONS: GameSettings['timeControlHours'][] = [1, 12, 24];
 type Mode = 'choice' | 'private' | 'open' | 'quickMatch';
 
 function showError(error: Error): void {
+  console.error(error);
   showMessage({
     message: 'Something went wrong',
     description: `${error.message}`,
