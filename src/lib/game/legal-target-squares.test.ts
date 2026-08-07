@@ -64,4 +64,27 @@ describe('legalTargetSquares', () => {
     expect(targets.has('a8')).toBe(true); // rook's open file
     expect(targets.has('c3')).toBe(true); // knight's jump
   });
+
+  // chess.js's move generator only ever produces moves for chess.turn()
+  // — every fixture above happens to ask for that same color, so none of
+  // them would catch querying the *other* side's reach. This is the
+  // whole point of the fog/haze rule: a player needs to see what their
+  // own pieces can reach regardless of whose turn it currently is, not
+  // just while it's their own turn.
+  it("still reports the mover's reach while it's the opponent's turn to move", () => {
+    const chess = new Chess('7k/8/8/8/p7/8/8/R6K b - - 0 1');
+    const targets = legalTargetSquares(chess, 'w');
+
+    expect(targets.has('a2')).toBe(true);
+    expect(targets.has('a3')).toBe(true);
+    expect(targets.has('a4')).toBe(true); // the blocker itself is capturable
+    expect(targets.has('a5')).toBe(false); // beyond the blocker
+  });
+
+  it("does not mutate the caller's Chess instance when querying off-turn", () => {
+    const chess = new Chess('7k/8/8/8/8/8/8/RN5K b - - 0 1');
+    legalTargetSquares(chess, 'w');
+
+    expect(chess.turn()).toBe('b');
+  });
 });

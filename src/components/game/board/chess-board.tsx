@@ -141,7 +141,7 @@ export function ChessBoard({
                         the tap from the Pressable it sits on. */}
                     {isHazy && (
                       <View
-                        className='absolute inset-0 opacity-60 bg-fog'
+                        className='absolute inset-0 opacity-80 bg-fog'
                         pointerEvents='none'
                       />
                     )}
