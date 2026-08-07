@@ -1,6 +1,13 @@
 import * as React from 'react';
-import { Image, Pressable, View } from 'react-native';
-import { type Square } from 'chess.js';
+import { Image, View, type LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { type Piece, type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
 import {
   fileLabels,
@@ -8,12 +15,23 @@ import {
   squareAt,
   type Orientation,
 } from '~/lib/game/board-geometry';
+import { dragTargetSquare } from '~/lib/game/drag-target-square';
 import { legalTargetSquares } from '~/lib/game/legal-target-squares';
 import { pieceImage } from '~/lib/game/piece-image';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
 
 const LABEL_GUTTER = 16;
+// A drag must move at least this many pixels before it's treated as a
+// drag rather than a tap — lets Gesture.Race let the tap gesture win a
+// quick press-and-release, matching how every drag-and-drop chess UI
+// disambiguates the two.
+const DRAG_ACTIVATION_DISTANCE = 8;
+// The origin square's piece stays visible but dimmed while its "ghost"
+// follows the pointer, rather than disappearing outright — standard
+// drag-and-drop convention, and it keeps the square's own highlight
+// state legible underneath.
+const DRAGGED_PIECE_OPACITY = 0.35;
 
 type Props = {
   /**
@@ -41,6 +59,18 @@ type Props = {
   interactive?: boolean;
   /** Label shown over the board while `interactive` is false. */
   inactiveLabel?: string;
+};
+
+// Origin square + its display coordinates + a snapshot of the piece
+// itself, captured at drag-start rather than re-read from `chess` later
+// — the board's own position can change mid-drag (an opponent's move
+// arriving over realtime while you're still dragging), and the floating
+// piece should keep showing what you picked up, not flicker.
+type DraggedPiece = {
+  square: Square;
+  displayRank: number;
+  displayFile: number;
+  piece: Piece;
 };
 
 export function ChessBoard({
@@ -81,6 +111,59 @@ export function ChessBoard({
   // entirely once `interactive` is false rather than computed and hidden.
   const fogEnabled = interactive;
 
+  // Pixel size of one square, measured once the grid actually lays out —
+  // dragTargetSquare needs real pixels, not the percentage widths the
+  // squares themselves are styled with.
+  const [gridSize, setGridSize] = React.useState(0);
+  const squareSize = gridSize / 8;
+  const handleGridLayout = (event: LayoutChangeEvent): void => {
+    setGridSize(event.nativeEvent.layout.width);
+  };
+
+  const [draggedFrom, setDraggedFrom] = React.useState<DraggedPiece | null>(
+    null,
+  );
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const floatingPieceStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: dragX.value }, { translateY: dragY.value }],
+  }));
+
+  // A drag is just a compressed tap-tap: pointer-down "presses" the
+  // origin square (selects it, same as a first tap) and pointer-up
+  // "presses" the square under the release point (moves if it's a legal
+  // target, deselects otherwise, same as a second tap) — reusing
+  // handleSquarePress for both means every existing rule (own-piece-only
+  // selection, move confirmation at the caller level, king capture, ...)
+  // applies identically to drag and tap with no duplicated logic.
+  const handleDragStart = (
+    square: Square,
+    displayRank: number,
+    displayFile: number,
+    piece: Piece,
+  ): void => {
+    setDraggedFrom({ square, displayRank, displayFile, piece });
+    handleSquarePress(square);
+  };
+
+  const handleDragEnd = (
+    fromDisplayRank: number,
+    fromDisplayFile: number,
+    translationX: number,
+    translationY: number,
+  ): void => {
+    const targetSquare = dragTargetSquare(
+      fromDisplayRank,
+      fromDisplayFile,
+      translationX,
+      translationY,
+      squareSize,
+      orientation,
+    );
+    setDraggedFrom(null);
+    handleSquarePress(targetSquare);
+  };
+
   return (
     <View
       className={`w-full max-w-[560px] self-center ${interactive ? '' : 'opacity-70'}`}
@@ -100,7 +183,7 @@ export function ChessBoard({
             </View>
           ))}
         </View>
-        <View className='flex-1 aspect-square'>
+        <View className='flex-1 aspect-square' onLayout={handleGridLayout}>
           <View className='flex-row flex-wrap flex-1'>
             {Array.from({ length: 8 }).map((_, displayRank) =>
               Array.from({ length: 8 }).map((_, displayFile) => {
@@ -114,42 +197,116 @@ export function ChessBoard({
                   fogEnabled &&
                   piece?.color !== ownPieceColor &&
                   !reachableSquares.has(square);
+                const isBeingDragged = draggedFrom?.square === square;
+
+                const tapGesture = Gesture.Tap()
+                  .enabled(interactive)
+                  .onEnd((_event, success) => {
+                    if (success) {
+                      runOnJS(handleSquarePress)(square);
+                    }
+                  });
+
+                const panGesture = Gesture.Pan()
+                  .enabled(
+                    interactive &&
+                      squareSize > 0 &&
+                      piece?.color === ownPieceColor,
+                  )
+                  .minDistance(DRAG_ACTIVATION_DISTANCE)
+                  .onBegin(() => {
+                    dragX.value = 0;
+                    dragY.value = 0;
+                    if (piece) {
+                      runOnJS(handleDragStart)(
+                        square,
+                        displayRank,
+                        displayFile,
+                        piece,
+                      );
+                    }
+                  })
+                  .onUpdate((event) => {
+                    dragX.value = event.translationX;
+                    dragY.value = event.translationY;
+                  })
+                  .onEnd((event) => {
+                    dragX.value = withSpring(0);
+                    dragY.value = withSpring(0);
+                    runOnJS(handleDragEnd)(
+                      displayRank,
+                      displayFile,
+                      event.translationX,
+                      event.translationY,
+                    );
+                  });
+
+                const squareGesture = Gesture.Race(tapGesture, panGesture);
 
                 return (
-                  <Pressable
-                    key={square}
-                    className={`w-[12.5%] h-[12.5%] items-center justify-center ${
-                      isLight ? 'bg-squareLight' : 'bg-squareDark'
-                    } ${isSelected ? 'bg-highlight' : ''} ${
-                      isLegalTarget ? 'bg-accent' : ''
-                    } ${isFlashing ? 'bg-danger' : ''}`}
-                    onPress={() => interactive && handleSquarePress(square)}
-                  >
-                    {piece && (
-                      <Image
-                        source={pieceImage(piece)}
-                        style={{ width: '80%', height: '80%' }}
-                        resizeMode='contain'
-                      />
-                    )}
-                    {/* A translucent haze layered over the tile rather
-                        than a flat color swap, so the light/dark checker
-                        pattern (and any highlight underneath) still shows
-                        faintly through — reads as "this square is
-                        obscured," not "this is a third square color."
-                        pointerEvents="none" so the overlay never steals
-                        the tap from the Pressable it sits on. */}
-                    {isHazy && (
-                      <View
-                        className='absolute inset-0 opacity-80 bg-fog'
-                        pointerEvents='none'
-                      />
-                    )}
-                  </Pressable>
+                  <GestureDetector key={square} gesture={squareGesture}>
+                    <View
+                      className={`w-[12.5%] h-[12.5%] items-center justify-center ${
+                        isLight ? 'bg-squareLight' : 'bg-squareDark'
+                      } ${isSelected ? 'bg-highlight' : ''} ${
+                        isLegalTarget ? 'bg-accent' : ''
+                      } ${isFlashing ? 'bg-danger' : ''}`}
+                    >
+                      {piece && (
+                        <Image
+                          source={pieceImage(piece)}
+                          style={{
+                            width: '80%',
+                            height: '80%',
+                            opacity: isBeingDragged
+                              ? DRAGGED_PIECE_OPACITY
+                              : 1,
+                          }}
+                          resizeMode='contain'
+                        />
+                      )}
+                      {/* A translucent haze layered over the tile rather
+                          than a flat color swap, so the light/dark checker
+                          pattern (and any highlight underneath) still shows
+                          faintly through — reads as "this square is
+                          obscured," not "this is a third square color."
+                          pointerEvents="none" so the overlay never steals
+                          the tap from the gesture detector it sits on. */}
+                      {isHazy && (
+                        <View
+                          className='absolute inset-0 opacity-80 bg-fog'
+                          pointerEvents='none'
+                        />
+                      )}
+                    </View>
+                  </GestureDetector>
                 );
               }),
             )}
           </View>
+          {draggedFrom && squareSize > 0 && (
+            <Animated.View
+              pointerEvents='none'
+              style={[
+                {
+                  position: 'absolute',
+                  left: draggedFrom.displayFile * squareSize,
+                  top: draggedFrom.displayRank * squareSize,
+                  width: squareSize,
+                  height: squareSize,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                floatingPieceStyle,
+              ]}
+            >
+              <Image
+                source={pieceImage(draggedFrom.piece)}
+                style={{ width: '80%', height: '80%' }}
+                resizeMode='contain'
+              />
+            </Animated.View>
+          )}
         </View>
       </View>
       <View className='flex-row'>

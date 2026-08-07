@@ -24,7 +24,7 @@
     --dt-accent-ink: 96 45% 22.2%;
     --dt-accent-disabled: 94 22% 79.4%;
     --dt-danger: 6 60% 48.4%;
-    --dt-highlight: 50 84% 63.9%;
+    --dt-highlight: 55 84% 63.9%;
     --dt-square-light: 42 49% 86.3%;
     --dt-square-dark: 92 29% 43.3%;
     --dt-piece-white: 45 40% 98%;
@@ -82,7 +82,7 @@
      * spec in the handoff — light values carry over as-is. */
     --dt-accent-pressed: 102 38% 27.6%;
     --dt-accent-disabled: 94 22% 79.4%;
-    --dt-highlight: 50 84% 63.9%;
+    --dt-highlight: 55 84% 63.9%;
 
     --background: var(--dt-bg);
     --foreground: var(--dt-ink);
