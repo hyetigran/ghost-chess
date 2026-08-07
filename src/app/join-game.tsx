@@ -38,6 +38,7 @@ export default function JoinGameScreen() {
         router.push(gameRoute(trimmedGameId));
       },
       onError: (error) => {
+        console.error(error);
         showMessage({
           message: 'Could not join game',
           description: error.message,

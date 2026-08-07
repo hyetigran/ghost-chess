@@ -176,18 +176,39 @@ function isDeadlineLapsed(
 // module per request and would never have caught this) — a module-scope
 // singleton Response would throw "body already consumed" on its second
 // use. Must be a fresh Response per call.
+// Every response below needs these, not just the OPTIONS preflight
+// reply — a browser blocks JS from reading even a successful response if
+// it lacks Access-Control-Allow-Origin, since `supabase.functions.invoke`
+// always sends `Content-Type: application/json`, which makes every call
+// here a "non-simple" request the browser preflights. This was missing
+// entirely until now, so no move submitted through a real browser (as
+// opposed to curl, or Jest/psql calling the underlying RPC directly,
+// neither of which enforce CORS) could ever have succeeded — the
+// preflight OPTIONS request itself was falling through to the
+// method-not-allowed branch below and failing before the real POST was
+// ever sent.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+};
+
 function illegalMoveResponse(): Response {
   return new Response(JSON.stringify({ error: 'illegal_move' }), {
     status: 400,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -195,7 +216,7 @@ Deno.serve(async (req: Request) => {
   if (!authHeader) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -215,7 +236,7 @@ Deno.serve(async (req: Request) => {
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -259,7 +280,7 @@ Deno.serve(async (req: Request) => {
   if ((recentAttempts ?? 0) >= RATE_LIMIT_MAX_ATTEMPTS) {
     return new Response(JSON.stringify({ error: 'rate_limited' }), {
       status: 429,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -423,12 +444,12 @@ Deno.serve(async (req: Request) => {
   if (applyError) {
     return new Response(JSON.stringify({ error: 'internal_error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
   return new Response(JSON.stringify({ success: true }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 });
