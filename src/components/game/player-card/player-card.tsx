@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { Text } from '~/components/ui';
 import { avatarColor, initials } from '~/lib/user/avatar';
+import { formatUsername } from '~/lib/user/format-username';
 
 type Props = {
   /** null while a game is still 'waiting' for a second player to join. */
@@ -31,7 +32,7 @@ export function PlayerCard({
       </View>
       <View>
         <Text className='text-lg font-semibold'>
-          {username ?? 'Waiting for opponent...'}
+          {username ? formatUsername(username) : 'Waiting for opponent...'}
           {isYou ? ' (You)' : ''}
         </Text>
         {eloRating !== null && (

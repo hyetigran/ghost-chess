@@ -8,6 +8,7 @@ import { gameRoute } from '~/lib/navigation/game-route';
 import { timeControlLabel } from '~/lib/game/time-control-label';
 import { urgencyTier } from '~/lib/game/urgency';
 import { isViewersTurn } from '~/lib/game/viewer-turn';
+import { formatUsername } from '~/lib/user/format-username';
 import type { ActiveGame } from '~/types/database';
 
 type Props = {
@@ -83,7 +84,9 @@ function GameQueueRow({
         <View className='flex-1 gap-0.5'>
           <View className='flex-row items-center gap-2'>
             <Text className='text-base font-semibold'>
-              {opponentUsername ?? 'Waiting for opponent'}
+              {opponentUsername
+                ? formatUsername(opponentUsername)
+                : 'Waiting for opponent'}
             </Text>
             {opponentElo !== null && (
               <Text className='font-mono text-xs text-muted-foreground'>

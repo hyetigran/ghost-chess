@@ -13,6 +13,7 @@ import {
 } from '~/lib/state/invitations/actions';
 import { invitationQueries } from '~/lib/state/invitations/queries';
 import { gameRoute } from '~/lib/navigation/game-route';
+import { formatUsername } from '~/lib/user/format-username';
 import type { MyOpenInvitation, OpenInvitation } from '~/types/database';
 
 function ratingRangeLabel(
@@ -87,7 +88,7 @@ export default function InvitationsScreen() {
                   <View className='flex-1 gap-0.5 pr-3'>
                     <View className='flex-row items-center gap-2'>
                       <Text className='text-base font-semibold'>
-                        {invitation.creator_username}
+                        {formatUsername(invitation.creator_username)}
                       </Text>
                       <Text className='font-mono text-xs text-muted-foreground'>
                         {invitation.creator_elo_rating}
