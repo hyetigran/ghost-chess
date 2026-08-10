@@ -63,7 +63,6 @@ export const gameSchema = z.object({
   current_turn: z.enum(['white', 'black']),
   fen: z.string(),
   pgn: z.string().nullable(),
-  is_check: z.boolean(),
   // Open-invitation rating gate (#33) — both null means "open to
   // anyone," the case for every private-link game and every open
   // invitation that didn't turn on "my rating class only".
