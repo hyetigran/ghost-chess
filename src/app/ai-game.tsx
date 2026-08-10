@@ -9,6 +9,7 @@ import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverModal } from '~/components/local-game/local-game-over-modal';
 import { Dialog, Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
+import { useGameSounds } from '~/lib/hooks/use-game-sounds';
 import { redactFen } from '~/lib/game/redact-fen';
 import type { Difficulty } from '~/lib/game/ai-move';
 import {
@@ -88,6 +89,10 @@ function AiGameBoard({
     setShowGameOver(!!gameOver);
   }, [gameOver]);
 
+  // The live true fen, not displayFen — history browsing and the dev
+  // full-board toggle change what's displayed without a move happening.
+  useGameSounds(gameOver ? null : fen);
+
   const viewingFen = viewingPly !== null ? moves[viewingPly].fen : fen;
   const displayFen = gameOver
     ? showFullBoard
@@ -110,9 +115,9 @@ function AiGameBoard({
         <View className='w-full lg:w-[560px] lg:shrink-0'>
           <ChessBoard
             redactedFen={displayFen}
-            onMove={(from, to) => {
+            onMove={(from, to, promotion) => {
               setViewingPly(null);
-              makeMove(from, to);
+              makeMove(from, to, promotion);
             }}
             orientation={humanColor}
             interactive={!gameOver && viewingPly === null}

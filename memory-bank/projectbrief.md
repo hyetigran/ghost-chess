@@ -34,6 +34,6 @@ Ghost Chess is a mobile chess variant where each player sees only their own piec
 
 ## Roadmap phases (from PRD)
 
-1. **MVP** — Core mechanics, basic UI, local play, simple AI — **largely landed** (occlusion + local/AI + board UI).
-2. **Online** — Accounts, invites/persistence, Realtime — **largely landed** (invite-only; matchmaking deferred). Push path built; device delivery unproven.
-3. **Polish** — UX (promotion picker, sound), home entry points for local/AI, store builds / EAS, stats polish, more modes.  
+1. **MVP** — Fog of War core, board UI, local + AI — **landed** (ADR-0008/0009 rewrite included).
+2. **Online** — Auth, private + open invitations, Realtime, rating Quick Match — **landed**. Push path built; device delivery unproven.
+3. **Polish** — Promotion picker, sound, EAS device validation, ARCHITECTURE.md refresh, schema/TS drift cleanup, more modes.  

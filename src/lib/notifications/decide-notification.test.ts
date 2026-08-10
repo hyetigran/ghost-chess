@@ -84,7 +84,7 @@ describe('decideGameChangeNotifications', () => {
     expect(events).toHaveLength(2);
   });
 
-  it('sends nothing for an unrelated change, like is_check toggling with no turn or status change', () => {
+  it('sends nothing when neither turn nor status changed', () => {
     const previous = snapshot();
     const next = snapshot();
 

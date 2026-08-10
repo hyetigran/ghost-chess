@@ -1,0 +1,53 @@
+# When this file exists, EAS ignores .gitignore entirely and uses this
+# instead. It mirrors .gitignore except that the staging client env file
+# and google-services.json ARE uploaded with the build archive — the
+# staging profile's env.js loader (APP_ENV=staging → .env.staging) and
+# app.config.ts's googleServicesFile both need them, and both hold
+# client-side publishable values (EXPO_PUBLIC_* vars, sb_publishable_
+# key, FCM client config), not server secrets. Genuinely secret files
+# (keystores, signing keys, admin SDK credentials) stay excluded below.
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files — development stays local-only; production builds get
+# their values from EAS environment variables (eas env:list production)
+.env*.development
+.env*.production
+
+# Firebase admin credentials (the client google-services.json is uploaded)
+GoogleService-Info.plist
+*firebase-adminsdk*.json
+
+# typescript
+*.tsbuildinfo
+
+# test coverage
+coverage/
+
+expo-env.d.ts

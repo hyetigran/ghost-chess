@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
 import { useCaptureFlash } from '~/lib/hooks/use-capture-flash';
+import { useGameSounds } from '~/lib/hooks/use-game-sounds';
 import { useMoveConfirmation } from '~/lib/hooks/use-move-confirmation';
 import { useAuth } from '~/context/auth-context';
 import { useSettings } from '~/context/settings-context';
@@ -43,6 +44,10 @@ export default function GameScreen() {
     game?.white_player_id === userId ? 'white' : 'black',
   );
   const { moveConfirmationEnabled, vibrationEnabled } = useSettings();
+  useGameSounds(
+    game?.status === 'active' ? game.redacted_fen : null,
+    flashSquare,
+  );
   const { pendingMove, attemptMove, confirm, cancel } = useMoveConfirmation(
     moveConfirmationEnabled,
     (move) => {
@@ -134,19 +139,19 @@ export default function GameScreen() {
                   ? moveEntries[viewingPly].fen
                   : game.redacted_fen
               }
-              onMove={(from, to) => {
+              onMove={(from, to, promotion) => {
                 if (!userId) return;
 
                 setViewingPly(null);
-                // ChessBoard doesn't have a promotion-piece picker yet (a
-                // separate UI feature) — default to auto-queen, the standard
-                // convention when no picker is available, rather than let
-                // every promotion attempt fail as an unexplained illegal move.
+                // `promotion` is set by ChessBoard's picker only for actual
+                // pawn promotions; the 'q' fallback just satisfies
+                // PendingMove's required field and is ignored by the server
+                // for non-promotion moves (findPseudoLegalMove).
                 // Routed through attemptMove rather than makeMove directly so
                 // the optional confirm-before-send step (#22) can intercept it;
                 // reportOwnMove/makeMove only run once the move is actually
                 // submitted (see the useMoveConfirmation callback above).
-                attemptMove({ from, to, promotion: 'q' });
+                attemptMove({ from, to, promotion: promotion ?? 'q' });
               }}
               orientation={isWhitePlayer ? 'white' : 'black'}
               flashSquare={flashSquare}
