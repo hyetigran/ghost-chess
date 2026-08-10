@@ -9,6 +9,7 @@ import { DifficultyPicker } from '~/components/ai-game/difficulty-picker';
 import { LocalGameOverModal } from '~/components/local-game/local-game-over-modal';
 import { Dialog, Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
+import { useGameSounds } from '~/lib/hooks/use-game-sounds';
 import { redactFen } from '~/lib/game/redact-fen';
 import type { Difficulty } from '~/lib/game/ai-move';
 import {
@@ -87,6 +88,10 @@ function AiGameBoard({
   React.useEffect(() => {
     setShowGameOver(!!gameOver);
   }, [gameOver]);
+
+  // The live true fen, not displayFen — history browsing and the dev
+  // full-board toggle change what's displayed without a move happening.
+  useGameSounds(gameOver ? null : fen);
 
   const viewingFen = viewingPly !== null ? moves[viewingPly].fen : fen;
   const displayFen = gameOver

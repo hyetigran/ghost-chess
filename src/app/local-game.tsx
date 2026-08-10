@@ -9,6 +9,7 @@ import { LocalGameOverModal } from '~/components/local-game/local-game-over-moda
 import { Dialog, Text } from '~/components/ui';
 import { redactFen } from '~/lib/game/redact-fen';
 import type { Color } from '~/lib/game/local-move';
+import { useGameSounds } from '~/lib/hooks/use-game-sounds';
 import { useLocalGame } from '~/lib/hooks/use-local-game';
 
 export default function LocalGameScreen(): React.JSX.Element {
@@ -54,6 +55,12 @@ export default function LocalGameScreen(): React.JSX.Element {
   React.useEffect(() => {
     setShowGameOver(phase.type === 'gameOver');
   }, [phase.type]);
+
+  // The live true fen, not the display fen — history browsing and the
+  // dev full-board toggle change what's displayed without a move
+  // happening. Still passed during handoff (the move that triggered the
+  // handoff should sound), null once the game is over.
+  useGameSounds(phase.type === 'gameOver' ? null : fen);
 
   if (phase.type === 'handoff') {
     return (

@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
 import { useCaptureFlash } from '~/lib/hooks/use-capture-flash';
+import { useGameSounds } from '~/lib/hooks/use-game-sounds';
 import { useMoveConfirmation } from '~/lib/hooks/use-move-confirmation';
 import { useAuth } from '~/context/auth-context';
 import { useSettings } from '~/context/settings-context';
@@ -43,6 +44,10 @@ export default function GameScreen() {
     game?.white_player_id === userId ? 'white' : 'black',
   );
   const { moveConfirmationEnabled, vibrationEnabled } = useSettings();
+  useGameSounds(
+    game?.status === 'active' ? game.redacted_fen : null,
+    flashSquare,
+  );
   const { pendingMove, attemptMove, confirm, cancel } = useMoveConfirmation(
     moveConfirmationEnabled,
     (move) => {
