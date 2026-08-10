@@ -18,8 +18,10 @@ import {
 import { dragTargetSquare } from '~/lib/game/drag-target-square';
 import { legalTargetSquares } from '~/lib/game/legal-target-squares';
 import { pieceImage } from '~/lib/game/piece-image';
+import { isPromotionMove, type PromotionPiece } from '~/lib/game/promotion';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
+import { PromotionPicker } from './promotion-picker';
 
 const LABEL_GUTTER = 16;
 // A drag must move at least this many pixels before it's treated as a
@@ -45,7 +47,15 @@ type Props = {
    * being a hint that something's wrong.
    */
   redactedFen: string;
-  onMove: (from: string, to: string) => void;
+  /**
+   * `promotion` is set only when the move is a pawn reaching its last
+   * rank, chosen via the in-board PromotionPicker; every other move
+   * omits it. Callers that need a value for non-promotion moves too
+   * (PendingMove's required `promotion`) default it to 'q', which the
+   * move-matching layer ignores unless the move actually promotes
+   * (pseudo-legal-moves.ts findPseudoLegalMove).
+   */
+  onMove: (from: string, to: string, promotion?: PromotionPiece) => void;
   orientation: Orientation;
   /** Briefly highlighted on a capture (src/lib/hooks/use-capture-flash.ts, #18). */
   flashSquare?: Square | null;
@@ -85,8 +95,28 @@ export function ChessBoard({
     () => chessFromRedactedFen(redactedFen),
     [redactedFen],
   );
+  // A pawn move onto its last rank pauses here instead of firing onMove:
+  // the picker overlay collects the piece choice, then the move goes out
+  // with it. Any position change while the picker is open (an opponent
+  // move arriving over realtime, history navigation) discards the
+  // pending promotion — the move was decided against a board that no
+  // longer exists.
+  const [pendingPromotion, setPendingPromotion] = React.useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+  React.useEffect(() => {
+    setPendingPromotion(null);
+  }, [redactedFen]);
+  const handleMoveIntent = (from: string, to: string): void => {
+    if (isPromotionMove(chess, from, to)) {
+      setPendingPromotion({ from, to });
+      return;
+    }
+    onMove(from, to);
+  };
   const { selectedSquare, legalTargets, handleSquarePress } =
-    useSquareSelection(chess, orientation, onMove);
+    useSquareSelection(chess, orientation, handleMoveIntent);
   const ownPieceColor = orientation === 'white' ? 'w' : 'b';
   // Fog/haze rule: a square is NOT hazy iff one of the viewer's own
   // pieces could currently move there (legal-target-squares.ts) — every
@@ -306,6 +336,16 @@ export function ChessBoard({
                 resizeMode='contain'
               />
             </Animated.View>
+          )}
+          {pendingPromotion && (
+            <PromotionPicker
+              color={ownPieceColor}
+              onPick={(piece) => {
+                setPendingPromotion(null);
+                onMove(pendingPromotion.from, pendingPromotion.to, piece);
+              }}
+              onCancel={() => setPendingPromotion(null)}
+            />
           )}
         </View>
       </View>

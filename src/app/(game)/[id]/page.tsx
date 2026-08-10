@@ -134,19 +134,19 @@ export default function GameScreen() {
                   ? moveEntries[viewingPly].fen
                   : game.redacted_fen
               }
-              onMove={(from, to) => {
+              onMove={(from, to, promotion) => {
                 if (!userId) return;
 
                 setViewingPly(null);
-                // ChessBoard doesn't have a promotion-piece picker yet (a
-                // separate UI feature) — default to auto-queen, the standard
-                // convention when no picker is available, rather than let
-                // every promotion attempt fail as an unexplained illegal move.
+                // `promotion` is set by ChessBoard's picker only for actual
+                // pawn promotions; the 'q' fallback just satisfies
+                // PendingMove's required field and is ignored by the server
+                // for non-promotion moves (findPseudoLegalMove).
                 // Routed through attemptMove rather than makeMove directly so
                 // the optional confirm-before-send step (#22) can intercept it;
                 // reportOwnMove/makeMove only run once the move is actually
                 // submitted (see the useMoveConfirmation callback above).
-                attemptMove({ from, to, promotion: 'q' });
+                attemptMove({ from, to, promotion: promotion ?? 'q' });
               }}
               orientation={isWhitePlayer ? 'white' : 'black'}
               flashSquare={flashSquare}

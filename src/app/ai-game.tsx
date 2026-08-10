@@ -110,9 +110,9 @@ function AiGameBoard({
         <View className='w-full lg:w-[560px] lg:shrink-0'>
           <ChessBoard
             redactedFen={displayFen}
-            onMove={(from, to) => {
+            onMove={(from, to, promotion) => {
               setViewingPly(null);
-              makeMove(from, to);
+              makeMove(from, to, promotion);
             }}
             orientation={humanColor}
             interactive={!gameOver && viewingPly === null}

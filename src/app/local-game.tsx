@@ -88,9 +88,9 @@ export default function LocalGameScreen(): React.JSX.Element {
                     ? fen
                     : redactFen(fen, viewer)
             }
-            onMove={(from, to) => {
+            onMove={(from, to, promotion) => {
               setViewingPly(null);
-              makeMove(from, to);
+              makeMove(from, to, promotion);
             }}
             orientation={viewer}
             interactive={phase.type === 'playing' && viewingPly === null}
