@@ -20,15 +20,20 @@ Post-merge polish on `misc-fixes` (currently = `main` @ matchmaking merge). Prod
 
 ## Open considerations / debt
 
-- `src/types/database.ts` `gameSchema` still declares `is_check` though the column was dropped in the FoW migration — likely to break any live `.parse()` of `games` rows; confirm and remove.
-- `ARCHITECTURE.md` Implementation status still describes absolute-occlusion era + “Not started” list — prefer `CONTEXT.md` / ADRs / this bank until rewritten.
-- Sound toggle still has no audio consumer; promotion still auto-queens.
-- Push: Expo API path verified earlier; physical-device delivery still unproven.
+- **Android staging EAS build blocked on one interactive step**: keystore generation (`eas build -p android --profile staging`, answer Y to "Generate a new Keystore") — everything else is ready: `.easignore` carries `.env.staging` + `google-services.json` into the archive, `expo-updates` installed and configured (channel/branch `staging` created), versionCode initialized.
+- Push: Expo API path verified earlier; physical-device delivery still unproven (needs the build above on a device).
 - Squashed migration + additive migrations (`…player_view_identity`, `…fog_of_war_rules_rewrite`, `…open_invitations`, `…matchmaking`) — remote DBs that applied the old pre-squash chain need a deliberate history strategy.
+- expo-doctor: several deps drift from SDK 52 expected versions (`expo`, `expo-router`, `react-native-gesture-handler` 2.25 vs expected ~2.20, `react-native-svg`); `expo-av` flagged unmaintained (deliberate: `expo-audio` only stabilized in SDK 53 — revisit at SDK upgrade).
+
+## Recently cleared (2026-08-09)
+
+- Stale `is_check` dropped from `gameSchema` (was breaking every live `games` row `.parse()` in `src/api/server/game.ts`).
+- `ARCHITECTURE.md` rewritten for FoW/king-capture + current implementation status.
+- Pawn promotion picker (in-board overlay in `ChessBoard`, all three surfaces; `onMove` gained optional `promotion`).
+- Move/capture sounds behind the settings toggle (`use-game-sounds.ts`, expo-av, synthesized WAVs in `assets/sounds/`); capture flash upgrades the move sound within a 60ms window.
 
 ## Next steps (suggested order)
 
-1. Clear `misc-fixes` debt (e.g. drop stale `is_check` from TS schemas; any other FoW leftover).
-2. Refresh `ARCHITECTURE.md` Implementation status for FoW + matchmaking.
-3. Device EAS build to validate push + Quick Match end-to-end.
-4. Polish: promotion picker, sound, further UX.
+1. Run the one interactive keystore step + Android staging build; install on device; validate push + Quick Match end-to-end.
+2. Decide migration-history strategy for pre-squash remote DBs.
+3. Further polish: draw offers ("Implement draw offer" stub in game controls), rematch/new-game stubs in GameOverModal.
