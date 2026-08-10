@@ -2,7 +2,7 @@
 
 ## Core principle
 
-Occlusion is enforced server-side (`docs/adr/0001`). Clients must never receive or subscribe to the true board while a game is active.
+Occlusion is enforced server-side (`docs/adr/0001`). Clients never receive the true board while a game is active. Vision is attack-based Fog of War (`docs/adr/0008`), not absolute hide-all.
 
 ## Dual data surfaces
 
@@ -12,58 +12,62 @@ player_views   → one redacted row per (game_id, player_id); clients read/subsc
 ```
 
 - Trigger on `games` recomputes both `player_views` in the **same transaction** as each move (`docs/adr/0002`).
-- When status leaves `active`, redaction lifts; views show true final position (`docs/adr/0003`). Reveal for `waiting` stays occluded; terminal includes `completed` / `abandoned` (and UI treats `timeout` as a distinct forfeit result).
-- Never Realtime-subscribe to `games` — RLS allows both players SELECT on non-active rows, and a live subscription on true state would leak.
+- Redaction predicate: enemy piece visible iff viewer currently attacks that square on the **true** board (SQL hand-rolled rays; TS uses chess.js `isAttacked`).
+- When status leaves `active`, redaction lifts (`docs/adr/0003`). `waiting` stays occluded.
+- Never Realtime-subscribe to `games`. Never expose a separate “can I see square X?” RPC (`docs/adr/0007` + `0008`).
 
-## Move validation
+## Move validation & end conditions
 
-- Single server path: Deno edge `submit-move` → chess.js against true state → `apply_move` RPC (`service_role` only).
-- Optimistic concurrency: `apply_move` takes `p_expected_fen`; stale writers raise `stale_precondition`.
-- Client “confirm move” is local UX only — no pre-flight legality RPC (`docs/adr/0007`).
-- Illegal-move handling: uniform `{ error: "illegal_move" }` across board-secrecy reasons; auth/rate-limit may differ.
+- Single server path: Deno `submit-move` → pseudo-legal generation → `apply_move` (`service_role` only).
+- Pseudo-legal moves required: chess.js public API filters check-safety; FoW allows leaving own king capturable and capturing the enemy king (`docs/adr/0009`). Module: `src/lib/game/pseudo-legal-moves.ts` (+ Deno copy); canary test guards private `_moves`/`_makeMove` APIs.
+- `result`: `king_captured` | `draw` | `abandoned` | `timeout` — no `checkmate`/`stalemate`; `is_check` column removed.
+- Optimistic concurrency via `p_expected_fen` / `stale_precondition`.
+- Client move confirmation is UX only — no pre-flight legality oracle.
 
 ## Identity
 
-- Guests = Supabase Anonymous Auth (`docs/adr/0005`): real `auth.users` + JWT; `auth.uid()` uniform.
-- Schema: one player ID column per side — **no** guest-id columns.
-- `on_auth_user_created` / `handle_new_user` seeds `public.users`; anonymous users get a generated `guest_<uuid>` username when metadata has none.
+- Guests = Supabase Anonymous Auth (`docs/adr/0005`); generated `guest_<uuid>` usernames, abbreviated in UI display contexts.
+- One player ID column per side.
+
+## Matchmaking & invitations
+
+- **Private link**: share game UUID; `join_game` RPC.
+- **Open invitations**: browsable waiting games; optional `invitation_min_rating` / `invitation_max_rating`.
+- **Quick Match**: `matchmaking_queue` (one row per user), rating-band pairing, heartbeat via status poll, cron sweep for stale rows — not on Realtime publication.
 
 ## AI
 
-- AI consumes only a redacted FEN (`docs/adr/0004`). Candidate set matches human highlighting (chess.js + `pawnCaptureCandidates`). Difficulty = heuristic under uncertainty, not privileged search.
+- Reads only redacted FEN (`docs/adr/0004`); candidates from the same vision-aware generation humans use.
 
 ## Time control
 
-- Server-enforced per-move windows (`docs/adr/0006`): derive deadline from `updated_at` + `timeControlHours`.
-- Layers: reject lapsed moves in `submit-move`; `pg_cron` `forfeit_lapsed_games()` forfeit with `result=timeout`.
-- Notifications inform; they do not extend deadlines.
+- Per-move windows from `updated_at` + `timeControlHours` (`docs/adr/0006`).
+- Reject lapsed moves in `submit-move`; `forfeit_lapsed_games()` cron → `timeout`.
 
 ## Client architecture patterns
 
-- Expo Router under `src/app/` only (no parallel root `app/`).
-- Absolute imports `@/...`.
-- TanStack Query for server state; Realtime writes into the same query keys as fetches.
-- NativeWind; keep screen components ≤ ~80 lines by extracting hooks/pure modules.
-- Feature-ish layout: `src/api`, `src/lib`, `src/components`, `src/types`.
-- Redacted FENs need `new Chess(fen, { skipValidation: true })` — opponent king is intentionally missing.
+- Expo Router under `src/app/` only.
+- Absolute imports `@/...` or `~/...` per project convention.
+- TanStack Query + Realtime into the same cache keys.
+- Client fog overlay recomputed from redacted FEN (aligned with server vision for first-blocker pieces).
+- `__DEV__` full-board toggle for debugging only — must never ship as a player feature that reads true FEN from the server.
 
 ## Dual-implementation (testability)
 
-Pure TS modules mirror SQL/Deno logic for Jest; enforcement stays in Postgres/edge:
-
 | Concern | TS reference | Authoritative |
 |---------|--------------|---------------|
-| Redaction | `src/lib/game/redact-fen.ts` | `redact_fen()` + `sync_player_views` |
-| Move decide | `src/lib/game/decide-move.ts` | `submit-move` |
-| Deadlines | `src/lib/game/deadline.ts` | edge + `forfeit_lapsed_games` |
-| Notifications | `src/lib/notifications/*` | `notify_game_change` / `send_time_warnings` + pg_net |
+| Vision / redaction | `redact-fen.ts` | SQL `redact_fen` + `sync_player_views` |
+| Pseudo-legal / decide | `pseudo-legal-moves.ts`, `decide-move.ts` | `submit-move` |
+| Deadlines | `deadline.ts` | edge + `forfeit_lapsed_games` |
+| Matchmaking band | `matchmaking-band.ts`, `rating-class.ts` | SQL pairing functions |
+| Notifications | `src/lib/notifications/*` | SQL + pg_net |
 
 ## Anti-patterns to avoid
 
-- Returning `select('*')` on `games` to clients during active play.
-- Custom guest UUID / `set_guest_id` as identity (superseded by ADR 0005).
-- Branching illegal-move paths by secrecy-relevant reason (timing/content leaks).
-- Client-side “is capture?” checks against redacted FEN (hidden targets look empty).
-- Legal-move UI that trusts chess.js alone for pawn diagonals on redacted boards — use `pawnCaptureCandidates`.
-- Granting clients INSERT on `moves` or broad UPDATE on `games` (bypasses `apply_move` / `end_own_game`).
-- Assuming `supabase migration squash` preserves REVOKE / default-privilege lockdown — re-verify.
+- Absolute-occlusion assumptions (hide all enemies; announce check).
+- Trusting chess.js public `.moves()`/`.move()` for FoW legality.
+- Client “is capture?” against redacted FEN alone for hidden targets.
+- Vision as a probeable endpoint.
+- Client INSERT on `moves` / broad UPDATE on `games`.
+- Assuming migration squash preserves REVOKEs — re-verify.
+- Leaving `is_check` in client schemas after the FoW schema drop.
