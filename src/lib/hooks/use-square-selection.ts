@@ -2,8 +2,7 @@ import * as React from 'react';
 import { Chess, Square } from 'chess.js';
 import type { Orientation } from '~/lib/game/board-geometry';
 import { decideSelectionAction } from '~/lib/game/selection';
-import { pawnCaptureCandidates } from '~/lib/game/pawn-capture-candidates';
-import { pseudoLegalMoves } from '~/lib/game/pseudo-legal-moves';
+import { legalMoveTargets } from '~/lib/game/legal-move-targets';
 
 type SquareSelection = {
   selectedSquare: Square | null;
@@ -25,30 +24,20 @@ export function useSquareSelection(
   );
   const ownColor = orientation === 'white' ? 'w' : 'b';
 
+  // legalMoveTargets (src/lib/game/legal-move-targets.ts) uses the shared
+  // pseudo-legal generator, not chess.js's public legal-filtered moves()
+  // — under Fog of War (ADR-0009) a move that leaves the mover's own king
+  // in check is legal, so the board must offer it as a tappable target
+  // too (e.g. walking the king onto a square a visible enemy piece
+  // attacks), not silently withhold it the way the old check-safety
+  // filter would have. It also gates a pawn's straight push on vision
+  // (mirrors legal-target-squares.ts's haze rule) — without that gate,
+  // this used to offer a push into a hidden, actually-occupied square as
+  // a legal target, which the server would then reject and silently
+  // revert.
   const legalTargets = React.useMemo(() => {
     if (!selectedSquare) return new Set<Square>();
-    // The shared pseudo-legal generator, not chess.js's public legal-
-    // filtered moves() — under Fog of War (ADR-0009) a move that leaves
-    // the mover's own king in check is legal, so the board must offer it
-    // as a tappable target too (e.g. walking the king onto a square a
-    // visible enemy piece attacks), not silently withhold it the way the
-    // old check-safety filter would have.
-    const targets = new Set(
-      pseudoLegalMoves(chess, { square: selectedSquare }).map(
-        (move) => move.to as Square,
-      ),
-    );
-    // chess.js omits a pawn's diagonal capture squares whenever it can't
-    // see a piece there — which, against a redacted board, is every real
-    // hidden-piece capture. See pawn-capture-candidates.ts.
-    for (const candidate of pawnCaptureCandidates(
-      chess,
-      selectedSquare,
-      ownColor,
-    )) {
-      targets.add(candidate);
-    }
-    return targets;
+    return legalMoveTargets(chess, selectedSquare, ownColor);
   }, [chess, selectedSquare, ownColor]);
 
   const handleSquarePress = (square: Square): void => {
