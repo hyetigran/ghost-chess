@@ -1,8 +1,36 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createGame, endGame, joinGame, submitMove } from '~/api/server/game';
+import { showMessage } from 'react-native-flash-message';
+import {
+  createGame,
+  endGame,
+  joinGame,
+  submitMove,
+  type SubmitMoveError,
+} from '~/api/server/game';
 import { useAuth } from '~/context/auth-context';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { GameSettings, PlayerView } from '~/types/database';
+
+// One message per SubmitMoveErrorCode — "illegal_move" stays deliberately
+// generic (ADR-0007: it's the uniform code for several different
+// board-related rejection reasons, including a move that only looked
+// legal because it targeted a hidden opponent piece) rather than
+// guessing at which one applies. Told to the mover themselves, about
+// their own just-attempted move — unlike the server's own response
+// timing/shape (what ADR-0007 actually constrains), this discloses
+// nothing beyond what the player already knows they just tried.
+function describeMoveError(error: SubmitMoveError): string {
+  switch (error.code) {
+    case 'rate_limited':
+      return 'Too many move attempts — wait a moment and try again.';
+    case 'unauthorized':
+      return 'You need to be signed in to move.';
+    case 'illegal_move':
+    case 'internal_error':
+    default:
+      return "That move wasn't accepted — the board may have changed. Tap the board again to try.";
+  }
+}
 
 export const useMakeMove = ({ gameId }: { gameId: string }) => {
   const queryClient = useQueryClient();
@@ -78,11 +106,17 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
       if (context?.previousGame) {
         queryClient.setQueryData(['game', gameId], context.previousGame);
       }
-      // Not surfaced in the UI yet (no toast/notification system exists) —
-      // logged so a rejection isn't completely silent. `err.code` is
-      // deliberately generic ("illegal_move") for anything board-related,
-      // per ADR-0007; this is a debugging aid, not user-facing copy.
       console.warn('move rejected:', err instanceof Error ? err.message : err);
+      // A rejected move used to just silently snap back with zero
+      // feedback — most confusingly for a move that looked completely
+      // legal client-side (e.g. a pawn push into a hidden, actually-
+      // occupied square, src/lib/game/legal-move-targets.ts). Whatever
+      // the actual rejection reason, the player deserves to know their
+      // tap didn't land rather than wonder if the app is broken.
+      showMessage({
+        message: describeMoveError(err as SubmitMoveError),
+        type: 'warning',
+      });
     },
     onSettled: () => {
       // Refetch the game to ensure we have the latest data
