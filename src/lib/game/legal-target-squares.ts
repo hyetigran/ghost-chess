@@ -16,8 +16,15 @@ import { computeVisibleSquares } from '~/lib/game/redact-fen';
  * the one exception (see below): unlike every other move in this set,
  * chess.js only offers it because the redacted board *looks* empty
  * there, which is indistinguishable from a hidden enemy piece actually
- * blocking it, so it's gated on vision confirming the square is really
- * clear. This function has no opinion on what's actually revealed to
+ * blocking it, so it's gated on vision confirming the square directly
+ * ahead — the pawn's path's first step — is really clear. For a
+ * two-square first move that's the near square, not the far
+ * (`move.to`) one: a pawn's own attack geometry never covers its
+ * forward squares, so nothing short of another piece developing far
+ * enough ever confirms the far square this early, and gating on it
+ * would make the double push effectively unavailable for most of the
+ * game. The far square's own risk is accepted the same way a diagonal
+ * capture's is. This function has no opinion on what's actually revealed to
  * the viewer beyond that one case — it otherwise only answers "could one
  * of my pieces try to go there," which is what ChessBoard's fog/haze
  * rule uses to decide which squares are NOT hazy (every other square
@@ -70,12 +77,14 @@ export function legalTargetSquares(
         // was given — the one move type here where "looks reachable" and
         // "is actually reachable" can genuinely diverge, since a hidden
         // enemy piece there would silently block it in reality. Require
-        // vision to actually confirm it's clear before treating it as a
-        // confident, unfogged target.
+        // vision to actually confirm the path's first step is clear
+        // before treating it as a confident, unfogged target — not
+        // `move.to`, which for a double push is the far square a pawn's
+        // own vision can never reach (see the header comment).
         if (
           piece.type === 'p' &&
           move.captured === undefined &&
-          !visibleSquares.has(move.to)
+          !visibleSquares.has(pawnPathFirstStep(piece.square, ownColor))
         ) {
           continue;
         }
@@ -101,4 +110,11 @@ function withTurn(fen: string, color: 'w' | 'b'): string {
   const fields = fen.split(' ');
   fields[1] = color;
   return fields.join(' ');
+}
+
+/** The square one step ahead of `from` in `color`'s forward direction. */
+function pawnPathFirstStep(from: Square, color: 'w' | 'b'): Square {
+  const file = from[0];
+  const rank = Number(from[1]);
+  return `${file}${rank + (color === 'w' ? 1 : -1)}` as Square;
 }

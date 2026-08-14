@@ -29,7 +29,7 @@ const SelectTrigger = React.forwardRef<
     {...props}
   >
     {typeof children === 'function'
-      ? children({ pressed: false, hovered: false })
+      ? children({ pressed: false })
       : children}
     <ChevronDown
       size={16}

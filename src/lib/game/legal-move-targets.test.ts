@@ -18,7 +18,25 @@ describe('legalMoveTargets', () => {
     const targets = legalMoveTargets(chess, 'e2', 'w');
 
     expect(targets.has('e3')).toBe(true);
-    expect(targets.has('e4')).toBe(false); // the double push still isn't confirmed
+    // The double push is gated on e3 (the pawn's path's first step), not
+    // e4 — confirming e3 is enough, since that's the square the pawn
+    // must actually step through.
+    expect(targets.has('e4')).toBe(true);
+  });
+
+  it('includes a pawn double push from its starting square (the reported bug)', () => {
+    // Standard starting position: nothing attacks e4 (a pawn's own attack
+    // geometry never covers its forward squares, and no other piece is
+    // developed enough this early to reach the 4th rank), but the d2
+    // pawn's diagonal attack confirms e3 — the path's first step — is
+    // clear, which is all that's needed to offer the double push.
+    const chess = new Chess(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    );
+    const targets = legalMoveTargets(chess, 'e2', 'w');
+
+    expect(targets.has('e3')).toBe(true);
+    expect(targets.has('e4')).toBe(true);
   });
 
   it("excludes a pawn's forward push square a hidden enemy piece actually occupies (the reported bug)", () => {
