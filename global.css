@@ -12,6 +12,9 @@
     --dt-bg: 45 20% 96.1%;
     --dt-board-bg: 45 22% 92.9%;
     --dt-card: 0 0% 100%;
+    /* Mockup's light game-over sheet is the bg tone (#F7F6F3), not the
+     * white card tone — dark mode overrides this with its own value. */
+    --dt-sheet: 45 20% 96.1%;
     --dt-card-alt: 45 40% 98%;
     --dt-border: 44 16% 86.9%;
     --dt-border-strong: 43 15% 82%;

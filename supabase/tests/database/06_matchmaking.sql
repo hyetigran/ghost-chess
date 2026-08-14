@@ -3,7 +3,7 @@
 -- partitioning, leave/status idempotency, and run_matchmaking_sweep's
 -- backstop pairing + stale-row cleanup.
 begin;
-select plan(16);
+select plan(18);
 
 insert into auth.users (id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -170,11 +170,16 @@ select is(
 reset role;
 reset request.jwt.claims;
 
--- Stale-row cleanup: player 6's entry (still queued 3h, unmatched) goes
--- stale — nobody's polled/heartbeated it in over the sweep's grace
--- window — and the sweep prunes it outright.
+-- Unmatched-row expiry (#73): player 6's entry (still queued 12h,
+-- unmatched) has its joined_at pushed past that time control's TTL — the
+-- TTL equals the time control itself (make_interval(hours =>
+-- time_control_hours), 08_functions.sql), so 12h here. updated_at is left
+-- fresh on purpose, since the whole point of the rewrite is that expiry
+-- no longer depends on it (a backgrounded client stops bumping updated_at
+-- but must not lose its search) — the sweep prunes it outright once
+-- joined_at alone says it's overdue.
 update public.matchmaking_queue
-set updated_at = now() - interval '10 minutes'
+set joined_at = now() - interval '12 hours 1 minute'
 where user_id = 'f1000000-0000-0000-0000-000000000006';
 
 select public.run_matchmaking_sweep();
@@ -182,7 +187,47 @@ select public.run_matchmaking_sweep();
 select is(
     (select count(*) from public.matchmaking_queue where user_id = 'f1000000-0000-0000-0000-000000000006')::int,
     0,
-    'run_matchmaking_sweep prunes entries stale for longer than its grace window'
+    'run_matchmaking_sweep prunes an unmatched entry once joined_at exceeds its time control''s TTL'
+);
+
+-- The actual regression this rewrite exists to fix: an unmatched entry
+-- that hasn't been heartbeated in a while (updated_at stale, mirroring a
+-- backgrounded client that stopped polling get_matchmaking_status) must
+-- still survive as long as it's within its time control's TTL — player
+-- 6's id is free again after the prune above, reused directly rather than
+-- through join_matchmaking_queue so both timestamps are exact.
+insert into public.matchmaking_queue (user_id, time_control_hours, elo_rating, joined_at, updated_at)
+values (
+    'f1000000-0000-0000-0000-000000000006', 1, 1520,
+    now() - interval '10 minutes', now() - interval '10 minutes'
+);
+
+select public.run_matchmaking_sweep();
+
+select is(
+    (select count(*) from public.matchmaking_queue where user_id = 'f1000000-0000-0000-0000-000000000006')::int,
+    1,
+    'an unmatched entry with a stale heartbeat survives the sweep while still within its TTL'
+);
+
+-- Matched-row cleanup is a separate, flat window (10 minutes), not scaled
+-- by time control — it's just tidying up a row that already did its job,
+-- not bounding search exposure. Reuses player 1's real matched_game_id
+-- (from the opportunistic-pairing case above) purely as a valid FK target.
+update public.matchmaking_queue
+set matched_game_id = (
+        select matched_game_id from public.matchmaking_queue
+        where user_id = 'f1000000-0000-0000-0000-000000000001'
+    ),
+    updated_at = now() - interval '11 minutes'
+where user_id = 'f1000000-0000-0000-0000-000000000006';
+
+select public.run_matchmaking_sweep();
+
+select is(
+    (select count(*) from public.matchmaking_queue where user_id = 'f1000000-0000-0000-0000-000000000006')::int,
+    0,
+    'run_matchmaking_sweep prunes a matched entry once its flat cleanup window elapses'
 );
 
 -- An incompatible head-of-queue entry must not block two later,

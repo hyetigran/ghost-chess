@@ -49,22 +49,25 @@ export function GameOverModal({
 
       {moves && moves.length > 0 && <MoveHistory moves={moves} />}
 
-      <View className='gap-2 mt-4'>
-        <View className='flex-row gap-2'>
-          <Button onPress={onRematch} className='flex-1'>
-            <Text>Rematch</Text>
-          </Button>
-          <Button variant='outline' onPress={onNewGame} className='flex-1'>
-            <Text>New Game</Text>
-          </Button>
-        </View>
+      {/* Mockup sheet actions: one primary CTA over an outline pair.
+          "Review board" is the primary here — it's the action that
+          actually works today (the mockup's "Game review" slot). */}
+      <View className='gap-2.5 mt-4'>
         {/* The board underneath is already unredacted (ADR-0003) — this
             just closes the modal so the viewer can look at it, same
             action as the dialog's own X/backdrop dismiss, just labeled
             for what it actually does here. */}
-        <Button variant='ghost' onPress={onReviewBoard}>
+        <Button onPress={onReviewBoard}>
           <Text>Review board</Text>
         </Button>
+        <View className='flex-row gap-2.5'>
+          <Button variant='outline' onPress={onRematch} className='flex-1'>
+            <Text>Rematch</Text>
+          </Button>
+          <Button variant='outline' onPress={onNewGame} className='flex-1'>
+            <Text>New game</Text>
+          </Button>
+        </View>
       </View>
     </DialogContent>
   );
@@ -72,10 +75,10 @@ export function GameOverModal({
 
 function MoveHistory({ moves }: { moves: Move[] }): React.JSX.Element {
   return (
-    <ScrollView className='max-h-40 mb-2'>
-      <View className='flex-row flex-wrap gap-x-3'>
+    <ScrollView className='max-h-40 mb-2 mt-4 rounded-strip bg-secondary px-3 py-2.5'>
+      <View className='flex-row flex-wrap gap-x-3.5 gap-y-1'>
         {moves.map((move) => (
-          <Text key={move.id} className='text-sm text-muted-foreground'>
+          <Text key={move.id} className='font-mono text-[13px] text-muted-foreground'>
             {move.move_number}. {move.move_text}
           </Text>
         ))}

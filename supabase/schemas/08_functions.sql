@@ -1287,11 +1287,14 @@ begin
 end;
 $$;
 
--- Read with a heartbeat side effect, not a plain select — the client
--- polls this every few seconds while on the searching screen, and reusing
--- that same call to bump updated_at is what lets run_matchmaking_sweep's
--- staleness check work without a separate presence system or a second
--- "still here" RPC. Returns null (no row) for "not currently searching,"
+-- Read with a heartbeat side effect, not a plain select — updated_at no
+-- longer gates whether an unmatched row survives (run_matchmaking_sweep
+-- below now expires those on a joined_at TTL instead, so a search
+-- outlives the client backgrounding or closing), but a matched row still
+-- relies on this bump to stay around until the client actually reads
+-- matched_game_id once (see the sweep's matched-row branch) — the client
+-- calls this on a relaxed foreground poll, not tied to any particular
+-- screen anymore. Returns null (no row) for "not currently searching,"
 -- same shape join_matchmaking_queue and pair_queue_entries's update
 -- leave the row in once matched (matched_game_id set, row not deleted)
 -- so the client can tell "still searching" from "matched, go play" from
@@ -1346,12 +1349,38 @@ declare
     v_b public.matchmaking_queue;
     v_skip_ids uuid[];
 begin
-    -- Stale entries first (client crashed/backgrounded without calling
-    -- leave_matchmaking_queue — get_matchmaking_status's heartbeat would
-    -- otherwise have kept updated_at fresh) so they're never considered
-    -- as pairing candidates below.
+    -- Stale entries first, so they're never considered as pairing
+    -- candidates below. Two different lifetimes for two different kinds
+    -- of "stale":
+    --
+    -- Unmatched rows expire on a joined_at TTL equal to the chosen time
+    -- control itself, not a short heartbeat — the whole point of
+    -- background search is that a client backgrounding or closing the app
+    -- must not kill its own search, so nothing here depends on updated_at
+    -- having been bumped recently. A search can never outlive its own
+    -- time control window: a match landing right at the deadline can burn
+    -- at most one full window before the player even sees it, and never
+    -- more than the window they themselves chose (a 1h search can't sit
+    -- open for a day waiting to ambush someone with a clock they forgot
+    -- about). make_interval(hours => time_control_hours) rather than a
+    -- CASE over the literal 1/12/24 values so this stays correct — not
+    -- silently non-expiring — if that CHECK-constrained domain ever
+    -- changes.
+    --
+    -- Matched rows are a different thing entirely — the pairing already
+    -- happened, this is just tidying up a row that's done its job. It
+    -- keeps a short flat window (refreshed by get_matchmaking_status,
+    -- pair_queue_entries) so the client has time to read matched_game_id
+    -- once via its relaxed poll or the "Match found!" push tap before
+    -- getting cleaned up; no need to scale that by time control at all.
     delete from public.matchmaking_queue
-    where updated_at < now() - interval '2 minutes';
+    where (
+        matched_game_id is null
+        and joined_at < now() - make_interval(hours => time_control_hours)
+    ) or (
+        matched_game_id is not null
+        and updated_at < now() - interval '10 minutes'
+    );
 
     for v_time_control in
         select distinct time_control_hours from public.matchmaking_queue

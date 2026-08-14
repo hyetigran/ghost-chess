@@ -28,11 +28,13 @@ create table "public"."matchmaking_queue" (
     -- distinguish "matched, go play" from "left/expired, nothing to do".
     "matched_game_id" uuid references public.games(id),
     "joined_at" timestamp with time zone not null default timezone('utc'::text, now()),
-    -- Bumped by get_matchmaking_status() on every poll — doubles as a
-    -- heartbeat so run_matchmaking_sweep() (08_functions.sql) can prune
-    -- rows nobody's still watching (client crashed/backgrounded without
-    -- calling leave_matchmaking_queue()) without a separate presence
-    -- system.
+    -- Bumped by get_matchmaking_status() on every poll and by
+    -- pair_queue_entries() on match. Unmatched-row staleness no longer
+    -- depends on this (run_matchmaking_sweep, 08_functions.sql, expires
+    -- those on a joined_at TTL instead, so a background/closed client
+    -- doesn't lose its own search) — this now only gates how long a
+    -- *matched* row lingers before cleanup, giving the client one more
+    -- poll/push-tap window to read matched_game_id.
     "updated_at" timestamp with time zone not null default timezone('utc'::text, now()),
     constraint "matchmaking_queue_pkey" primary key ("user_id")
 );

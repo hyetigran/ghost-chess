@@ -4,14 +4,13 @@ import { View, Vibration } from 'react-native';
 import { type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
-import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { MoveHistory } from '~/components/game/move-history/move-history';
 import { PlayerCard } from '~/components/game/player-card/player-card';
 import { GameControls } from '~/components/game/controls/game-controls';
 import type { MoveEntry } from '~/lib/game/pair-moves';
 import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-move-dialog';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
-import { Button, Card, CardContent, Dialog, Text } from '~/components/ui';
+import { Button, Dialog, Text } from '~/components/ui';
 import { formatTime } from '~/lib/utils/time';
 import { useMakeMove, useEndGame } from '~/lib/state/game/actions';
 import { gameQueries } from '~/lib/state/game/queries';
@@ -108,23 +107,38 @@ export default function GameScreen() {
     fen: move.fen,
   }));
 
+  // Mockup game screen: the viewer sits at the bottom, opponent on top —
+  // matching the board orientation. Spectators get the white-at-bottom
+  // default.
+  const bottomColor: 'white' | 'black' = isBlackPlayer ? 'black' : 'white';
+  const topColor: 'white' | 'black' = bottomColor === 'white' ? 'black' : 'white';
+
+  const playerRowProps = (color: 'white' | 'black') => {
+    const isViewer =
+      color === 'white' ? isWhitePlayer : isBlackPlayer;
+    return {
+      username: color === 'white' ? game.white_username : game.black_username,
+      eloRating:
+        color === 'white' ? game.white_elo_rating : game.black_elo_rating,
+      isYou: isViewer,
+      capturedTypes:
+        color === 'white' ? game.captured_by_white : game.captured_by_black,
+      // captured_by_white holds black's piece types, and vice versa.
+      capturedColor: (color === 'white' ? 'b' : 'w') as 'w' | 'b',
+      clock:
+        timer?.activeColor === color ? formatTime(timer.secondsRemaining) : null,
+      clockActive: isViewer && timer?.activeColor === color,
+    };
+  };
+
   return (
     <View className='flex-1 bg-background'>
       <View className='flex-1 p-4'>
         <View className='lg:flex-row lg:justify-center lg:items-start lg:gap-4'>
           <View className='w-full lg:w-[560px] lg:shrink-0'>
-            {/* Player info and timer for black */}
-            <View className='flex-row items-center justify-between mb-4'>
-              <PlayerCard
-                username={game.black_username}
-                eloRating={game.black_elo_rating}
-                isYou={game.black_player_id === userId}
-              />
-              <Text className='font-mono text-lg'>
-                {timer?.activeColor === 'black'
-                  ? formatTime(timer.secondsRemaining)
-                  : '—'}
-              </Text>
+            {/* Opponent row (top), per the mockup game screen */}
+            <View className='mb-3'>
+              <PlayerCard {...playerRowProps(topColor)} />
             </View>
 
             {/* Chess board */}
@@ -157,28 +171,18 @@ export default function GameScreen() {
               flashSquare={flashSquare}
               interactive={game.status === 'active' && viewingPly === null}
               inactiveLabel={
-                viewingPly !== null ? 'Reviewing a past move' : 'Final position'
+                viewingPly !== null
+                  ? 'Reviewing a past move'
+                  : game.status === 'waiting'
+                    ? 'Waiting for an opponent'
+                    : 'Final position'
               }
             />
 
-            {/* Captured pieces */}
-            <CapturedPieces
-              capturedByWhite={game.captured_by_white}
-              capturedByBlack={game.captured_by_black}
-            />
-
-            {/* Player info and timer for white */}
-            <View className='flex-row items-center justify-between mt-4'>
-              <PlayerCard
-                username={game.white_username}
-                eloRating={game.white_elo_rating}
-                isYou={game.white_player_id === userId}
-              />
-              <Text className='font-mono text-lg'>
-                {timer?.activeColor === 'white'
-                  ? formatTime(timer.secondsRemaining)
-                  : '—'}
-              </Text>
+            {/* Viewer row (bottom) — captured pieces render inside each
+                player row now, per the mockup's "♟♟♝" line. */}
+            <View className='mt-3'>
+              <PlayerCard {...playerRowProps(bottomColor)} />
             </View>
 
             {/* Game controls */}
@@ -201,13 +205,11 @@ export default function GameScreen() {
               empty-looking card during active play would look like a bug
               rather than the deliberate occlusion boundary it is. */}
           {game.status === 'active' ? (
-            <Card className='w-full max-w-[560px] self-center mt-4 lg:mt-0 lg:w-72 lg:max-w-none lg:self-start rounded-2xl'>
-              <CardContent className='p-4'>
-                <Text className='text-sm text-center text-muted-foreground'>
-                  Move history is revealed once the game ends.
-                </Text>
-              </CardContent>
-            </Card>
+            <View className='w-full max-w-[560px] self-center mt-2 lg:mt-0 lg:w-72 lg:max-w-none lg:self-start px-3 py-2.5 bg-card rounded-strip shadow-card'>
+              <Text className='font-mono text-[13px] text-center text-muted-foreground'>
+                Move history is revealed once the game ends
+              </Text>
+            </View>
           ) : (
             <MoveHistory
               moves={moveEntries}

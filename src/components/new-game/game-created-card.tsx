@@ -1,14 +1,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import { Link } from 'expo-router';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Text,
-} from '~/components/ui';
+import { Button, Text } from '~/components/ui';
 import { gameRoute } from '~/lib/navigation/game-route';
 
 type Props = {
@@ -30,29 +23,34 @@ export function GameCreatedCard({
   variant = 'private',
 }: Props): React.JSX.Element {
   return (
-    <View className='items-center justify-center flex-1 gap-5 p-6 bg-background'>
-      <Card className='w-full max-w-sm p-6 rounded-2xl'>
-        <CardHeader className='items-center'>
-          <CardTitle className='text-2xl font-bold'>
-            {variant === 'open' ? 'Invitation posted!' : 'Game created!'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='items-center gap-4'>
-          <Text className='text-center text-muted-foreground'>
+    <View className='flex-1 bg-background'>
+      <View className='flex-1 items-center justify-center gap-[22px] px-8'>
+        <View className='w-14 h-14 items-center justify-center rounded-control bg-accent'>
+          <Text className='text-[26px] leading-8 text-primary'>♟</Text>
+        </View>
+        <View className='items-center gap-2'>
+          <Text className='font-sans-extrabold text-[26px] tracking-[-0.52px] text-center'>
+            {variant === 'open' ? 'Invitation posted' : 'Game created'}
+          </Text>
+          <Text className='text-sm text-muted-foreground text-center'>
             {variant === 'open'
               ? 'Anyone eligible can now find and accept this from the open invitations list.'
               : 'Share this game ID with your opponent — press and hold to copy.'}
           </Text>
-          <Text selectable className='text-lg font-mono text-center'>
+        </View>
+        <View className='w-full items-center px-4 py-3.5 bg-card border border-border rounded-chip shadow-card'>
+          <Text selectable className='font-mono text-base text-center'>
             {gameId}
           </Text>
-          <Link href={gameRoute(gameId)} asChild>
-            <Button className='w-full'>
-              <Text>Go to game</Text>
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+        </View>
+      </View>
+      <View className='px-5 pb-9'>
+        <Link href={gameRoute(gameId)} asChild>
+          <Button>
+            <Text>Go to game</Text>
+          </Button>
+        </Link>
+      </View>
     </View>
   );
 }

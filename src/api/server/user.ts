@@ -113,7 +113,10 @@ export async function getActiveGames(
     `,
     )
     .eq('player_id', userId)
-    .eq('status', 'active')
+    // 'waiting' rows are the caller's own not-yet-joined games — they
+    // belong in the home queue (under the "Waiting" pill) so a freshly
+    // created private game doesn't silently vanish until someone joins.
+    .in('status', ['waiting', 'active'])
     .order('updated_at', { ascending: false });
 
   if (error) throw error;

@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Link } from 'expo-router';
-import { Button, Text } from '~/components/ui';
+import { Text } from '~/components/ui';
 import { describeGameResult } from '~/lib/game/game-result-text';
 import { gameRoute } from '~/lib/navigation/game-route';
 import type { GameHistory } from '~/types/database';
@@ -21,14 +21,15 @@ export function RecentGamesList({ games, viewerId }: Props): React.JSX.Element {
   }
 
   return (
-    <View className='gap-2'>
+    <View className='gap-2.5'>
       {games.map((game) => (
         <Link key={game.id} href={gameRoute(game.id)} asChild>
-          <Button variant='outline' className='justify-between'>
-            <Text>
+          <Pressable className='flex-row items-center justify-between px-3.5 py-3.5 bg-card rounded-control border border-border shadow-card'>
+            <Text className='font-sans-bold text-[15px]'>
               {describeGameResult(game.result, game.winner_id, viewerId)}
             </Text>
-          </Button>
+            <Text className='text-lg text-faint'>›</Text>
+          </Pressable>
         </Link>
       ))}
     </View>

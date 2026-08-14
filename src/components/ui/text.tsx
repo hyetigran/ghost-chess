@@ -25,4 +25,20 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
 );
 Text.displayName = 'Text';
 
-export { Text, TextClassContext };
+// The mockup's recurring eyebrow label: IBM Plex Mono 600 11px, +0.08em
+// tracking, uppercase, faint ink — "YOUR MOVE", "TIME CONTROL", "OPPONENT".
+const SectionLabel = React.forwardRef<TextRef, SlottableTextProps>(
+  ({ className, ...props }, ref) => (
+    <Text
+      ref={ref}
+      className={cn(
+        'font-mono-semibold text-[11px] uppercase tracking-[0.88px] text-faint',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+SectionLabel.displayName = 'SectionLabel';
+
+export { SectionLabel, Text, TextClassContext };
