@@ -1,20 +1,18 @@
 import { queryOptions } from '@tanstack/react-query';
 import { getMatchmakingStatus } from '~/api/server/matchmaking';
 
-// 3s polling, not realtime (matchmaking_queue is deliberately not
-// realtime-published, 10_matchmaking.sql) — the poll also doubles as the
-// heartbeat run_matchmaking_sweep's stale-row cleanup relies on, so
-// `enabled` should stay tied to whether the caller is actually on the
-// searching screen (not just `!!viewerId`, unlike most other queries in
-// this codebase) — polling in the background would both waste requests
-// and keep a queue entry looking "alive" after the user has navigated
-// away without explicitly leaving.
+// A relaxed app-wide poll, not a screen-tied heartbeat (#73) — search
+// survival no longer depends on this being called (run_matchmaking_sweep
+// expires unmatched entries on a joined_at TTL instead), so this exists
+// purely to keep the client's own view of "am I searching / matched" in
+// sync, from wherever MatchmakingProvider (src/context/matchmaking-context.tsx)
+// is mounted, not tied to any particular screen being open.
 export const matchmakingQueries = {
-  status: (viewerId: string, options?: { enabled?: boolean }) =>
+  status: (viewerId: string) =>
     queryOptions({
       queryKey: ['matchmaking', 'status', viewerId],
       queryFn: () => getMatchmakingStatus(),
-      enabled: !!viewerId && (options?.enabled ?? true),
-      refetchInterval: 3000,
+      enabled: !!viewerId,
+      refetchInterval: 20000,
     }),
 };

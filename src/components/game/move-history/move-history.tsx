@@ -1,12 +1,6 @@
 import * as React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Text,
-} from '~/components/ui';
+import { Card, CardContent, CardHeader, SectionLabel, Text } from '~/components/ui';
 import { pairMoves, type MoveCell, type MoveEntry } from '~/lib/game/pair-moves';
 
 type Props = {
@@ -45,21 +39,29 @@ export function MoveHistory({
     const isViewing = viewingPly === cell.ply;
     return (
       <Pressable
-        className={`flex-1 rounded px-1 ${isViewing ? 'bg-accent' : ''}`}
+        className={`flex-1 rounded px-1.5 ${isViewing ? 'bg-accent' : ''}`}
         onPress={() => onSelectPly(cell.ply)}
       >
-        <Text>{cell.san}</Text>
+        <Text
+          className={`font-mono text-[13px] ${
+            isViewing ? 'font-mono-semibold text-accent-foreground' : ''
+          }`}
+        >
+          {cell.san}
+        </Text>
       </Pressable>
     );
   };
 
   return (
     <Card className='w-full max-w-[560px] self-center mt-4 lg:mt-0 lg:w-72 lg:max-w-none lg:self-start rounded-2xl'>
-      <CardHeader className='flex-row items-center justify-between py-3'>
-        <CardTitle className='text-base'>Moves</CardTitle>
+      <CardHeader className='flex-row items-center justify-between px-4 py-3'>
+        <SectionLabel>Moves</SectionLabel>
         {viewingPly !== null && (
           <Pressable onPress={() => onSelectPly(null)}>
-            <Text className='text-sm text-primary'>Back to live</Text>
+            <Text className='font-sans-semibold text-sm text-primary'>
+              Back to live
+            </Text>
           </Pressable>
         )}
       </CardHeader>
@@ -68,7 +70,7 @@ export function MoveHistory({
           <View className='px-4 pb-3'>
             {rows.map((row) => (
               <View key={row.number} className='flex-row py-1'>
-                <Text className='w-8 text-muted-foreground'>
+                <Text className='w-8 font-mono text-[13px] text-faint'>
                   {row.number}.
                 </Text>
                 {renderCell(row.white)}

@@ -200,7 +200,7 @@ export function ChessBoard({
     >
       {!interactive && (
         <View className='absolute inset-x-0 z-10 items-center -top-7'>
-          <Text className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
+          <Text className='font-mono-semibold text-[11px] uppercase tracking-[0.88px] text-faint'>
             {inactiveLabel}
           </Text>
         </View>
@@ -209,7 +209,7 @@ export function ChessBoard({
         <View style={{ width: LABEL_GUTTER }}>
           {rankLabels(orientation).map((rank) => (
             <View key={rank} className='items-center justify-center flex-1'>
-              <Text className='text-xs text-muted-foreground'>{rank}</Text>
+              <Text className='font-mono text-[10px] text-faint'>{rank}</Text>
             </View>
           ))}
         </View>
@@ -278,10 +278,31 @@ export function ChessBoard({
                     <View
                       className={`w-[12.5%] h-[12.5%] items-center justify-center ${
                         isLight ? 'bg-squareLight' : 'bg-squareDark'
-                      } ${isSelected ? 'bg-highlight' : ''} ${
-                        isLegalTarget ? 'bg-accent' : ''
-                      } ${isFlashing ? 'bg-danger' : ''}`}
+                      }`}
                     >
+                      {/* Mockup highlight treatments layer over the
+                          checker color instead of replacing it: selected
+                          = 45% highlight wash + 3px inset accent ring;
+                          legal target = centered 30% dot; capture flash
+                          = inset danger ring. */}
+                      {/* Explicit rgba values rather than token/opacity
+                          modifiers — the theme colors are hsl(var())
+                          strings without <alpha-value>, so /45-style
+                          modifiers would render fully opaque. */}
+                      {isSelected && (
+                        <View
+                          className='absolute inset-0 bg-[rgba(240,214,86,0.45)] dark:bg-[rgba(240,214,86,0.4)] border-[3px] border-primary'
+                          pointerEvents='none'
+                        />
+                      )}
+                      {isLegalTarget && !isSelected && (
+                        <View
+                          className='absolute inset-0 items-center justify-center'
+                          pointerEvents='none'
+                        >
+                          <View className='w-[30%] h-[30%] rounded-full bg-[rgba(27,26,23,0.28)] dark:bg-[rgba(0,0,0,0.35)]' />
+                        </View>
+                      )}
                       {piece && (
                         <Image
                           source={pieceImage(piece)}
@@ -302,6 +323,12 @@ export function ChessBoard({
                           obscured," not "this is a third square color."
                           pointerEvents="none" so the overlay never steals
                           the tap from the gesture detector it sits on. */}
+                      {isFlashing && (
+                        <View
+                          className='absolute inset-0 border-4 border-[rgba(198,63,49,0.75)] dark:border-[rgba(226,112,95,0.85)]'
+                          pointerEvents='none'
+                        />
+                      )}
                       {isHazy && (
                         <View
                           className='absolute inset-0 opacity-80 bg-fog'
@@ -354,7 +381,7 @@ export function ChessBoard({
         <View className='flex-row flex-1'>
           {fileLabels(orientation).map((file) => (
             <View key={file} className='items-center justify-center flex-1'>
-              <Text className='text-xs text-muted-foreground'>
+              <Text className='font-mono text-[10px] text-faint'>
                 {file.toUpperCase()}
               </Text>
             </View>

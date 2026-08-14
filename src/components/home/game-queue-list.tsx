@@ -57,11 +57,14 @@ function GameQueueRow({
   const opponentElo =
     viewerColor === 'white' ? game.black_elo_rating : game.white_elo_rating;
 
-  const isYourTurn = isViewersTurn(
-    game.current_turn,
-    game.white_player_id,
-    viewerId,
-  );
+  // A 'waiting' game has no opponent and no running clock — the deadline
+  // math below would count down from creation time toward nothing, so it
+  // gets an OPEN badge instead of a time-remaining readout.
+  const isOpenSeat = game.status === 'waiting';
+
+  const isYourTurn =
+    !isOpenSeat &&
+    isViewersTurn(game.current_turn, game.white_player_id, viewerId);
   const windowSeconds = game.time_control_hours * 60 * 60;
   const secondsLeft = secondsUntilDeadline(
     game.updated_at,
@@ -69,49 +72,55 @@ function GameQueueRow({
   );
   const tier = isYourTurn ? urgencyTier(secondsLeft, windowSeconds) : 'normal';
 
-  const timeLabel = isYourTurn
-    ? formatTimeRemaining(secondsLeft)
-    : timeLeftForOpponent(game.updated_at, game.time_control_hours);
+  const timeLabel = isOpenSeat
+    ? '—'
+    : isYourTurn
+      ? formatTimeRemaining(secondsLeft)
+      : timeLeftForOpponent(game.updated_at, game.time_control_hours);
 
   return (
     <Link href={gameRoute(game.game_id)} asChild>
       <Pressable
-        className={`flex-row items-center gap-3 p-3 bg-card rounded-control border border-border ${
+        className={`flex-row items-center gap-3 px-3.5 py-3 bg-card rounded-control border border-border shadow-card ${
           tier === 'critical' ? 'border-l-[3px] border-l-danger' : ''
         }`}
       >
         <BoardThumbnail redactedFen={game.redacted_fen} orientation={viewerColor} />
-        <View className='flex-1 gap-0.5'>
-          <View className='flex-row items-center gap-2'>
-            <Text className='text-base font-semibold'>
+        <View className='flex-1 gap-[3px]'>
+          <View className='flex-row items-center gap-1.5'>
+            <Text className='font-sans-bold text-base'>
               {opponentUsername
                 ? formatUsername(opponentUsername)
-                : 'Waiting for opponent'}
+                : 'Open game'}
             </Text>
             {opponentElo !== null && (
-              <Text className='font-mono text-xs text-muted-foreground'>
+              <Text className='font-mono text-xs text-faint'>
                 {opponentElo}
               </Text>
             )}
           </View>
           <Text className='text-xs text-muted-foreground'>
-            {`You play ${viewerColor} · ${timeControlLabel(game.time_control_hours)}`}
+            {isOpenSeat
+              ? `Waiting for an opponent to join · ${timeControlLabel(game.time_control_hours)}`
+              : `You play ${viewerColor} · ${timeControlLabel(game.time_control_hours)}`}
           </Text>
         </View>
-        <View className='items-end'>
+        <View className='items-end gap-0.5'>
           <Text
-            className={`font-mono text-sm font-semibold ${
+            className={`font-mono-semibold text-[15px] ${
               tier === 'critical'
                 ? 'text-danger'
                 : tier === 'warning'
                   ? 'text-highlight'
-                  : 'text-muted-foreground'
+                  : isYourTurn
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
             }`}
           >
             {timeLabel}
           </Text>
-          <Text className='font-mono text-[9px] text-muted-foreground'>
-            LEFT
+          <Text className='font-mono-semibold text-[9px] text-faint'>
+            {isOpenSeat ? 'OPEN' : 'LEFT'}
           </Text>
         </View>
       </Pressable>

@@ -9,10 +9,11 @@ import type { GameSettings } from '~/types/database';
 
 // Both hooks write the mutation's own result straight into the status
 // query's cache (setQueryData) rather than invalidating it — the point of
-// joining/leaving is to update the searching screen immediately, not wait
-// for matchmakingQueries.status's next 3s poll tick. The query key comes
-// from matchmakingQueries.status itself rather than being re-typed here,
-// so the two can never drift apart.
+// joining/leaving is to update every consumer immediately (MatchmakingProvider,
+// src/context/matchmaking-context.tsx, and anything reading from it), not
+// wait for the relaxed poll's next tick. The query key comes from
+// matchmakingQueries.status itself rather than being re-typed here, so the
+// two can never drift apart.
 export const useJoinMatchmakingQueue = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();

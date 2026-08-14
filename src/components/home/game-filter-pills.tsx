@@ -17,6 +17,8 @@ const PILLS: { key: QueueFilter; label: (count: number) => string }[] = [
   { key: 'finished', label: () => 'Finished' },
 ];
 
+// Mockup filter row: the active pill is solid ink with bg-colored text;
+// inactive pills are card-colored with a 1px border.
 export function GameFilterPills({
   filter,
   onChange,
@@ -37,16 +39,16 @@ export function GameFilterPills({
           <Pressable
             key={pill.key}
             onPress={() => onChange(pill.key)}
-            className={`px-4 py-2 rounded-pill ${
-              isActive ? 'bg-primary' : 'bg-card border border-border'
+            className={`px-[15px] py-2 rounded-pill ${
+              isActive ? 'bg-foreground' : 'bg-card border border-border'
             }`}
           >
             <Text
-              className={`text-xs font-semibold ${
+              className={
                 isActive
-                  ? 'text-primary-foreground'
-                  : 'text-muted-foreground'
-              }`}
+                  ? 'font-sans-bold text-[13px] text-background'
+                  : 'font-sans-semibold text-[13px] text-muted-foreground'
+              }
             >
               {pill.label(counts[pill.key])}
             </Text>

@@ -4,25 +4,29 @@ import { Pressable } from 'react-native';
 import { TextClassContext } from '~/components/ui/text';
 import { cn } from '~/lib/style/utils';
 
+// Button spec from the mockup foundations sheet: 56px tall, radius 18,
+// Manrope ExtraBold label, raised accent shadow; pressed = darker accent
+// + scale .98; disabled = solid accentDisabled fill (not an opacity dim).
 const buttonVariants = cva(
-  'group flex items-center justify-center rounded-control web:ring-offset-background web:transition-colors web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2',
+  'group flex items-center justify-center rounded-control web:ring-offset-background web:transition-colors web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2 active:scale-[0.98]',
   {
     variants: {
       variant: {
-        default: 'bg-primary web:hover:opacity-90 active:opacity-90',
+        default:
+          'bg-primary shadow-raised web:hover:bg-accentPressed active:bg-accentPressed',
         destructive: 'bg-destructive web:hover:opacity-90 active:opacity-90',
         outline:
-          'border border-input bg-background web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
-        secondary: 'bg-secondary web:hover:opacity-80 active:opacity-80',
+          'border-[1.5px] border-borderStrong bg-transparent web:hover:bg-accent active:bg-accent',
+        secondary: 'bg-card border border-border shadow-card active:opacity-90',
         ghost:
           'web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
         link: 'web:underline-offset-4 web:hover:underline web:focus:underline ',
       },
       size: {
-        default: 'h-10 px-4 py-2 native:h-12 native:px-5 native:py-3',
-        sm: 'h-9 px-3',
-        lg: 'h-11 px-8 native:h-14',
-        icon: 'h-10 w-10',
+        default: 'h-14 px-5',
+        sm: 'h-11 px-4 rounded-chip',
+        lg: 'h-14 px-8',
+        icon: 'h-11 w-11 rounded-strip',
       },
     },
     defaultVariants: {
@@ -32,32 +36,28 @@ const buttonVariants = cva(
   },
 );
 
-const buttonTextVariants = cva(
-  'web:whitespace-nowrap text-sm native:text-base font-medium text-foreground web:transition-colors',
-  {
-    variants: {
-      variant: {
-        default: 'text-primary-foreground',
-        destructive: 'text-destructive-foreground',
-        outline: 'group-active:text-accent-foreground',
-        secondary:
-          'text-secondary-foreground group-active:text-secondary-foreground',
-        ghost: 'group-active:text-accent-foreground',
-        link: 'text-primary group-active:underline',
-      },
-      size: {
-        default: '',
-        sm: '',
-        lg: 'native:text-lg',
-        icon: '',
-      },
+const buttonTextVariants = cva('web:whitespace-nowrap web:transition-colors', {
+  variants: {
+    variant: {
+      default: 'font-sans-extrabold text-primary-foreground',
+      destructive: 'font-sans-extrabold text-destructive-foreground',
+      outline: 'font-sans-bold text-foreground',
+      secondary: 'font-sans-bold text-foreground',
+      ghost: 'font-sans-semibold text-muted-foreground',
+      link: 'font-sans-semibold text-primary group-active:underline',
     },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
+    size: {
+      default: 'text-[17px]',
+      sm: 'text-[15px]',
+      lg: 'text-lg',
+      icon: 'text-lg',
     },
   },
-);
+  defaultVariants: {
+    variant: 'default',
+    size: 'default',
+  },
+});
 
 type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
   VariantProps<typeof buttonVariants>;
@@ -66,17 +66,22 @@ const Button = React.forwardRef<
   React.ElementRef<typeof Pressable>,
   ButtonProps
 >(({ className, variant, size, ...props }, ref) => {
+  const isSolid = variant === 'default' || variant === undefined;
   return (
     <TextClassContext.Provider
       value={cn(
-        props.disabled && 'web:pointer-events-none',
         buttonTextVariants({ variant, size }),
+        props.disabled &&
+          (isSolid ? 'text-[#F0F4EC] web:pointer-events-none' : 'web:pointer-events-none'),
       )}
     >
       <Pressable
         className={cn(
-          props.disabled && 'opacity-50 web:pointer-events-none',
           buttonVariants({ variant, size, className }),
+          props.disabled &&
+            (isSolid
+              ? 'bg-accentDisabled shadow-none web:pointer-events-none'
+              : 'opacity-50 web:pointer-events-none'),
         )}
         ref={ref}
         role='button'

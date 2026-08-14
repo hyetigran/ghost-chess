@@ -36,6 +36,7 @@ import { setAndroidNavigationBar } from '~/lib/style/android-navigation-bar';
 import { NAV_THEME } from '~/lib/style/constants';
 import { useColorScheme } from '~/lib/style/useColorScheme';
 import { AuthProvider } from '~/context/auth-context';
+import { MatchmakingProvider } from '~/context/matchmaking-context';
 import { SettingsProvider } from '~/context/settings-context';
 import { usePushNotifications } from '~/lib/hooks/use-push-notifications';
 
@@ -103,6 +104,17 @@ export default function RootLayout() {
     hasMounted.current = true;
   }, []);
 
+  // Web: the dark-theme CSS variables are keyed to `.dark:root`
+  // (global.css), i.e. the class must live on <html> — the `dark` class
+  // Providers puts on the root View only reaches descendant selectors.
+  // Without this sync, a system-dark first load renders dark nav chrome
+  // over light-token content.
+  useIsomorphicLayoutEffect(() => {
+    if (Platform.OS === 'web') {
+      document.documentElement.classList.toggle('dark', isDarkColorScheme);
+    }
+  }, [isDarkColorScheme]);
+
   // Deliberately not gated on fontsLoaded: custom fonts should swap in
   // progressively once loaded (standard web font-loading behavior), not
   // block the whole app — the two states aren't equivalent the way they
@@ -115,10 +127,19 @@ export default function RootLayout() {
     <Providers>
       <Stack
         screenOptions={{
+          // Mockup top bars: chrome sits directly on the screen bg (no
+          // raised card, no hairline), centered IBM Plex Mono eyebrow
+          // title — "DAILY · 1 DAY / MOVE · RATED" style.
           headerStyle: {
             backgroundColor: isDarkColorScheme
-              ? NAV_THEME.dark.card
-              : NAV_THEME.light.card,
+              ? NAV_THEME.dark.background
+              : NAV_THEME.light.background,
+          },
+          headerShadowVisible: false,
+          headerTitleAlign: 'center',
+          headerTitleStyle: {
+            fontFamily: 'IBMPlexMono_600SemiBold',
+            fontSize: 12,
           },
           headerTintColor: isDarkColorScheme
             ? NAV_THEME.dark.text
@@ -130,62 +151,64 @@ export default function RootLayout() {
           name='index'
           options={{
             title: 'Ghost Chess',
-            headerShown: true,
+            // Home draws its own mockup-style header (big title + "+"
+            // tile) — the native bar would duplicate it.
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name='new-game'
           options={{
-            title: 'New Game',
+            title: 'NEW GAME',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='join-game'
           options={{
-            title: 'Join Game',
+            title: 'JOIN GAME',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='local-game'
           options={{
-            title: 'Local Play',
+            title: 'PASS & PLAY',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='ai-game'
           options={{
-            title: 'vs. AI',
+            title: 'VS COMPUTER',
             headerShown: true,
           }}
         />
         <Stack.Screen
-          name='(game)/[id]'
+          name='(game)/[id]/page'
           options={{
-            title: 'Game',
+            title: 'GAME',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='settings'
           options={{
-            title: 'Settings',
+            title: 'SETTINGS',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='profile'
           options={{
-            title: 'Profile',
+            title: 'PROFILE',
             headerShown: true,
           }}
         />
         <Stack.Screen
           name='how-to-play'
           options={{
-            title: 'How to Play',
+            title: 'HOW TO PLAY',
             headerShown: true,
           }}
         />
@@ -222,13 +245,15 @@ function Providers({ children }: { children: React.ReactNode }) {
           <AuthProvider>
             <SettingsProvider>
               <APIProvider>
-                <BottomSheetModalProvider>
-                  <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-                  <PushNotificationsRegistrar />
-                  {children}
-                  <FlashMessage position='top' />
-                  <PortalHost />
-                </BottomSheetModalProvider>
+                <MatchmakingProvider>
+                  <BottomSheetModalProvider>
+                    <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+                    <PushNotificationsRegistrar />
+                    {children}
+                    <FlashMessage position='top' />
+                    <PortalHost />
+                  </BottomSheetModalProvider>
+                </MatchmakingProvider>
               </APIProvider>
             </SettingsProvider>
           </AuthProvider>

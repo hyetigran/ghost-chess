@@ -29,11 +29,12 @@ export async function leaveMatchmakingQueue(): Promise<void> {
 }
 
 /**
- * The caller's own queue status (get_matchmaking_status RPC) — also the
- * heartbeat run_matchmaking_sweep's stale-row cleanup relies on, so this
- * is meant to be polled while the caller is actually on the searching
- * screen (matchmakingQueries.status, src/lib/state/matchmaking/queries.ts),
- * not called once and cached. Returns null when the caller isn't
+ * The caller's own queue status (get_matchmaking_status RPC). Unmatched
+ * search entries survive on a joined_at TTL now (run_matchmaking_sweep,
+ * 08_functions.sql), not on this being polled — a relaxed background
+ * poll (matchmakingQueries.status, src/lib/state/matchmaking/queries.ts)
+ * keeps the client's own view in sync, it's no longer what keeps the
+ * search itself alive. Returns null when the caller isn't
  * currently queued at all — verified directly against a live local
  * instance that this arrives as `{user_id: null, ...}` (every column
  * null), not a bare JSON null, despite the underlying SQL function
