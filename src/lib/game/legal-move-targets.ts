@@ -24,6 +24,17 @@ import { computeVisibleSquares } from '~/lib/game/redact-fen';
  * as pawnCaptureCandidates: attempting a capture that turns out to be
  * empty is harmless, so there's no confusing "looked legal, wasn't" case
  * to guard against there.
+ *
+ * The gate checks vision of the square directly in front of the pawn
+ * (its path's first step), not `move.to` — for a single push those are
+ * the same square, but for a two-square first move `move.to` is the far
+ * square, which a pawn's own attack geometry can never confirm (pawns
+ * never attack straight ahead) and nothing else attacks that deep before
+ * some other piece develops. Gating the double push on the far square
+ * would make it effectively unavailable for most of the game; gating on
+ * the near square instead answers the only question that matters for
+ * "is the pawn's path actually clear to step through," and leaves the
+ * far square's own risk accepted the same way a diagonal capture's is.
  */
 export function legalMoveTargets(
   chess: Chess,
@@ -40,7 +51,7 @@ export function legalMoveTargets(
     if (
       move.piece === 'p' &&
       move.captured === undefined &&
-      !visibleSquares.has(move.to)
+      !visibleSquares.has(pawnPathFirstStep(move.from, ownColor))
     ) {
       continue;
     }
@@ -52,4 +63,11 @@ export function legalMoveTargets(
   }
 
   return targets;
+}
+
+/** The square one step ahead of `from` in `color`'s forward direction. */
+function pawnPathFirstStep(from: Square, color: 'w' | 'b'): Square {
+  const file = from[0];
+  const rank = Number(from[1]);
+  return `${file}${rank + (color === 'w' ? 1 : -1)}` as Square;
 }

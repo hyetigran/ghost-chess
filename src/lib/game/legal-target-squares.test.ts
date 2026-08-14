@@ -20,14 +20,27 @@ describe('legalTargetSquares', () => {
   it("includes a pawn's forward push square once another piece's vision confirms it's clear", () => {
     // The rook on a3 attacks unblocked along rank 3, including e3 — that
     // confirms e3 is genuinely empty, so the pawn's single push there is
-    // a confident target. e4 (the double push) still isn't confirmed by
-    // anything, so it stays excluded — the gate is per-square, not
-    // per-piece.
+    // a confident target. The double push is gated on that same e3
+    // square (the pawn's path's first step to walk through), not the far
+    // e4 square, so it's confirmed too.
     const chess = new Chess('7k/8/8/8/8/R7/4P3/7K w - - 0 1');
     const targets = legalTargetSquares(chess, 'w');
 
     expect(targets.has('e3')).toBe(true);
-    expect(targets.has('e4')).toBe(false);
+    expect(targets.has('e4')).toBe(true);
+  });
+
+  it('includes a pawn double push from its starting square (the reported bug)', () => {
+    // Standard starting position: nothing attacks e4 this early, but the
+    // d2 pawn's diagonal attack confirms e3 — the path's first step — is
+    // clear, which is all that's needed to offer the double push.
+    const chess = new Chess(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    );
+    const targets = legalTargetSquares(chess, 'w');
+
+    expect(targets.has('e3')).toBe(true);
+    expect(targets.has('e4')).toBe(true);
   });
 
   it("excludes a pawn's forward push square a hidden enemy piece actually occupies", () => {

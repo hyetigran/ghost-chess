@@ -54,7 +54,7 @@ const DialogOverlayNative = React.forwardRef<
         exiting={FadeOut.duration(150)}
       >
         {typeof children === 'function'
-          ? children({ pressed: false, hovered: false })
+          ? children({ pressed: false })
           : children}
       </Animated.View>
     </DialogPrimitive.Overlay>
