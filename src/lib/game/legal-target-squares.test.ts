@@ -211,6 +211,14 @@ describe('legalTargetSquares', () => {
   // (hazyRanksAtOpening, above) rather than legalTargetSquares alone, so
   // it also catches a regression in redaction or the off-turn clone, not
   // only in the gating predicate itself.
+  //
+  // #78 reported rank 4 wrongly joining white's foggy set (rank 5 for
+  // black) — the far double-push square staying hazy because the gate
+  // above once checked `move.to` instead of `pawnPathFirstStep`.
+  // Reverting this file's fix (`a25c89b`) and rerunning these two tests
+  // reproduces that exact symptom: `[4, 5, 6, 7, 8]` / `[1, 2, 3, 4, 5]`.
+  // That fix already landed on `main` a day before #78 was filed — these
+  // two tests exist to keep it that way.
   it('fogs exactly 4 ranks at the opening for white (#78)', () => {
     expect(hazyRanksAtOpening('white')).toEqual([5, 6, 7, 8]);
   });
