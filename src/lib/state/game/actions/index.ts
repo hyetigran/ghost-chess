@@ -32,7 +32,20 @@ function describeMoveError(error: SubmitMoveError): string {
   }
 }
 
-export const useMakeMove = ({ gameId }: { gameId: string }) => {
+export const useMakeMove = ({
+  gameId,
+  onRejected,
+}: {
+  gameId: string;
+  // Called from onError below, for every rejection reason alike (rate
+  // limit, auth, illegal move, internal error) — this is the one uniform
+  // client-side reject path a submitted move can hit, so it's also the
+  // one place the illegal-move SFX (#80) hooks in. It deliberately isn't
+  // passed the error/reason: per ADR-0007, the whole point of this path
+  // being uniform is that nothing downstream of it — including a sound
+  // effect — gets to branch on *why* the move was rejected.
+  onRejected?: () => void;
+}) => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -117,6 +130,7 @@ export const useMakeMove = ({ gameId }: { gameId: string }) => {
         message: describeMoveError(err as SubmitMoveError),
         type: 'warning',
       });
+      onRejected?.();
     },
     onSettled: () => {
       // Refetch the game to ensure we have the latest data
