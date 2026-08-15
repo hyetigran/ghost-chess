@@ -144,6 +144,7 @@ export default function NewGameScreen() {
           <LinkRow
             href='/invitations'
             glyph='♟'
+            accent
             title='Open invitations'
             subtitle='Browse games anyone can accept'
           />
@@ -313,26 +314,24 @@ export default function NewGameScreen() {
   );
 }
 
-// The mockup's opponent-row treatment: 38px icon tile, bold label,
-// muted sublabel, trailing chevron.
-function ModeRow({
+// The mockup's opponent-row treatment: 38px icon tile, bold label, muted
+// sublabel, trailing chevron. Shared by ModeRow (switches this screen's
+// local `mode`) and LinkRow (navigates to another screen) below — those
+// two differ only in their trigger (Pressable+onPress vs Link+asChild),
+// so the row's visual content lives here once rather than twice.
+function RowContent({
   glyph,
   title,
   subtitle,
-  onPress,
   accent = false,
 }: {
   glyph: string;
   title: string;
   subtitle: string;
-  onPress: () => void;
   accent?: boolean;
 }): React.JSX.Element {
   return (
-    <Pressable
-      onPress={onPress}
-      className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'
-    >
+    <>
       <View
         className={`w-[38px] h-[38px] items-center justify-center rounded-tile ${
           accent ? 'bg-primary' : 'bg-secondary'
@@ -351,6 +350,29 @@ function ModeRow({
         <Text className='text-xs text-muted-foreground'>{subtitle}</Text>
       </View>
       <Text className='text-lg text-faint'>›</Text>
+    </>
+  );
+}
+
+function ModeRow({
+  glyph,
+  title,
+  subtitle,
+  onPress,
+  accent = false,
+}: {
+  glyph: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  accent?: boolean;
+}): React.JSX.Element {
+  return (
+    <Pressable
+      onPress={onPress}
+      className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'
+    >
+      <RowContent glyph={glyph} title={title} subtitle={subtitle} accent={accent} />
     </Pressable>
   );
 }
@@ -363,25 +385,18 @@ function LinkRow({
   glyph,
   title,
   subtitle,
+  accent = false,
 }: {
   href: Href;
   glyph: string;
   title: string;
   subtitle: string;
+  accent?: boolean;
 }): React.JSX.Element {
   return (
     <Link href={href} asChild>
       <Pressable className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'>
-        <View className='w-[38px] h-[38px] items-center justify-center rounded-tile bg-secondary'>
-          <Text className='text-[19px] leading-[22px] text-foreground'>
-            {glyph}
-          </Text>
-        </View>
-        <View className='flex-1 gap-0.5'>
-          <Text className='font-sans-bold text-base'>{title}</Text>
-          <Text className='text-xs text-muted-foreground'>{subtitle}</Text>
-        </View>
-        <Text className='text-lg text-faint'>›</Text>
+        <RowContent glyph={glyph} title={title} subtitle={subtitle} accent={accent} />
       </Pressable>
     </Link>
   );
