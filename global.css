@@ -108,3 +108,57 @@
     --ring: var(--dt-accent);
   }
 }
+
+/* Web scrollbar chrome (#81) — native iOS/Android never render this (no
+ * CSSOM there), so nothing here needs a Platform.OS gate; it's inert on
+ * native the same way :root/.dark:root above already are.
+ *
+ * Track is left transparent rather than pinned to any single --dt-* bg
+ * token: the scrollbar gutter is painted by the scrolling element's own
+ * background (bg-background on the page-level ScrollViews, bg-card on
+ * MoveHistory's card, bg-secondary on the game-over sheet, etc.), so a
+ * transparent track always matches whichever container it's in without
+ * hardcoding one token that would drift from a card's actual background.
+ * Thumb uses --dt-border-strong (already themed per light/dark above) so
+ * it reads as a subtle rail rather than a default grey OS scrollbar.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin; /* Firefox: thinner than the default 'auto' width */
+    scrollbar-color: hsl(var(--dt-border-strong)) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px; /* narrower than the ~15-17px browser default */
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--dt-border-strong));
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--dt-muted));
+  }
+}
+
+/* Opt-in utility for scrollers that should have no visible scrollbar at
+ * all (ticket: home's horizontal "Your move" list) rather than a
+ * restyled one. Not wired to any component yet — that horizontal list
+ * doesn't exist on main until #83 lands; apply this class to its
+ * ScrollView/container then instead of adding the thin-scrollbar rules
+ * above to it. */
+@layer utilities {
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
