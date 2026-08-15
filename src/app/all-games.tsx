@@ -17,13 +17,8 @@ export default function AllGamesScreen(): React.JSX.Element {
   const { session } = useAuth();
   const userId = session?.user.id;
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery(userQueries.gameHistoryInfinite(userId ?? ''));
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery(userQueries.gameHistoryInfinite(userId ?? ''));
 
   const games = React.useMemo(
     () => data?.pages.flat() ?? [],
@@ -43,13 +38,11 @@ export default function AllGamesScreen(): React.JSX.Element {
       className='flex-1 bg-background'
       contentContainerClassName='p-5 gap-3.5'
     >
-      {games.length === 0 && !isLoading ? (
-        <Text className='text-sm text-muted-foreground'>
-          No games played yet.
-        </Text>
-      ) : (
-        <RecentGamesList games={games} viewerId={userId} />
-      )}
+      {/* RecentGamesList already renders its own "No games played yet."
+          copy for an empty array — no separate loading/empty branch
+          needed here (code review: the old isLoading-gated branch above
+          it was a no-op duplicate of that same string). */}
+      <RecentGamesList games={games} viewerId={userId} />
 
       {hasNextPage && (
         <Button
