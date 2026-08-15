@@ -22,7 +22,10 @@ export default function HomeScreen() {
   const { data: profile } = useQuery(userQueries.profile(userId ?? ''));
   const { data: stats } = useQuery(userQueries.stats(userId ?? ''));
   const { data: activeGames } = useQuery(userQueries.activeGames(userId ?? ''));
-  const { data: history } = useQuery(userQueries.gameHistory(userId ?? ''));
+  // 20 most recent finished games (#84) — the footer "View all games"
+  // button is what surfaces anything past that, via the paginated
+  // All games screen, so this fetch intentionally stays capped.
+  const { data: history } = useQuery(userQueries.gameHistory(userId ?? '', 20));
   const { isSearching } = useMatchmaking();
 
   // "EXPIRING" trailing badge on the "Your move" section header — counts
@@ -91,15 +94,21 @@ export default function HomeScreen() {
             <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
           </HomeSection>
 
-          {/* INTERIM (#83, pending #84): #84 — the dedicated finished-games
-              history list — hasn't landed on main yet, so this section is
-              the only way to reach a game once it's over. GameFilterPills'
-              "Finished" pill was removed along with "Your turn"/"Waiting"
-              rather than kept as a single-item pill row (judged more
-              awkward than just always showing the section). Delete this
-              HomeSection once #84 ships its own dedicated surface. */}
-          <HomeSection title='Finished'>
+          {/* #84: 20 most recent finished games, with a footer button to
+              the paginated All games screen for anything older. Supersedes
+              #83's interim "Finished" stopgap (plain RecentGamesList, no
+              cap, no way to reach games past whatever getGameHistory's
+              default returned). */}
+          <HomeSection title='History'>
             <RecentGamesList games={history ?? []} viewerId={userId} />
+            <Link href='/all-games' asChild>
+              <Pressable className='flex-row items-center justify-center gap-1 py-2'>
+                <Text className='font-sans-semibold text-sm text-primary'>
+                  View all games
+                </Text>
+                <Text className='text-sm text-primary'>›</Text>
+              </Pressable>
+            </Link>
           </HomeSection>
         </>
       )}

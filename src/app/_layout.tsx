@@ -192,6 +192,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name='all-games'
+          options={{
+            title: 'ALL GAMES',
+            headerShown: true,
+          }}
+        />
+        <Stack.Screen
           name='settings'
           options={{
             title: 'SETTINGS',
