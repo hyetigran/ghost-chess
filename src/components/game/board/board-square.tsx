@@ -6,6 +6,7 @@ import {
 } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -76,7 +77,7 @@ type Props = {
    * yet (both need real pixels), same as the drag layer already handled
    * this in ChessBoard before the BoardSquare split. */
   squareSize: number;
-  cloudDrift: import('react-native-reanimated').SharedValue<number>;
+  cloudDrift: SharedValue<number>;
   gesture: ComposedGesture;
 };
 
