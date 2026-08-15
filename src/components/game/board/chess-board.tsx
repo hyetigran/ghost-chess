@@ -2,10 +2,14 @@ import * as React from 'react';
 import { Image, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { type Piece, type Square } from 'chess.js';
 import { Text } from '~/components/ui/text';
@@ -21,6 +25,7 @@ import { pieceImage } from '~/lib/game/piece-image';
 import { isPromotionMove, type PromotionPiece } from '~/lib/game/promotion';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
+import { CloudFogOverlay } from './cloud-fog-overlay';
 import { PromotionPicker } from './promotion-picker';
 
 const LABEL_GUTTER = 16;
@@ -34,6 +39,10 @@ const DRAG_ACTIVATION_DISTANCE = 8;
 // drag-and-drop convention, and it keeps the square's own highlight
 // state legible underneath.
 const DRAGGED_PIECE_OPACITY = 0.35;
+// One full lap of the shared cloud-drift clock (cloud-fog-overlay.tsx) —
+// long and linear so the haze reads as "slowly shifting weather," not as
+// an obviously-looping animation.
+const CLOUD_DRIFT_DURATION_MS = 26000;
 
 type Props = {
   /**
@@ -140,6 +149,28 @@ export function ChessBoard({
   // position would misrepresent it as still uncertain, so fog is skipped
   // entirely once `interactive` is false rather than computed and hidden.
   const fogEnabled = interactive;
+  // Single UI-thread clock driving every hazy square's cloud drift
+  // (cloud-fog-overlay.tsx) — one repeating animation shared across
+  // however many squares are currently hazy, rather than each square
+  // running its own. Only started when fog can actually be showing.
+  const cloudDrift = useSharedValue(0);
+  React.useEffect(() => {
+    if (!fogEnabled) return;
+    cloudDrift.value = withRepeat(
+      withTiming(1, {
+        duration: CLOUD_DRIFT_DURATION_MS,
+        easing: Easing.linear,
+      }),
+      -1,
+      false,
+    );
+    // The `-1` repeat above never resolves on its own — without this,
+    // an `interactive` board that later flips to non-interactive (a game
+    // ending, ADR-0003's reveal-on-completion) would leave the clock
+    // spinning on the UI thread for the rest of this ChessBoard's
+    // lifetime with no overlay left consuming it.
+    return () => cancelAnimation(cloudDrift);
+  }, [fogEnabled, cloudDrift]);
 
   // Pixel size of one square, measured once the grid actually lays out —
   // dragTargetSquare needs real pixels, not the percentage widths the
@@ -309,30 +340,30 @@ export function ChessBoard({
                           style={{
                             width: '80%',
                             height: '80%',
-                            opacity: isBeingDragged
-                              ? DRAGGED_PIECE_OPACITY
-                              : 1,
+                            opacity: isBeingDragged ? DRAGGED_PIECE_OPACITY : 1,
                           }}
                           resizeMode='contain'
                         />
                       )}
-                      {/* A translucent haze layered over the tile rather
-                          than a flat color swap, so the light/dark checker
-                          pattern (and any highlight underneath) still shows
-                          faintly through — reads as "this square is
-                          obscured," not "this is a third square color."
-                          pointerEvents="none" so the overlay never steals
-                          the tap from the gesture detector it sits on. */}
                       {isFlashing && (
                         <View
                           className='absolute inset-0 border-4 border-[rgba(198,63,49,0.75)] dark:border-[rgba(226,112,95,0.85)]'
                           pointerEvents='none'
                         />
                       )}
+                      {/* Layered blobs rather than a flat color swap, so
+                          the light/dark checker pattern (and any highlight
+                          underneath) still shows faintly through — reads as
+                          "clouds obscuring this square," not "this is a
+                          third square color" (#77). pointerEvents="none"
+                          (both here and inside the overlay itself) so it
+                          never steals the tap from the gesture detector
+                          the square sits on. */}
                       {isHazy && (
-                        <View
-                          className='absolute inset-0 opacity-80 bg-fog'
-                          pointerEvents='none'
+                        <CloudFogOverlay
+                          square={square}
+                          driftProgress={cloudDrift}
+                          squareSize={squareSize}
                         />
                       )}
                     </View>
