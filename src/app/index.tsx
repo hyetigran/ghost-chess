@@ -6,11 +6,7 @@ import { Button, Text } from '~/components/ui';
 import { ThemeToggle } from '~/components/ThemeToggle';
 import { HomeSection } from '~/components/home/home-section';
 import { StatsSummary } from '~/components/home/stats-summary';
-import {
-  GameFilterPills,
-  type QueueFilter,
-} from '~/components/home/game-filter-pills';
-import { GameQueueList } from '~/components/home/game-queue-list';
+import { ActiveGamesList } from '~/components/home/active-games-list';
 import { RecentGamesList } from '~/components/home/recent-games-list';
 import { SearchingRow } from '~/components/home/searching-row';
 import { useAuth } from '~/context/auth-context';
@@ -20,12 +16,6 @@ import { urgencyTier } from '~/lib/game/urgency';
 import { isViewersTurn } from '~/lib/game/viewer-turn';
 import { formatUsername } from '~/lib/user/format-username';
 import { userQueries } from '~/lib/state/user/queries';
-
-const FILTER_SECTION_TITLE: Record<QueueFilter, string> = {
-  'your-turn': 'Your move',
-  waiting: 'Waiting on them',
-  finished: 'Finished',
-};
 
 export default function HomeScreen() {
   const { session } = useAuth();
@@ -37,44 +27,23 @@ export default function HomeScreen() {
   const { data: history } = useQuery(userQueries.gameHistory(userId ?? ''));
   const { isSearching } = useMatchmaking();
 
-  const [filter, setFilter] = React.useState<QueueFilter>('your-turn');
-
-  // A 'waiting' game (no opponent yet) is never "your turn" — its clock
-  // hasn't started — so it always buckets under the "Waiting" pill,
-  // alongside active games where the opponent is on the move.
-  const yourTurnGames = React.useMemo(
+  // "EXPIRING" trailing badge on the "Your move" section header — counts
+  // only active, your-turn games whose deadline is in the critical tier
+  // (urgencyTier), independent of how ActiveGamesList orders/renders them.
+  const expiringCount = React.useMemo(
     () =>
       userId
         ? (activeGames ?? []).filter(
             (g) =>
               g.status === 'active' &&
-              isViewersTurn(g.current_turn, g.white_player_id, userId),
-          )
-        : [],
+              isViewersTurn(g.current_turn, g.white_player_id, userId) &&
+              urgencyTier(
+                secondsUntilDeadline(g.updated_at, g.time_control_hours),
+                g.time_control_hours * 60 * 60,
+              ) === 'critical',
+          ).length
+        : 0,
     [activeGames, userId],
-  );
-  const waitingGames = React.useMemo(
-    () =>
-      userId
-        ? (activeGames ?? []).filter(
-            (g) =>
-              g.status !== 'active' ||
-              !isViewersTurn(g.current_turn, g.white_player_id, userId),
-          )
-        : [],
-    [activeGames, userId],
-  );
-
-  const expiringCount = React.useMemo(
-    () =>
-      yourTurnGames.filter(
-        (g) =>
-          urgencyTier(
-            secondsUntilDeadline(g.updated_at, g.time_control_hours),
-            g.time_control_hours * 60 * 60,
-          ) === 'critical',
-      ).length,
-    [yourTurnGames],
   );
 
   return (
@@ -108,33 +77,34 @@ export default function HomeScreen() {
 
       {userId && (
         <>
-          <View className='pb-4'>
-            <GameFilterPills
-              filter={filter}
-              onChange={setFilter}
-              yourTurnCount={yourTurnGames.length}
-              waitingCount={waitingGames.length}
-            />
-          </View>
-
+          {/* #83: single horizontal, active-only "Your move" list —
+              replaces the old GameFilterPills (Your turn / Waiting /
+              Finished) + vertical GameQueueList for in-progress games.
+              ActiveGamesList owns its own filtering/ordering
+              (orderActiveGames: active-only, your-turn first, then
+              waiting-on-opponent, each by soonest deadline). */}
           <HomeSection
-            title={FILTER_SECTION_TITLE[filter]}
+            title='Your move'
             trailing={
-              filter === 'your-turn' && expiringCount > 0 ? (
+              expiringCount > 0 ? (
                 <Text className='font-mono-semibold text-[11px] text-danger'>
                   {expiringCount} EXPIRING
                 </Text>
               ) : undefined
             }
           >
-            {filter === 'finished' ? (
-              <RecentGamesList games={history ?? []} viewerId={userId} />
-            ) : (
-              <GameQueueList
-                games={filter === 'your-turn' ? yourTurnGames : waitingGames}
-                viewerId={userId}
-              />
-            )}
+            <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
+          </HomeSection>
+
+          {/* INTERIM (#83, pending #84): #84 — the dedicated finished-games
+              history list — hasn't landed on main yet, so this section is
+              the only way to reach a game once it's over. GameFilterPills'
+              "Finished" pill was removed along with "Your turn"/"Waiting"
+              rather than kept as a single-item pill row (judged more
+              awkward than just always showing the section). Delete this
+              HomeSection once #84 ships its own dedicated surface. */}
+          <HomeSection title='Finished'>
+            <RecentGamesList games={history ?? []} viewerId={userId} />
           </HomeSection>
         </>
       )}
