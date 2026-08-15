@@ -6,8 +6,8 @@ import { BoardThumbnail } from '~/components/home/board-thumbnail';
 import { secondsUntilDeadline } from '~/lib/game/deadline';
 import { formatTimeRemaining } from '~/lib/game/format-time-remaining';
 import { gameRoute } from '~/lib/navigation/game-route';
+import { gameUrgencyTier } from '~/lib/game/game-urgency';
 import { orderActiveGames } from '~/lib/game/order-active-games';
-import { urgencyTier } from '~/lib/game/urgency';
 import { isViewersTurn } from '~/lib/game/viewer-turn';
 import { formatUsername } from '~/lib/user/format-username';
 import type { ActiveGame } from '~/types/database';
@@ -71,12 +71,11 @@ function ActiveGameCard({
     game.white_player_id,
     viewerId,
   );
-  const windowSeconds = game.time_control_hours * 60 * 60;
   const secondsLeft = secondsUntilDeadline(
     game.updated_at,
     game.time_control_hours,
   );
-  const tier = isYourTurn ? urgencyTier(secondsLeft, windowSeconds) : 'normal';
+  const tier = gameUrgencyTier(game, viewerId);
 
   return (
     <Link href={gameRoute(game.game_id)} asChild>

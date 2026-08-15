@@ -11,9 +11,7 @@ import { RecentGamesList } from '~/components/home/recent-games-list';
 import { SearchingRow } from '~/components/home/searching-row';
 import { useAuth } from '~/context/auth-context';
 import { useMatchmaking } from '~/context/matchmaking-context';
-import { secondsUntilDeadline } from '~/lib/game/deadline';
-import { urgencyTier } from '~/lib/game/urgency';
-import { isViewersTurn } from '~/lib/game/viewer-turn';
+import { gameUrgencyTier } from '~/lib/game/game-urgency';
 import { formatUsername } from '~/lib/user/format-username';
 import { userQueries } from '~/lib/state/user/queries';
 
@@ -28,19 +26,16 @@ export default function HomeScreen() {
   const { isSearching } = useMatchmaking();
 
   // "EXPIRING" trailing badge on the "Your move" section header — counts
-  // only active, your-turn games whose deadline is in the critical tier
-  // (urgencyTier), independent of how ActiveGamesList orders/renders them.
+  // only active games in the critical urgency tier (gameUrgencyTier,
+  // which is already 'normal' for anything not the viewer's turn),
+  // independent of how ActiveGamesList orders/renders them.
   const expiringCount = React.useMemo(
     () =>
       userId
         ? (activeGames ?? []).filter(
             (g) =>
               g.status === 'active' &&
-              isViewersTurn(g.current_turn, g.white_player_id, userId) &&
-              urgencyTier(
-                secondsUntilDeadline(g.updated_at, g.time_control_hours),
-                g.time_control_hours * 60 * 60,
-              ) === 'critical',
+              gameUrgencyTier(g, userId) === 'critical',
           ).length
         : 0,
     [activeGames, userId],
