@@ -1,5 +1,36 @@
-import { Chess } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 import { legalTargetSquares } from '~/lib/game/legal-target-squares';
+import { redactFen } from '~/lib/game/redact-fen';
+import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
+
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+/**
+ * Reproduces ChessBoard's own `isHazy` predicate (chess-board.tsx) exactly
+ * — piece?.color !== ownColor && !reachable.has(square) — over every
+ * square, for a viewer looking at their own redacted view of `trueFen`.
+ * Goes through the real redactFen → chessFromRedactedFen → legalTargetSquares
+ * pipeline a live board actually uses, not just legalTargetSquares in
+ * isolation, so a regression in redaction or the off-turn query-clone (both
+ * upstream of legalTargetSquares) would show up here too, not just a
+ * regression in the gating logic itself.
+ */
+function hazyRanksAtOpening(viewer: 'white' | 'black'): number[] {
+  const ownColor = viewer === 'white' ? 'w' : 'b';
+  const chess = chessFromRedactedFen(redactFen(START_FEN, viewer));
+  const reachable = legalTargetSquares(chess, ownColor);
+
+  const foggyRanks = new Set<number>();
+  for (const file of 'abcdefgh') {
+    for (let rank = 1; rank <= 8; rank++) {
+      const square = `${file}${rank}` as Square;
+      const piece = chess.get(square);
+      const isHazy = piece?.color !== ownColor && !reachable.has(square);
+      if (isHazy) foggyRanks.add(rank);
+    }
+  }
+  return [...foggyRanks].sort((a, b) => a - b);
+}
 
 describe('legalTargetSquares', () => {
   it("excludes a pawn's forward push square when nothing confirms it's actually empty", () => {
@@ -34,13 +65,46 @@ describe('legalTargetSquares', () => {
     // Standard starting position: nothing attacks e4 this early, but the
     // d2 pawn's diagonal attack confirms e3 — the path's first step — is
     // clear, which is all that's needed to offer the double push.
-    const chess = new Chess(
-      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-    );
+    const chess = new Chess(START_FEN);
     const targets = legalTargetSquares(chess, 'w');
 
     expect(targets.has('e3')).toBe(true);
     expect(targets.has('e4')).toBe(true);
+  });
+
+  it('includes every file\'s double-push destination at the opening, not just e4 (#78)', () => {
+    // The single-file e2/e4 check above happens to work even if some
+    // *other* file's near-square vision is broken — every pawn but the
+    // rook-file ones is covered by a neighboring pawn's diagonal, and
+    // the a/h-file pawns are covered only by the b1/g1 knight's jump
+    // (a2's near square a3 has no pawn covering it — only Nb1). A bug
+    // that broke just the knight-covered corners, or any other single
+    // file, would slip past a test that only ever checked the middle of
+    // the board. Every file needs its own assertion.
+    const chess = new Chess(START_FEN);
+    const targets = legalTargetSquares(chess, 'w');
+
+    for (const file of 'abcdefgh') {
+      expect(targets.has(`${file}3` as Square)).toBe(true);
+      expect(targets.has(`${file}4` as Square)).toBe(true);
+    }
+  });
+
+  it('includes every file\'s double-push destination at the opening for black too (#78)', () => {
+    // Black to move never actually happens at the true opening (white
+    // moves first) — this queries black's reach on the *unmoved* board
+    // anyway, the same way ChessBoard always shows a player their own
+    // reach regardless of whose turn it is. Exercises the off-turn
+    // query-clone path (queryChess in legalTargetSquares) across the
+    // whole board, not just legalTargetSquares' own single-square
+    // off-turn fixture.
+    const chess = new Chess(START_FEN);
+    const targets = legalTargetSquares(chess, 'b');
+
+    for (const file of 'abcdefgh') {
+      expect(targets.has(`${file}6` as Square)).toBe(true);
+      expect(targets.has(`${file}5` as Square)).toBe(true);
+    }
   });
 
   it("excludes a pawn's forward push square a hidden enemy piece actually occupies", () => {
@@ -132,5 +196,42 @@ describe('legalTargetSquares', () => {
     legalTargetSquares(chess, 'w');
 
     expect(chess.turn()).toBe('b');
+  });
+
+  // ChessBoard's own haze rule (#78's actual bug report): a square is
+  // hazy iff it's not the viewer's own piece and not in this set. At the
+  // true opening — before either side has moved — exactly 4 ranks should
+  // read as hazy: the opponent's whole half. Own pieces (ranks 1-2) are
+  // never hazy regardless of `reachable`; rank 3 (pawn diagonals, knight
+  // landings, every pawn's push-path first step) and rank 4 (the
+  // corresponding double-push destinations, gated on that same rank-3
+  // vision per the header comment) both come back through
+  // `legalTargetSquares` and so read as clear too. Runs the real
+  // redactFen → chessFromRedactedFen → legalTargetSquares pipeline
+  // (hazyRanksAtOpening, above) rather than legalTargetSquares alone, so
+  // it also catches a regression in redaction or the off-turn clone, not
+  // only in the gating predicate itself.
+  it('fogs exactly 4 ranks at the opening for white (#78)', () => {
+    expect(hazyRanksAtOpening('white')).toEqual([5, 6, 7, 8]);
+  });
+
+  it('fogs exactly 4 ranks at the opening for black (#78)', () => {
+    expect(hazyRanksAtOpening('black')).toEqual([1, 2, 3, 4]);
+  });
+
+  it("does not unfog a whole file once a pawn's used its first move (#78 task 4)", () => {
+    // Once e2's pawn has stepped to e3, its only remaining forward move
+    // is the single push e3-e4 — the double-push option is gone (it's no
+    // longer on its start rank), so e4 is no longer implicitly confirmed
+    // by e3's own vision the way it was pre-move. Nothing yet attacks e4
+    // (no piece develops to cover it in one ply), so e4 must still read
+    // as hazy — the fix for #78 must not overcorrect into treating an
+    // entire file as permanently unfogged once its pawn has moved once.
+    const chess = new Chess();
+    chess.move('e3');
+    chess.move('e6'); // mirror, so it's white to move again — same viewer as before
+    const targets = legalTargetSquares(chess, 'w');
+
+    expect(targets.has('e4')).toBe(false);
   });
 });
