@@ -42,7 +42,26 @@ export default function GameScreen() {
     isLoading,
     error,
   } = useQuery(gameQueries.gameById(gameId));
-  const { data: movesData } = useQuery(gameQueries.gameMovesByGameId(gameId));
+  // moves.fen holds the true position, and RLS (moves' SELECT policy,
+  // supabase/schemas/07_rls.sql) already denies every row while
+  // `games.status = 'active'` — but that's the backstop, not the whole
+  // story: this repo's practice elsewhere (e.g. ChessBoard's fog/
+  // `interactive` gating, useLastMoveTracking never touching post-game
+  // data) is that the client never even *attempts* a read it isn't
+  // supposed to have, rather than leaning on the server to silently
+  // hand back nothing. `enabled` here is that explicit gate — chevron
+  // replay (#85) reuses this same query for its `moveEntries`, so
+  // gating the fetch itself (not just, as before #85, hiding the
+  // rendered history behind `game.status === 'active'` further down)
+  // means the new chevrons/highlight/mobile list inherit the same
+  // occlusion boundary as the pre-existing reveal-on-completion behavior
+  // (ADR-0001, ADR-0003) with no separate check to keep in sync.
+  const { data: movesData } = useQuery({
+    ...gameQueries.gameMovesByGameId(gameId),
+    enabled:
+      !!gameId &&
+      (game?.status === 'completed' || game?.status === 'abandoned'),
+  });
   // Incremented on every rejected move (onRejected below), regardless of
   // rejection reason — the sole trigger useGameSounds needs for the
   // illegal-move SFX (#80), see useMakeMove's onRejected doc for why the
@@ -216,6 +235,24 @@ export default function GameScreen() {
               <PlayerCard {...playerRowProps(topColor)} />
             </View>
 
+            {/* Mobile move list (#85): a horizontal strip between the
+                opponent row and the board, replaced by the sidebar
+                below from the lg breakpoint up (`lg:hidden` here,
+                `hidden lg:flex` on the sidebar). Gated the same as the
+                sidebar/placeholder split below it — see that comment
+                for why `game.status === 'active'` is the boundary, not
+                just a layout choice. */}
+            {game.status !== 'active' && (
+              <View className='mb-3 lg:hidden'>
+                <MoveHistory
+                  moves={moveEntries}
+                  viewingPly={viewingPly}
+                  onSelectPly={setViewingPly}
+                  orientation='horizontal'
+                />
+              </View>
+            )}
+
             {/* Chess board */}
             <ChessBoard
               // moves.fen is only ever fetchable once the game is
@@ -280,7 +317,12 @@ export default function GameScreen() {
               game is completed/abandoned, matching the same window
               game.redacted_fen itself stops being redacted. Showing an
               empty-looking card during active play would look like a bug
-              rather than the deliberate occlusion boundary it is. */}
+              rather than the deliberate occlusion boundary it is; the
+              `movesData` query above is itself disabled for that same
+              window, so `moveEntries` is guaranteed empty here regardless
+              of what this renders. Desktop-sidebar only (`hidden
+              lg:flex`) once history is showable — the mobile strip above
+              the board covers narrow screens instead, see its comment. */}
           {game.status === 'active' ? (
             <View className='w-full max-w-[560px] self-center mt-2 lg:mt-0 lg:w-72 lg:max-w-none lg:self-start px-3 py-2.5 bg-card rounded-strip shadow-card'>
               <Text className='font-mono text-[13px] text-center text-muted-foreground'>
@@ -292,6 +334,7 @@ export default function GameScreen() {
               moves={moveEntries}
               viewingPly={viewingPly}
               onSelectPly={setViewingPly}
+              className='hidden lg:flex'
             />
           )}
         </View>
