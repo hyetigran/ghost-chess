@@ -28,6 +28,7 @@ export default function LocalGameScreen(): React.JSX.Element {
     makeMove,
     confirmHandoff,
     reset,
+    rejectionPulse,
   } = useLocalGame();
   const [showFullBoard, setShowFullBoard] = React.useState(false);
   const [viewingPly, setViewingPly] = React.useState<number | null>(null);
@@ -66,8 +67,16 @@ export default function LocalGameScreen(): React.JSX.Element {
   // The live true fen, not the display fen — history browsing and the
   // dev full-board toggle change what's displayed without a move
   // happening. Still passed during handoff (the move that triggered the
-  // handoff should sound), null once the game is over.
-  useGameSounds(phase.type === 'gameOver' ? null : fen);
+  // handoff should sound), null once the game is over. `phase.result` only
+  // exists once `phase.type === 'gameOver'` (LocalGamePhase), so it's read
+  // straight off `phase` here rather than threaded through as a separate
+  // variable.
+  useGameSounds(
+    phase.type === 'gameOver' ? null : fen,
+    null,
+    rejectionPulse,
+    phase.type === 'gameOver' ? phase.result : null,
+  );
 
   if (phase.type === 'handoff') {
     return (

@@ -26,6 +26,15 @@ type UseAiGameResult = {
   moves: MoveEntry[];
   makeMove: (from: string, to: string, promotion?: string) => void;
   reset: () => void;
+  // Increments on every illegal move attempt by the human player
+  // (applyLocalMove's `legal: false` branch) — feeds useGameSounds'
+  // illegal-move SFX (#80). Same reasoning as useLocalGame's identical
+  // field: no server round trip to hang a "rejected" event off of here,
+  // so applyLocalMove's own legality check is the uniform reject path,
+  // and this counts every "no" it gives without branching on which rule
+  // failed. The AI's own moves never hit this — attemptAiTurn only ever
+  // calls applyOutcome with an already-legal outcome.
+  rejectionPulse: number;
 };
 
 // Walks chooseAiMoveOrderFromTrueFen's full candidate list until one
@@ -130,11 +139,16 @@ export function useAiGame(
     if (outcome) applyOutcome(outcome);
   };
 
+  const [rejectionPulse, setRejectionPulse] = React.useState(0);
+
   const makeMove = (from: string, to: string, promotion = 'q'): void => {
     if (gameOver) return;
 
     const outcome = applyLocalMove(fen, { from, to, promotion });
-    if (!outcome.legal) return;
+    if (!outcome.legal) {
+      setRejectionPulse((current) => current + 1);
+      return;
+    }
 
     applyOutcome(outcome);
     if (!outcome.isGameOver) playAiTurn(outcome.newFen);
@@ -179,5 +193,6 @@ export function useAiGame(
     moves,
     makeMove,
     reset,
+    rejectionPulse,
   };
 }

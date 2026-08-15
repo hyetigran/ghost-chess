@@ -43,7 +43,15 @@ export default function GameScreen() {
     error,
   } = useQuery(gameQueries.gameById(gameId));
   const { data: movesData } = useQuery(gameQueries.gameMovesByGameId(gameId));
-  const makeMove = useMakeMove({ gameId });
+  // Incremented on every rejected move (onRejected below), regardless of
+  // rejection reason — the sole trigger useGameSounds needs for the
+  // illegal-move SFX (#80), see useMakeMove's onRejected doc for why the
+  // reason itself is never passed through.
+  const [rejectionPulse, setRejectionPulse] = React.useState(0);
+  const makeMove = useMakeMove({
+    gameId,
+    onRejected: () => setRejectionPulse((current) => current + 1),
+  });
   const endGame = useEndGame({ gameId });
   const timer = useGameTimer(gameId);
   useGameSubscription(gameId);
@@ -55,6 +63,8 @@ export default function GameScreen() {
   useGameSounds(
     game?.status === 'active' ? game.redacted_fen : null,
     flashSquare,
+    rejectionPulse,
+    game?.result ?? null,
   );
   const { pendingMove, attemptMove, confirm, cancel } = useMoveConfirmation(
     moveConfirmationEnabled,

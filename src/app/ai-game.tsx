@@ -74,6 +74,7 @@ function AiGameBoard({
     moves,
     makeMove,
     reset,
+    rejectionPulse,
   } = useAiGame(humanColor, difficulty);
 
   // Once the game ends, `fen` may be a true position with a king actually
@@ -97,7 +98,12 @@ function AiGameBoard({
 
   // The live true fen, not displayFen — history browsing and the dev
   // full-board toggle change what's displayed without a move happening.
-  useGameSounds(gameOver ? null : fen);
+  useGameSounds(
+    gameOver ? null : fen,
+    null,
+    rejectionPulse,
+    gameOver?.result ?? null,
+  );
 
   const viewingFen = viewingPly !== null ? moves[viewingPly].fen : fen;
   const displayFen = gameOver
