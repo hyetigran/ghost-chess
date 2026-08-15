@@ -10,12 +10,11 @@ import {
   GameFilterPills,
   type QueueFilter,
 } from '~/components/home/game-filter-pills';
-import { GameQueueList, deadlineForGame } from '~/components/home/game-queue-list';
+import { GameQueueList } from '~/components/home/game-queue-list';
 import { RecentGamesList } from '~/components/home/recent-games-list';
 import { SearchingRow } from '~/components/home/searching-row';
 import { useAuth } from '~/context/auth-context';
 import { useMatchmaking } from '~/context/matchmaking-context';
-import { gameRoute } from '~/lib/navigation/game-route';
 import { secondsUntilDeadline } from '~/lib/game/deadline';
 import { urgencyTier } from '~/lib/game/urgency';
 import { isViewersTurn } from '~/lib/game/viewer-turn';
@@ -65,13 +64,6 @@ export default function HomeScreen() {
         : [],
     [activeGames, userId],
   );
-
-  const nextGame = React.useMemo(() => {
-    if (yourTurnGames.length === 0) return null;
-    return yourTurnGames.reduce((soonest, game) =>
-      deadlineForGame(game) < deadlineForGame(soonest) ? game : soonest,
-    );
-  }, [yourTurnGames]);
 
   const expiringCount = React.useMemo(
     () =>
@@ -153,36 +145,6 @@ export default function HomeScreen() {
         </HomeSection>
       )}
 
-      <HomeSection title='Play'>
-        <View className='gap-2.5'>
-          <NavRow
-            href='/invitations'
-            glyph='♟'
-            accent
-            title='Open invitations'
-            subtitle='Browse games anyone can accept'
-          />
-          <NavRow
-            href='/join-game'
-            glyph='♞'
-            title='Join with a game ID'
-            subtitle='Enter an ID a friend shared'
-          />
-          <NavRow
-            href='/ai-game'
-            glyph='♜'
-            title='Computer'
-            subtitle='Practice against the engine'
-          />
-          <NavRow
-            href='/local-game'
-            glyph='♚'
-            title='Pass & play'
-            subtitle='Two players, one device'
-          />
-        </View>
-      </HomeSection>
-
       {stats && (
         <HomeSection title='Stats'>
           <StatsSummary
@@ -202,63 +164,20 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Mockup home: "Play next game" is a pinned bottom bar, not a row
-          in the queue — routes to the most urgent your-turn game, and
-          sits in the foundations' disabled state when there isn't one. */}
+          in the queue. It always opens /new-game now (#82) — starting a
+          new game, same as the header "+" tile — rather than jumping to
+          the most urgent your-turn game; that job belongs to the Your
+          move list above, which is always reachable once signed in. */}
       {userId && (
         <View className='px-5 pt-3.5 pb-9'>
-          {nextGame ? (
-            <Link href={gameRoute(nextGame.game_id)} asChild>
-              <Button>
-                <Text>Play next game</Text>
-              </Button>
-            </Link>
-          ) : (
-            <Button disabled>
+          <Link href='/new-game' asChild>
+            <Button>
               <Text>Play next game</Text>
             </Button>
-          )}
+          </Link>
         </View>
       )}
     </View>
-  );
-}
-
-// The mockup's opponent-row treatment (icon tile + label/sublabel +
-// chevron) reused for the home screen's navigation rows.
-function NavRow({
-  href,
-  glyph,
-  title,
-  subtitle,
-  accent = false,
-}: {
-  href: Href;
-  glyph: string;
-  title: string;
-  subtitle: string;
-  accent?: boolean;
-}): React.JSX.Element {
-  return (
-    <Link href={href} asChild>
-      <Pressable className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'>
-        <View
-          className={`w-[38px] h-[38px] items-center justify-center rounded-tile ${
-            accent ? 'bg-accent' : 'bg-secondary'
-          }`}
-        >
-          <Text
-            className={`text-[19px] leading-[22px] ${accent ? 'text-primary' : 'text-foreground'}`}
-          >
-            {glyph}
-          </Text>
-        </View>
-        <View className='flex-1 gap-0.5'>
-          <Text className='font-sans-bold text-base'>{title}</Text>
-          <Text className='text-xs text-muted-foreground'>{subtitle}</Text>
-        </View>
-        <Text className='text-lg text-faint'>›</Text>
-      </Pressable>
-    </Link>
   );
 }
 
