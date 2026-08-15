@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Image, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Easing,
   runOnJS,
   useAnimatedStyle,
@@ -163,6 +164,12 @@ export function ChessBoard({
       -1,
       false,
     );
+    // The `-1` repeat above never resolves on its own — without this,
+    // an `interactive` board that later flips to non-interactive (a game
+    // ending, ADR-0003's reveal-on-completion) would leave the clock
+    // spinning on the UI thread for the rest of this ChessBoard's
+    // lifetime with no overlay left consuming it.
+    return () => cancelAnimation(cloudDrift);
   }, [fogEnabled, cloudDrift]);
 
   // Pixel size of one square, measured once the grid actually lays out —
