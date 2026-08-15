@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { View, Vibration } from 'react-native';
-import { type Square } from 'chess.js';
+import { Chess, type Square } from 'chess.js';
 
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { MoveHistory } from '~/components/game/move-history/move-history';
@@ -12,6 +12,7 @@ import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-m
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
 import { formatTime } from '~/lib/utils/time';
+import { deriveLastMoveSquares } from '~/lib/game/last-move-squares';
 import { useMakeMove, useEndGame } from '~/lib/state/game/actions';
 import { gameQueries } from '~/lib/state/game/queries';
 import { useQuery } from '@tanstack/react-query';
@@ -19,9 +20,17 @@ import { useGameTimer } from '~/lib/hooks/use-game-timer';
 import { useGameSubscription } from '~/lib/hooks/use-game-subscription';
 import { useCaptureFlash } from '~/lib/hooks/use-capture-flash';
 import { useGameSounds } from '~/lib/hooks/use-game-sounds';
+import { useLastMoveTracking } from '~/lib/hooks/use-last-move-tracking';
 import { useMoveConfirmation } from '~/lib/hooks/use-move-confirmation';
 import { useAuth } from '~/context/auth-context';
 import { useSettings } from '~/context/settings-context';
+
+// Only ever used as the "previous position" for the very first ply's
+// last-move diff (deriveLastMoveSquares) — both during live play and
+// during post-game history review, ply 0 has no earlier move-list entry
+// to diff against, so this stands in for it. A plain module-level
+// constant rather than `new Chess().fen()` inline at every call site.
+const STANDARD_START_FEN = new Chess().fen();
 
 export default function GameScreen() {
   const { id: gameId } = useLocalSearchParams<{ id: string }>();
@@ -54,6 +63,19 @@ export default function GameScreen() {
       reportOwnMove(move.to as Square);
       makeMove.mutate(move);
     },
+  );
+
+  // Feeds ChessBoard's `lastMove` (#79 tasks 3a/3c) for the one path this
+  // screen can't get it any other way: while a game is still active,
+  // `moves.fen` is RLS-gated to post-completion (moves.gameMovesByGameId's
+  // own comment), so there's no per-ply history to diff against directly
+  // — only the live, in-place-updating `game.redacted_fen` this hook
+  // watches. Passed null while inactive so a fresh 'active' fen arriving
+  // right as the game ends can't get diffed against a stale live value
+  // sitting in the hook's ref; the historical path below takes over
+  // instead, computed straight off `moveEntries`.
+  const liveLastMove = useLastMoveTracking(
+    game?.status === 'active' ? game.redacted_fen : null,
   );
 
   const [showGameOver, setShowGameOver] = React.useState(false);
@@ -107,15 +129,56 @@ export default function GameScreen() {
     fen: move.fen,
   }));
 
+  // Once the game is no longer active, `moves.fen` is readable (same RLS
+  // window as `redacted_fen` no longer being redacted, ADR-0003) and true
+  // — safe to diff directly with no fog argument needed, unlike
+  // `liveLastMove` above. Only computed for the ply actually on screen
+  // (`viewingPly`, or the final position when not browsing history) —
+  // deriving it for every ply and picking one afterward would be wasted
+  // work for the common case of never opening MoveHistory at all.
+  const historicalPlyIndex =
+    game.status !== 'active' && moveEntries.length > 0
+      ? (viewingPly ?? moveEntries.length - 1)
+      : null;
+  const historicalLastMove =
+    historicalPlyIndex !== null
+      ? deriveLastMoveSquares(
+          historicalPlyIndex === 0
+            ? STANDARD_START_FEN
+            : moveEntries[historicalPlyIndex - 1].fen,
+          moveEntries[historicalPlyIndex].fen,
+        )
+      : null;
+  const lastMove = game.status === 'active' ? liveLastMove : historicalLastMove;
+
+  // The small king-icon result marker (#79 task 3f) — only set once the
+  // game has genuinely ended with 'completed'/'abandoned' (not 'waiting',
+  // which has no result yet, and not merely `interactive` being false for
+  // some other reason, e.g. history review — ChessBoard's `resultWinner`
+  // doc covers why that distinction matters). Scoped to the live final
+  // position only (`viewingPly === null`), not every historical ply: an
+  // earlier ply can show the eventual loser's king still on the board
+  // before it was actually captured, which the icon would misrepresent
+  // as already having lost at that point in the game.
+  const resultWinner: 'white' | 'black' | null | undefined =
+    (game.status === 'completed' || game.status === 'abandoned') &&
+    viewingPly === null
+      ? game.winner_id === game.white_player_id
+        ? 'white'
+        : game.winner_id === game.black_player_id
+          ? 'black'
+          : null
+      : undefined;
+
   // Mockup game screen: the viewer sits at the bottom, opponent on top —
   // matching the board orientation. Spectators get the white-at-bottom
   // default.
   const bottomColor: 'white' | 'black' = isBlackPlayer ? 'black' : 'white';
-  const topColor: 'white' | 'black' = bottomColor === 'white' ? 'black' : 'white';
+  const topColor: 'white' | 'black' =
+    bottomColor === 'white' ? 'black' : 'white';
 
   const playerRowProps = (color: 'white' | 'black') => {
-    const isViewer =
-      color === 'white' ? isWhitePlayer : isBlackPlayer;
+    const isViewer = color === 'white' ? isWhitePlayer : isBlackPlayer;
     return {
       username: color === 'white' ? game.white_username : game.black_username,
       eloRating:
@@ -126,7 +189,9 @@ export default function GameScreen() {
       // captured_by_white holds black's piece types, and vice versa.
       capturedColor: (color === 'white' ? 'b' : 'w') as 'w' | 'b',
       clock:
-        timer?.activeColor === color ? formatTime(timer.secondsRemaining) : null,
+        timer?.activeColor === color
+          ? formatTime(timer.secondsRemaining)
+          : null,
       clockActive: isViewer && timer?.activeColor === color,
     };
   };
@@ -177,6 +242,8 @@ export default function GameScreen() {
                     ? 'Waiting for an opponent'
                     : 'Final position'
               }
+              lastMove={lastMove}
+              resultWinner={resultWinner}
             />
 
             {/* Viewer row (bottom) — captured pieces render inside each

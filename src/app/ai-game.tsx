@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View } from 'react-native';
+import { Chess } from 'chess.js';
 import { ChessBoard } from '~/components/game/board/chess-board';
 import { CapturedPieces } from '~/components/game/captured-pieces/captured-pieces-display';
 import { MoveHistory } from '~/components/game/move-history/move-history';
@@ -10,12 +11,17 @@ import { LocalGameOverModal } from '~/components/local-game/local-game-over-moda
 import { Dialog, Text } from '~/components/ui';
 import { useAiGame } from '~/lib/hooks/use-ai-game';
 import { useGameSounds } from '~/lib/hooks/use-game-sounds';
+import { deriveLastMoveSquares } from '~/lib/game/last-move-squares';
 import { redactFen } from '~/lib/game/redact-fen';
 import type { Difficulty } from '~/lib/game/ai-move';
 import {
   resolveHumanColor,
   type ColorChoice,
 } from '~/lib/game/resolve-human-color';
+
+// Only ever the "previous position" for ply 0's last-move diff — see the
+// matching constant in src/app/(game)/[id]/page.tsx for the same reasoning.
+const START_FEN = new Chess().fen();
 
 export default function AiGameScreen(): React.JSX.Element {
   const [colorChoice, setColorChoice] = React.useState<ColorChoice | null>(
@@ -102,6 +108,53 @@ function AiGameBoard({
       ? viewingFen
       : redactFen(viewingFen, humanColor);
 
+  // Same redaction rule `displayFen` above already applies to whichever
+  // single position is on screen, but applied to whichever ply
+  // `lastMove` needs (#79 tasks 3a/3c) — the previous ply is never the
+  // final one (there's always a later ply after it, by construction), so
+  // only the current-ply branch ever needs `isFinalPly`. Reusing the
+  // frozen `lastKnownRedactedFenRef` rather than a fresh redactFen() call
+  // for the final ply's fogged view is what makes this fog-safe in the
+  // one tricky case (gameOver but not yet revealed): it resolves to the
+  // exact same value the *previous* ply's fen redacts to, so the diff
+  // comes back as "nothing new to show" — correctly keeping the
+  // game-ending move hidden for as long as the board itself still hides
+  // it, with no special-casing needed here to make that true.
+  const displayFenForPly = (trueFen: string, isFinalPly: boolean): string => {
+    if (showFullBoard) return trueFen;
+    if (gameOver) {
+      return isFinalPly
+        ? lastKnownRedactedFenRef.current
+        : redactFen(trueFen, humanColor);
+    }
+    return redactFen(trueFen, humanColor);
+  };
+  const lastMovePlyIndex =
+    moves.length > 0 ? (viewingPly ?? moves.length - 1) : null;
+  const lastMove =
+    lastMovePlyIndex !== null
+      ? deriveLastMoveSquares(
+          displayFenForPly(
+            lastMovePlyIndex === 0
+              ? START_FEN
+              : moves[lastMovePlyIndex - 1].fen,
+            false,
+          ),
+          displayFenForPly(
+            moves[lastMovePlyIndex].fen,
+            lastMovePlyIndex === moves.length - 1,
+          ),
+        )
+      : null;
+  // Gated on `showFullBoard` (not just `gameOver`) — ChessBoard's
+  // `resultWinner` prop doc requires `redactedFen` to already be the true
+  // revealed position, which for this screen only holds once "Reveal
+  // board" has actually been pressed; before that, `displayFen` above is
+  // still the frozen, fogged pre-final-move view (see its own comment),
+  // and showing the result icon against that would be positioning it off
+  // a position that isn't the real final one.
+  const resultWinner = gameOver && showFullBoard ? gameOver.winner : undefined;
+
   return (
     <View className='flex-1 p-4 bg-background'>
       <Text className='mb-4 text-lg font-semibold text-center'>
@@ -124,6 +177,8 @@ function AiGameBoard({
             inactiveLabel={
               viewingPly !== null ? 'Reviewing a past move' : 'Final position'
             }
+            lastMove={lastMove}
+            resultWinner={resultWinner}
           />
           <CapturedPieces
             capturedByWhite={capturedByWhite}

@@ -7,6 +7,7 @@ import {
   CardTitle,
   Text,
 } from '~/components/ui';
+import { useLastMoveTracking } from '~/lib/hooks/use-last-move-tracking';
 import { useOnboardingDemo } from '~/lib/hooks/use-onboarding-demo';
 
 const INTRO_MESSAGE =
@@ -18,6 +19,11 @@ const QUIET_MESSAGE =
 
 export function DemoBoardCard(): React.JSX.Element {
   const { redactedFen, outcome, flashSquare, makeMove } = useOnboardingDemo();
+  // The demo is a single scripted tap (useOnboardingDemo's own comment),
+  // so there's exactly one transition ever to animate — the live-diff
+  // hook (#79 tasks 3a/3c) is enough here with no history-navigation
+  // path to also cover, unlike the real game screens.
+  const lastMove = useLastMoveTracking(redactedFen);
 
   const message = !outcome
     ? INTRO_MESSAGE
@@ -39,6 +45,7 @@ export function DemoBoardCard(): React.JSX.Element {
           flashSquare={flashSquare}
           interactive={!outcome}
           inactiveLabel='Demo complete'
+          lastMove={lastMove}
         />
       </CardContent>
     </Card>
