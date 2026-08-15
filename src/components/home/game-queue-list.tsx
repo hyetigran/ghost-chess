@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Text } from '~/components/ui';
 import { BoardThumbnail } from '~/components/home/board-thumbnail';
-import { deadlineFor, secondsUntilDeadline } from '~/lib/game/deadline';
+import { secondsUntilDeadline } from '~/lib/game/deadline';
 import { gameRoute } from '~/lib/navigation/game-route';
 import { timeControlLabel } from '~/lib/game/time-control-label';
 import { urgencyTier } from '~/lib/game/urgency';
@@ -151,10 +151,4 @@ function formatTimeRemaining(totalSeconds: number): string {
   if (hours >= 1) return `${hours}h ${minutes}m`;
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-// Re-exported so callers don't need to know deadlineFor lives elsewhere
-// just to sort by "most urgent" (src/app/index.tsx's "play next game" CTA).
-export function deadlineForGame(game: ActiveGame): Date {
-  return deadlineFor(game.updated_at, game.time_control_hours);
 }

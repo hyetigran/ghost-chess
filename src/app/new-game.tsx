@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { Link, type Href } from 'expo-router';
 import { showMessage } from 'react-native-flash-message';
 import { useQuery } from '@tanstack/react-query';
 import { Button, SectionLabel, Text } from '~/components/ui';
@@ -130,6 +131,40 @@ export default function NewGameScreen() {
             title='Open invitation'
             subtitle='Any eligible player can find and accept it'
             onPress={() => setMode('open')}
+          />
+        </View>
+
+        {/* Formerly the home screen's "Play" section (#82) — these don't
+            create a game through this screen's own flows above, they hop
+            to another screen entirely (browsing existing invitations,
+            joining by ID, or a game with no matchmaking at all), so they
+            get their own section rather than joining the Opponent rows. */}
+        <View className='gap-2.5 mt-6'>
+          <SectionLabel className='mb-0.5'>More ways to play</SectionLabel>
+          <LinkRow
+            href='/invitations'
+            glyph='♟'
+            accent
+            title='Open invitations'
+            subtitle='Browse games anyone can accept'
+          />
+          <LinkRow
+            href='/join-game'
+            glyph='♞'
+            title='Join with a game ID'
+            subtitle='Enter an ID a friend shared'
+          />
+          <LinkRow
+            href='/ai-game'
+            glyph='♜'
+            title='Computer'
+            subtitle='Practice against the engine'
+          />
+          <LinkRow
+            href='/local-game'
+            glyph='♚'
+            title='Pass & play'
+            subtitle='Two players, one device'
           />
         </View>
       </ScrollView>
@@ -279,26 +314,24 @@ export default function NewGameScreen() {
   );
 }
 
-// The mockup's opponent-row treatment: 38px icon tile, bold label,
-// muted sublabel, trailing chevron.
-function ModeRow({
+// The mockup's opponent-row treatment: 38px icon tile, bold label, muted
+// sublabel, trailing chevron. Shared by ModeRow (switches this screen's
+// local `mode`) and LinkRow (navigates to another screen) below — those
+// two differ only in their trigger (Pressable+onPress vs Link+asChild),
+// so the row's visual content lives here once rather than twice.
+function RowContent({
   glyph,
   title,
   subtitle,
-  onPress,
   accent = false,
 }: {
   glyph: string;
   title: string;
   subtitle: string;
-  onPress: () => void;
   accent?: boolean;
 }): React.JSX.Element {
   return (
-    <Pressable
-      onPress={onPress}
-      className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'
-    >
+    <>
       <View
         className={`w-[38px] h-[38px] items-center justify-center rounded-tile ${
           accent ? 'bg-primary' : 'bg-secondary'
@@ -317,6 +350,54 @@ function ModeRow({
         <Text className='text-xs text-muted-foreground'>{subtitle}</Text>
       </View>
       <Text className='text-lg text-faint'>›</Text>
+    </>
+  );
+}
+
+function ModeRow({
+  glyph,
+  title,
+  subtitle,
+  onPress,
+  accent = false,
+}: {
+  glyph: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  accent?: boolean;
+}): React.JSX.Element {
+  return (
+    <Pressable
+      onPress={onPress}
+      className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'
+    >
+      <RowContent glyph={glyph} title={title} subtitle={subtitle} accent={accent} />
     </Pressable>
+  );
+}
+
+// Same row treatment as ModeRow, but for the "More ways to play" rows
+// that navigate straight to another screen instead of switching this
+// screen's local `mode`.
+function LinkRow({
+  href,
+  glyph,
+  title,
+  subtitle,
+  accent = false,
+}: {
+  href: Href;
+  glyph: string;
+  title: string;
+  subtitle: string;
+  accent?: boolean;
+}): React.JSX.Element {
+  return (
+    <Link href={href} asChild>
+      <Pressable className='flex-row items-center gap-3.5 p-4 bg-card rounded-control border border-border shadow-card active:opacity-90'>
+        <RowContent glyph={glyph} title={title} subtitle={subtitle} accent={accent} />
+      </Pressable>
+    </Link>
   );
 }
