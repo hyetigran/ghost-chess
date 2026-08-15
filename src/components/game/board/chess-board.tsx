@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Image, View, type LayoutChangeEvent } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -20,12 +20,13 @@ import {
   type Orientation,
 } from '~/lib/game/board-geometry';
 import { dragTargetSquare } from '~/lib/game/drag-target-square';
+import { findKingSquares } from '~/lib/game/king-squares';
 import { legalTargetSquares } from '~/lib/game/legal-target-squares';
 import { pieceImage } from '~/lib/game/piece-image';
 import { isPromotionMove, type PromotionPiece } from '~/lib/game/promotion';
 import { chessFromRedactedFen } from '~/lib/game/redacted-chess';
 import { useSquareSelection } from '~/lib/hooks/use-square-selection';
-import { CloudFogOverlay } from './cloud-fog-overlay';
+import { BoardSquare, type ResultIcon } from './board-square';
 import { PromotionPicker } from './promotion-picker';
 
 const LABEL_GUTTER = 16;
@@ -34,11 +35,6 @@ const LABEL_GUTTER = 16;
 // quick press-and-release, matching how every drag-and-drop chess UI
 // disambiguates the two.
 const DRAG_ACTIVATION_DISTANCE = 8;
-// The origin square's piece stays visible but dimmed while its "ghost"
-// follows the pointer, rather than disappearing outright — standard
-// drag-and-drop convention, and it keeps the square's own highlight
-// state legible underneath.
-const DRAGGED_PIECE_OPACITY = 0.35;
 // One full lap of the shared cloud-drift clock (cloud-fog-overlay.tsx) —
 // long and linear so the haze reads as "slowly shifting weather," not as
 // an obviously-looping animation.
@@ -78,6 +74,48 @@ type Props = {
   interactive?: boolean;
   /** Label shown over the board while `interactive` is false. */
   inactiveLabel?: string;
+  /**
+   * The from/to squares of the move that produced whatever position
+   * `redactedFen` currently shows — drives both the one-shot travel
+   * pulse on arrival (#79 task 3a) and the persistent highlight that
+   * follows for as long as this stays the position on screen (#79 task
+   * 3c, including a caller with move-history navigation re-passing this
+   * for whichever ply is being viewed, not just the live one).
+   *
+   * Fog safety is entirely the caller's responsibility and is NOT
+   * re-checked here — this prop is deliberately "dumb," the same way
+   * `flashSquare` already is, rather than ChessBoard trying to infer
+   * safety from a FEN pair itself (it only ever sees the one current
+   * `redactedFen`, not history, so it has nothing to infer from anyway).
+   * The one real safety argument lives in `deriveLastMoveSquares`
+   * (src/lib/game/last-move-squares.ts) — every caller in this codebase
+   * gets `lastMove` from there (directly, or via
+   * `useLastMoveTracking`), which guarantees `from` is only ever a
+   * square the viewer's own redacted FEN already showed a piece on
+   * before the move, never one reconstructed from information fog
+   * withheld. `to` has no such restriction: it's always the square that
+   * just changed in the viewer's OWN redacted view, i.e. already exactly
+   * as visible as anything else currently on the board. A caller that
+   * skips that helper and hand-builds this prop instead inherits the
+   * same obligation by hand.
+   */
+  lastMove?: { from: Square; to: Square } | null;
+  /**
+   * Which color won, for the small king icon overlay once the game has
+   * actually ended (#79 task 3f) — green on the winner's king, red on
+   * the loser's, both omitted on `null` (a draw). Only ever consulted
+   * while `interactive` is false, and even then only if this is set at
+   * all: `interactive` alone doesn't mean "game over" (it's also false
+   * while reviewing a past ply mid-game, still genuinely fogged), so
+   * leaving this `undefined` — the default — is what keeps the icon from
+   * appearing during ordinary history review. Callers only ever pass it
+   * once they have a real, final result to report, by which point
+   * ADR-0003's reveal-on-completion means `redactedFen` is already the
+   * true final position — the missing king case (ADR-0009's king
+   * capture) is handled by simply having nowhere to draw that side's
+   * icon, not by this prop needing to know about it.
+   */
+  resultWinner?: 'white' | 'black' | null;
 };
 
 // Origin square + its display coordinates + a snapshot of the piece
@@ -99,6 +137,8 @@ export function ChessBoard({
   flashSquare,
   interactive = true,
   inactiveLabel = 'Final position',
+  lastMove = null,
+  resultWinner,
 }: Props): React.JSX.Element {
   const chess = React.useMemo(
     () => chessFromRedactedFen(redactedFen),
@@ -141,6 +181,26 @@ export function ChessBoard({
     () => legalTargetSquares(chess, ownPieceColor),
     [chess, ownPieceColor],
   );
+  // Guarded on `interactive` (not just `resultWinner`'s presence) per the
+  // prop's own doc comment — `resultWinner` being set but `interactive`
+  // still true can't actually happen in a well-behaved caller, but this
+  // keeps the icon from ever appearing a render early/late regardless.
+  const kingSquares = React.useMemo(
+    () =>
+      !interactive && resultWinner !== undefined
+        ? findKingSquares(redactedFen)
+        : null,
+    [interactive, resultWinner, redactedFen],
+  );
+  const resultIconFor = (square: Square): ResultIcon => {
+    if (!kingSquares || resultWinner === undefined || resultWinner === null) {
+      return null;
+    }
+    if (square === kingSquares[resultWinner]) return 'winner';
+    const loserColor = resultWinner === 'white' ? 'black' : 'white';
+    if (square === kingSquares[loserColor]) return 'loser';
+    return null;
+  };
   // Every caller sets `interactive` to false exactly when `redactedFen`
   // has stopped being redacted (ADR-0003's reveal-on-completion, for the
   // online screen; local/AI games never render this component at all
@@ -259,6 +319,8 @@ export function ChessBoard({
                   piece?.color !== ownPieceColor &&
                   !reachableSquares.has(square);
                 const isBeingDragged = draggedFrom?.square === square;
+                const isLastMoveFrom = lastMove?.from === square;
+                const isLastMoveTo = lastMove?.to === square;
 
                 const tapGesture = Gesture.Tap()
                   .enabled(interactive)
@@ -305,69 +367,25 @@ export function ChessBoard({
                 const squareGesture = Gesture.Race(tapGesture, panGesture);
 
                 return (
-                  <GestureDetector key={square} gesture={squareGesture}>
-                    <View
-                      className={`w-[12.5%] h-[12.5%] items-center justify-center ${
-                        isLight ? 'bg-squareLight' : 'bg-squareDark'
-                      }`}
-                    >
-                      {/* Mockup highlight treatments layer over the
-                          checker color instead of replacing it: selected
-                          = 45% highlight wash + 3px inset accent ring;
-                          legal target = centered 30% dot; capture flash
-                          = inset danger ring. */}
-                      {/* Explicit rgba values rather than token/opacity
-                          modifiers — the theme colors are hsl(var())
-                          strings without <alpha-value>, so /45-style
-                          modifiers would render fully opaque. */}
-                      {isSelected && (
-                        <View
-                          className='absolute inset-0 bg-[rgba(240,214,86,0.45)] dark:bg-[rgba(240,214,86,0.4)] border-[3px] border-primary'
-                          pointerEvents='none'
-                        />
-                      )}
-                      {isLegalTarget && !isSelected && (
-                        <View
-                          className='absolute inset-0 items-center justify-center'
-                          pointerEvents='none'
-                        >
-                          <View className='w-[30%] h-[30%] rounded-full bg-[rgba(27,26,23,0.28)] dark:bg-[rgba(0,0,0,0.35)]' />
-                        </View>
-                      )}
-                      {piece && (
-                        <Image
-                          source={pieceImage(piece)}
-                          style={{
-                            width: '80%',
-                            height: '80%',
-                            opacity: isBeingDragged ? DRAGGED_PIECE_OPACITY : 1,
-                          }}
-                          resizeMode='contain'
-                        />
-                      )}
-                      {isFlashing && (
-                        <View
-                          className='absolute inset-0 border-4 border-[rgba(198,63,49,0.75)] dark:border-[rgba(226,112,95,0.85)]'
-                          pointerEvents='none'
-                        />
-                      )}
-                      {/* Layered blobs rather than a flat color swap, so
-                          the light/dark checker pattern (and any highlight
-                          underneath) still shows faintly through — reads as
-                          "clouds obscuring this square," not "this is a
-                          third square color" (#77). pointerEvents="none"
-                          (both here and inside the overlay itself) so it
-                          never steals the tap from the gesture detector
-                          the square sits on. */}
-                      {isHazy && (
-                        <CloudFogOverlay
-                          square={square}
-                          driftProgress={cloudDrift}
-                          squareSize={squareSize}
-                        />
-                      )}
-                    </View>
-                  </GestureDetector>
+                  <BoardSquare
+                    key={square}
+                    square={square}
+                    isLight={isLight}
+                    piece={piece}
+                    isSelected={isSelected}
+                    isLegalTarget={isLegalTarget}
+                    isLegalTargetOccupied={isLegalTarget && !!piece}
+                    isFlashing={isFlashing}
+                    isHazy={isHazy}
+                    isBeingDragged={isBeingDragged}
+                    isLastMoveFrom={isLastMoveFrom}
+                    isLastMoveTo={isLastMoveTo}
+                    lastMoveVersion={redactedFen}
+                    resultIcon={resultIconFor(square)}
+                    squareSize={squareSize}
+                    cloudDrift={cloudDrift}
+                    gesture={squareGesture}
+                  />
                 );
               }),
             )}
