@@ -74,43 +74,24 @@ export default function HomeScreen() {
       </View>
 
       {userId && (
-        <>
-          {/* #83: single horizontal, active-only "Your move" list —
-              replaces the old GameFilterPills (Your turn / Waiting /
-              Finished) + vertical GameQueueList for in-progress games.
-              ActiveGamesList owns its own filtering/ordering
-              (orderActiveGames: active-only, your-turn first, then
-              waiting-on-opponent, each by soonest deadline). */}
-          <HomeSection
-            title='Your move'
-            trailing={
-              expiringCount > 0 ? (
-                <Text className='font-mono-semibold text-[11px] text-danger'>
-                  {expiringCount} EXPIRING
-                </Text>
-              ) : undefined
-            }
-          >
-            <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
-          </HomeSection>
-
-          {/* #84: 20 most recent finished games, with a footer button to
-              the paginated All games screen for anything older. Supersedes
-              #83's interim "Finished" stopgap (plain RecentGamesList, no
-              cap, no way to reach games past whatever getGameHistory's
-              default returned). */}
-          <HomeSection title='History'>
-            <RecentGamesList games={history ?? []} viewerId={userId} />
-            <Link href='/all-games' asChild>
-              <Pressable className='flex-row items-center justify-center gap-1 py-2'>
-                <Text className='font-sans-semibold text-sm text-primary'>
-                  View all games
-                </Text>
-                <Text className='text-sm text-primary'>›</Text>
-              </Pressable>
-            </Link>
-          </HomeSection>
-        </>
+        // #83: single horizontal, active-only "Your move" list — replaces
+        // the old GameFilterPills (Your turn / Waiting / Finished) +
+        // vertical GameQueueList for in-progress games. ActiveGamesList
+        // owns its own filtering/ordering (orderActiveGames: active-only,
+        // your-turn first, then waiting-on-opponent, each by soonest
+        // deadline).
+        <HomeSection
+          title='Your move'
+          trailing={
+            expiringCount > 0 ? (
+              <Text className='font-mono-semibold text-[11px] text-danger'>
+                {expiringCount} EXPIRING
+              </Text>
+            ) : undefined
+          }
+        >
+          <ActiveGamesList games={activeGames ?? []} viewerId={userId} />
+        </HomeSection>
       )}
 
       {isSearching && (
@@ -127,6 +108,26 @@ export default function HomeScreen() {
             draws={stats.draws}
             eloRating={stats.elo_rating}
           />
+        </HomeSection>
+      )}
+
+      {/* #84: 20 most recent finished games, with a footer button to the
+          paginated All games screen for anything older. Supersedes #83's
+          interim "Finished" stopgap (plain RecentGamesList, no cap, no way
+          to reach games past whatever getGameHistory's default returned).
+          Placed after Stats rather than right below "Your move" — history
+          is the least time-sensitive section on this screen. */}
+      {userId && (
+        <HomeSection title='History'>
+          <RecentGamesList games={history ?? []} viewerId={userId} />
+          <Link href='/all-games' asChild>
+            <Pressable className='flex-row items-center justify-center gap-1 py-2'>
+              <Text className='font-sans-semibold text-sm text-primary'>
+                View all games
+              </Text>
+              <Text className='text-sm text-primary'>›</Text>
+            </Pressable>
+          </Link>
         </HomeSection>
       )}
 
