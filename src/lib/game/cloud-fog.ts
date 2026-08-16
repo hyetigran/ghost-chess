@@ -1,6 +1,17 @@
 import { type Square } from 'chess.js';
 
-const BLOBS_PER_SQUARE = 3;
+const TEXTURE_BLOBS_PER_SQUARE = 3;
+
+/**
+ * How far the base fill (below) overhangs each edge of the square, as a
+ * percentage of the square's side. Must clear cloud-fog-overlay.tsx's
+ * drift amplitude with real margin — the whole layout drifts as one
+ * unit, so an overhang any smaller than the worst-case drift offset
+ * would expose bare checker at the trailing edge mid-drift, which is
+ * exactly the "fog doesn't fill the square" bug this constant exists to
+ * prevent.
+ */
+export const BASE_FILL_OVERHANG_PCT = 15;
 
 export type CloudBlob = {
   /** Blob center, as a percentage (0–100) of the square's own box. */
@@ -12,19 +23,34 @@ export type CloudBlob = {
   width: number;
   height: number;
   rotateDeg: number;
-  /** Layer opacity. Blobs overlap, so stacking a few naturally produces a
-   * denser, mottled core instead of one flat wash — no gradient asset
-   * needed. */
+  /** Layer opacity. Blobs overlap the base fill and each other, so
+   * stacking a few naturally produces a denser, mottled core instead of
+   * one flat wash — no gradient asset needed. Coverage is never these
+   * blobs' job (see `SquareFogLayout.baseOpacity`); they're purely
+   * texture on top of a guaranteed-full square. */
   opacity: number;
-  /** Radians, used to phase this blob's drift out of step with every
-   * other blob sharing the same animation driver (cloud-fog-overlay.tsx)
-   * — one shared clock still reads as independent motion per blob. */
+};
+
+export type SquareFogLayout = {
+  /** Opacity of a full-square (plus `BASE_FILL_OVERHANG_PCT` overhang)
+   * base fill beneath the texture blobs. This is what actually
+   * guarantees the whole square reads as hazy: the old design relied
+   * entirely on randomly placed/sized blobs to cover a square, which
+   * could — and did — leave gaps showing bare checker wherever no blob
+   * happened to reach. */
+  baseOpacity: number;
+  /** Single drift phase for the entire square's fog — base fill and
+   * every texture blob move together as one patch (cloud-fog-overlay.tsx
+   * applies this to one shared container transform), matching how this
+   * variant's fog reads elsewhere as a slowly moving patch rather than
+   * blobs shimmering independently against a static base. */
   driftPhase: number;
+  blobs: CloudBlob[];
 };
 
 /**
  * Deterministic per-square cloud layout: the same square always produces
- * the same blobs. Hazy squares get recomputed on every position change
+ * the same layout. Hazy squares get recomputed on every position change
  * (chess-board.tsx re-renders `isHazy` per move), and this also has to
  * agree between server-render and client-hydrate on web — a
  * Math.random()-seeded layout would reshuffle or flicker on every
@@ -32,9 +58,11 @@ export type CloudBlob = {
  * the square name itself (not board index) so visually adjacent squares
  * don't end up with mirrored or identical layouts.
  */
-export function cloudBlobsForSquare(square: Square): CloudBlob[] {
+export function squareFogLayout(square: Square): SquareFogLayout {
   const rand = mulberry32(hashSquare(square));
-  return Array.from({ length: BLOBS_PER_SQUARE }, () => {
+  const baseOpacity = 0.55 + rand() * 0.15;
+  const driftPhase = rand() * Math.PI * 2;
+  const blobs = Array.from({ length: TEXTURE_BLOBS_PER_SQUARE }, () => {
     const width = 55 + rand() * 45;
     const height = 55 + rand() * 45;
     return {
@@ -43,10 +71,10 @@ export function cloudBlobsForSquare(square: Square): CloudBlob[] {
       width,
       height,
       rotateDeg: rand() * 360,
-      opacity: 0.32 + rand() * 0.26,
-      driftPhase: rand() * Math.PI * 2,
+      opacity: 0.28 + rand() * 0.22,
     };
   });
+  return { baseOpacity, driftPhase, blobs };
 }
 
 function hashSquare(square: string): number {
