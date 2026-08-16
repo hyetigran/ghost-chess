@@ -7,20 +7,10 @@ import Animated, {
 import { type Square } from 'chess.js';
 import {
   BASE_FILL_OVERHANG_PCT,
+  DRIFT_AMPLITUDE_PCT,
   squareFogLayout,
   type CloudBlob,
 } from '~/lib/game/cloud-fog';
-
-// How far a square's whole fog patch drifts off its resting position at
-// the peak of its cycle, as a percentage of the square's side — small
-// on purpose. This overlay's job is to read as "obscured," not to draw
-// the eye; a drift big enough to notice as *motion* would compete with
-// the pieces and highlights it sits over. Expressed as a percentage
-// (converted to pixels below) rather than a flat pixel constant so it
-// scales with the board instead of looking proportionally larger on a
-// small screen. cloud-fog.ts's BASE_FILL_OVERHANG_PCT is sized to clear
-// this value with margin — keep the two in sync if either changes.
-const DRIFT_AMPLITUDE_PCT = 3;
 
 type Props = {
   square: Square;

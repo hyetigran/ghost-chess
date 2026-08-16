@@ -1,5 +1,9 @@
 import { type Square } from 'chess.js';
-import { BASE_FILL_OVERHANG_PCT, squareFogLayout } from '~/lib/game/cloud-fog';
+import {
+  BASE_FILL_OVERHANG_PCT,
+  DRIFT_AMPLITUDE_PCT,
+  squareFogLayout,
+} from '~/lib/game/cloud-fog';
 
 describe('squareFogLayout', () => {
   it('is deterministic for a given square', () => {
@@ -46,11 +50,12 @@ describe('squareFogLayout', () => {
   });
 
   it('overhangs the square by comfortably more than the drift amplitude, so drift can never expose bare checker', () => {
-    // cloud-fog-overlay.tsx's DRIFT_AMPLITUDE_PCT is 3 — the worst-case
-    // translate offset (both axes near their peak at once) is bounded by
-    // amplitude * sqrt(2) ≈ 4.24. The base fill's overhang must clear
-    // that with real margin on every side.
-    const worstCaseDriftPct = 3 * Math.SQRT2;
-    expect(BASE_FILL_OVERHANG_PCT).toBeGreaterThan(worstCaseDriftPct * 2);
+    // cloud-fog-overlay.tsx drives translateX = sin(angle)·amplitude and
+    // translateY = cos(angle)·amplitude off the *same* angle, so the
+    // drift vector traces a circle of radius exactly DRIFT_AMPLITUDE_PCT
+    // (sin²+cos²=1) — neither axis ever moves further than that on its
+    // own, regardless of the other axis's position. The base fill's
+    // overhang must clear that radius with real margin on every side.
+    expect(BASE_FILL_OVERHANG_PCT).toBeGreaterThan(DRIFT_AMPLITUDE_PCT * 3);
   });
 });

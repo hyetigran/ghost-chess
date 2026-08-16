@@ -3,13 +3,25 @@ import { type Square } from 'chess.js';
 const TEXTURE_BLOBS_PER_SQUARE = 3;
 
 /**
+ * How far a square's whole fog patch drifts off its resting position at
+ * the peak of its cycle, as a percentage of the square's side — small on
+ * purpose (cloud-fog-overlay.tsx: this overlay's job is to read as
+ * "obscured," not to draw the eye). Lives here, next to
+ * `BASE_FILL_OVERHANG_PCT`, so the coverage margin below and the actual
+ * drift distance can never drift apart from each other.
+ */
+export const DRIFT_AMPLITUDE_PCT = 3;
+
+/**
  * How far the base fill (below) overhangs each edge of the square, as a
- * percentage of the square's side. Must clear cloud-fog-overlay.tsx's
- * drift amplitude with real margin — the whole layout drifts as one
- * unit, so an overhang any smaller than the worst-case drift offset
- * would expose bare checker at the trailing edge mid-drift, which is
- * exactly the "fog doesn't fill the square" bug this constant exists to
- * prevent.
+ * percentage of the square's side. Must clear `DRIFT_AMPLITUDE_PCT` with
+ * real margin — the whole layout drifts as one unit (cloud-fog-overlay.tsx
+ * applies translateX = sin(angle)·amplitude, translateY =
+ * cos(angle)·amplitude off the same angle, which traces a circle of
+ * radius exactly `DRIFT_AMPLITUDE_PCT`, so no axis ever moves further
+ * than that) — an overhang any smaller than that radius would expose
+ * bare checker at the trailing edge mid-drift, which is exactly the "fog
+ * doesn't fill the square" bug this constant exists to prevent.
  */
 export const BASE_FILL_OVERHANG_PCT = 15;
 
@@ -60,18 +72,24 @@ export type SquareFogLayout = {
  */
 export function squareFogLayout(square: Square): SquareFogLayout {
   const rand = mulberry32(hashSquare(square));
-  const baseOpacity = 0.55 + rand() * 0.15;
+  // Deliberately lighter than the old blobs-only design's average
+  // coverage: this is a floor, not the whole look. Kept low enough that
+  // the texture blobs below — denser and, since #77's "cloud-like, not a
+  // flat tint" goal still applies, doing most of the visual work — read
+  // as genuine variation on top of it rather than the base dominating
+  // into a flat wash.
+  const baseOpacity = 0.42 + rand() * 0.16;
   const driftPhase = rand() * Math.PI * 2;
   const blobs = Array.from({ length: TEXTURE_BLOBS_PER_SQUARE }, () => {
-    const width = 55 + rand() * 45;
-    const height = 55 + rand() * 45;
+    const width = 65 + rand() * 50;
+    const height = 65 + rand() * 50;
     return {
       cx: 20 + rand() * 60,
       cy: 20 + rand() * 60,
       width,
       height,
       rotateDeg: rand() * 360,
-      opacity: 0.28 + rand() * 0.22,
+      opacity: 0.32 + rand() * 0.24,
     };
   });
   return { baseOpacity, driftPhase, blobs };
