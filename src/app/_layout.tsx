@@ -14,7 +14,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
-import { AppState, Platform, StyleSheet } from 'react-native';
+import { AppState, Platform, StyleSheet, View } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -256,9 +256,19 @@ function Providers({ children }: { children: React.ReactNode }) {
                   <BottomSheetModalProvider>
                     <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
                     <PushNotificationsRegistrar />
-                    {children}
-                    <FlashMessage position='top' />
-                    <PortalHost />
+                    {/* Mockups only cover mobile widths — on web (native
+                        ignores the `web:` variant entirely) cap the whole
+                        app shell at the same column width the board and
+                        move-history already use (chess-board.tsx,
+                        move-history.tsx's `max-w-[560px]`) instead of
+                        stretching every screen edge-to-edge on a wide
+                        viewport. The surrounding GestureHandlerRootView
+                        keeps painting the full-bleed background. */}
+                    <View className='flex-1 web:w-full web:max-w-[560px] web:self-center'>
+                      {children}
+                      <FlashMessage position='top' />
+                      <PortalHost />
+                    </View>
                   </BottomSheetModalProvider>
                 </MatchmakingProvider>
               </APIProvider>
