@@ -27,7 +27,7 @@ export function ConfirmMoveBar({
   if (!pendingMove) return null;
 
   return (
-    <View className='w-full max-w-[560px] self-center mt-2 flex-row items-center gap-2.5 px-3 py-2.5 bg-card rounded-strip shadow-card'>
+    <View className='w-full mt-2 flex-row items-center gap-2.5 px-3 py-2.5 bg-card rounded-strip shadow-card'>
       <View className='w-9 h-9 items-center justify-center rounded-tile bg-accent'>
         <Text className='font-mono-semibold text-xs text-accent-foreground'>
           {pendingMove.to}
