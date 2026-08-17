@@ -8,7 +8,7 @@ import { MoveHistory } from '~/components/game/move-history/move-history';
 import { PlayerCard } from '~/components/game/player-card/player-card';
 import { GameControls } from '~/components/game/controls/game-controls';
 import type { MoveEntry } from '~/lib/game/pair-moves';
-import { ConfirmMoveDialog } from '~/components/game/move-confirmation/confirm-move-dialog';
+import { ConfirmMoveBar } from '~/components/game/move-confirmation/confirm-move-bar';
 import { GameOverModal } from '~/components/game/game-over/game-over-modal';
 import { Button, Dialog, Text } from '~/components/ui';
 import { formatTime } from '~/lib/utils/time';
@@ -293,6 +293,17 @@ export default function GameScreen() {
               resultWinner={resultWinner}
             />
 
+            {/* Move confirmation (#22) — inline, directly below the
+                board, rather than a blocking modal (chess.com renders
+                its own move-confirmation option the same way: confirm/
+                undo in place, board still visible). Renders nothing
+                while there's no pending move. */}
+            <ConfirmMoveBar
+              pendingMove={pendingMove}
+              onConfirm={confirm}
+              onCancel={cancel}
+            />
+
             {/* Viewer row (bottom) — captured pieces render inside each
                 player row now, per the mockup's "♟♟♝" line. */}
             <View className='mt-3'>
@@ -339,15 +350,6 @@ export default function GameScreen() {
           )}
         </View>
       </View>
-
-      {/* Move confirmation prompt (#22) */}
-      <Dialog open={!!pendingMove} onOpenChange={(open) => !open && cancel()}>
-        <ConfirmMoveDialog
-          pendingMove={pendingMove}
-          onConfirm={confirm}
-          onCancel={cancel}
-        />
-      </Dialog>
 
       {/* Game over modal */}
       <Dialog open={showGameOver} onOpenChange={setShowGameOver}>
